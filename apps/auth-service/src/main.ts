@@ -9,6 +9,15 @@ app.get("/", (req, res) => {
   res.send({ message: "Auth Service is healthy" });
 });
 
-app.listen(port, host, () => {
+const server = app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
+});
+
+server.on("error", console.error);
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM signal received: closing HTTP server");
+  server.close(() => {
+    console.log("HTTP server closed");
+  });
 });
