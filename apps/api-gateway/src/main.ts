@@ -39,8 +39,16 @@ app.use("/gateway-health", (req, res) => {
   res.send({ status: "ok", message: "API Gateway is healthy" });
 });
 
-const port = process.env.PORT || 8080;
-const server = app.listen(port, () => {
-  console.log(`Listening at http://localhost:${port}/api`);
+const port = process.env.PORT ? Number(process.env.PORT) : 8080;
+const host = process.env.HOST ?? "localhost";
+const server = app.listen(port, host, () => {
+  console.log(`[ ready ] http://${host}:${port}`);
 });
 server.on("error", console.error);
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM signal received: closing HTTP server");
+  server.close(() => {
+    console.log("HTTP server closed");
+  });
+});
