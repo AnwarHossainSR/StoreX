@@ -2,12 +2,14 @@ import { ValidationError } from "@packages/error-handler";
 import prisma from "@packages/libs/prisma";
 import bcrypt from "bcryptjs";
 import { NextFunction, Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import {
   checkOtpRestriction,
   sentOTP,
   trackOtpRequest,
   validateRegistrationData,
 } from "../utils/auth.helper";
+import { setCookie } from "../utils/cookies/setCookie";
 import { verifyOtpHelper } from "../utils/sendEmail";
 
 export const userRegistration = async (
@@ -72,6 +74,73 @@ export const verifyUserOtp = async (
     });
 
     res.status(200).json({ message: "User registered successfully" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const loginUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      throw next(new ValidationError("Missing required fields"));
+    }
+
+    const user = await prisma.users.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      throw next(new ValidationError("User not found"));
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password!);
+
+    if (!isPasswordMatch) {
+      throw next(new ValidationError("Invalid password"));
+    }
+
+    const accessToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      process.env.JWT_SECRET_KEY!,
+      {
+        expiresIn: "15m",
+      }
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      process.env.JWT_REFRESH_SECRET_KEY!,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    setCookie(res, "refresh_token", refreshToken);
+    setCookie(res, "access_token", accessToken);
+
+    res.status(200).json({
+      message: "User logged in successfully",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (error: any) {
     return next(error);
   }
