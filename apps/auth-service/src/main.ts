@@ -1,5 +1,6 @@
 import { errorMiddleware } from "@packages/error-handler/error-middleware";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
@@ -13,6 +14,14 @@ const port = process.env.PORT ? Number(process.env.PORT) : 6001;
 
 const app = express();
 
+app.use(
+  cors({
+    origin: ["http://localhost:3000"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -23,7 +32,9 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get("/docs-json", (req, res) => {
   res.send(swaggerDocument);
 });
+
 app.use("/api", AuthRouter);
+
 app.use(errorMiddleware);
 
 const server = app.listen(port, host, () => {
@@ -33,9 +44,9 @@ const server = app.listen(port, host, () => {
 
 server.on("error", console.error);
 
-process.on("SIGTERM", () => {
-  console.log("SIGTERM signal received: closing HTTP server");
-  server.close(() => {
-    console.log("HTTP server closed");
-  });
-});
+// process.on("SIGTERM", () => {
+//   console.log("SIGTERM signal received: closing HTTP server");
+//   server.close(() => {
+//     console.log("HTTP server closed");
+//   });
+// });

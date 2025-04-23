@@ -7,7 +7,8 @@
     "build": "npx nx run-many --target=build --all",
     "test": "npx nx run-many --target=test --all",
     "generate": "npx prisma generate",
-    "push": "npx prisma db push"
+    "push": "npx prisma db push",
+    "cache": "npx nx reset cache"
   },
   "private": true,
   "dependencies": {

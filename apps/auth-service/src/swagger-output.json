@@ -5,7 +5,7 @@
     "description": "Authentication and Authorization Service",
     "version": "1.0.0"
   },
-  "host": "http://localhost:6001",
+  "host": "localhost:6001",
   "basePath": "/",
   "tags": [
     {
@@ -17,7 +17,7 @@
   "consumes": ["application/json"],
   "produces": ["application/json"],
   "paths": {
-    "/register": {
+    "/api/register": {
       "post": {
         "description": "",
         "parameters": [
@@ -49,6 +49,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }

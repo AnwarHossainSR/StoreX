@@ -18,6 +18,7 @@ const renderEmailTemplate = async (
 ): Promise<string> => {
   const tempaltePath = path.join(
     process.cwd(),
+    "apps",
     "auth-service",
     "src",
     "utils",
