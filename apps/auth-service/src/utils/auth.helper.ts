@@ -1,7 +1,6 @@
 import { ValidationError } from "@packages/error-handler";
 import redis from "@packages/libs/redis";
 import crypto from "crypto";
-import { NextFunction } from "express";
 import { sendEmail } from "./sendEmail";
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,30 +19,21 @@ export const validateRegistrationData = (
   }
 };
 
-export const checkOtpRestriction = async (
-  email: string,
-  next: NextFunction
-) => {
-  if (await redis.get(`otp_cooldown:${email}`)) {
-    return next(
-      new ValidationError("Please wait before requesting another OTP")
+export const checkOtpRestriction = async (email: string) => {
+  if (await redis.get(`otp_spam_lock:${email}`)) {
+    throw new ValidationError(
+      "Too many otp requests, please try again after 1 hour"
     );
   }
 
   if (await redis.get(`otp_lock:${email}`)) {
-    return next(
-      new ValidationError(
-        "Account locked due to multiple failed attempts, please try again after 30 minutes"
-      )
+    throw new ValidationError(
+      "Account locked due to multiple failed attempts, please try again after 30 minutes"
     );
   }
 
-  if (await redis.get(`otp_spam_lock:${email}`)) {
-    return next(
-      new ValidationError(
-        "Too many otp requests, please try again after 1 hour"
-      )
-    );
+  if (await redis.get(`otp_cooldown:${email}`)) {
+    throw new ValidationError("Please wait before requesting another OTP");
   }
 };
 
@@ -59,16 +49,14 @@ export const sentOTP = async (
   await redis.set(`otp_cooldown:${email}`, "true", "EX", 60);
 };
 
-export const trackOtpRequest = async (email: string, next: NextFunction) => {
+export const trackOtpRequest = async (email: string) => {
   const otpRequests = parseInt(
     (await redis.get(`otp_request:${email}`)) || "0"
   );
   if (otpRequests >= 2) {
     await redis.set(`otp_spam_lock:${email}`, "true", "EX", 3600); // 1 hour lock
-    return next(
-      new ValidationError(
-        "Too many otp requests, please try again after 1 hour"
-      )
+    throw new ValidationError(
+      "Too many otp requests, please try again after 1 hour"
     );
   }
 

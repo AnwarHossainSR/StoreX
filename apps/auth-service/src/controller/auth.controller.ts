@@ -26,8 +26,8 @@ export const userRegistration = async (
     if (userExist)
       return next(new ValidationError("User already exist with this email"));
 
-    await checkOtpRestriction(email, next);
-    await trackOtpRequest(email, next);
+    await checkOtpRestriction(email);
+    await trackOtpRequest(email);
     await sentOTP(name, email, "user-activation-email", "Verify Your Email!");
     res.status(200).json({ message: "OTP sent to email, please verify" });
   } catch (error: any) {

@@ -28,19 +28,24 @@
               "type": "object",
               "properties": {
                 "name": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "John Doe"
                 },
                 "email": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "mahedianwar@gmail.com"
                 },
                 "password": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "SecurePassword123"
                 },
                 "phone_number": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "+1-234-567-890"
                 },
                 "country": {
-                  "example": "any"
+                  "type": "string",
+                  "example": "United States"
                 }
               }
             }
