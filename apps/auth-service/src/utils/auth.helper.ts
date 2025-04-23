@@ -8,9 +8,9 @@ export const validateRegistrationData = (
   data: any,
   userType: "user" | "seller"
 ) => {
-  const { name, email, password, phone_number, country } = data;
+  const { name, email, password } = data;
 
-  if (!name || !email || !password || !phone_number || !country) {
+  if (!name || !email || !password) {
     throw new ValidationError("Missing required fields");
   }
 

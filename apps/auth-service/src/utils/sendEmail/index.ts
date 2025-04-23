@@ -1,3 +1,5 @@
+import { ValidationError } from "@packages/error-handler";
+import redis from "@packages/libs/redis";
 import ejs from "ejs";
 import nodemailer from "nodemailer";
 import path from "path";
@@ -50,4 +52,35 @@ export const sendEmail = async (
     console.error("Error sending email:", error);
     return false;
   }
+};
+
+export const verifyOtpHelper = async (email: string, otp: string) => {
+  const otpFromRedis = await redis.get(`otp:${email}`);
+  console.log("otpFromRedis:", otpFromRedis);
+  console.log("otp:", otp);
+
+  if (!otpFromRedis) {
+    throw new ValidationError("Invalid OTP, please try again");
+  }
+
+  const failedAttemptsKey = `otp_attempts:${email}`; // Key to track failed attempts
+  const failedAttempts = parseInt((await redis.get(failedAttemptsKey)) || "0");
+
+  // Ensure both OTPs are strings and trimmed of any whitespace
+  if (otpFromRedis?.toString().trim() !== otp.toString().trim()) {
+    if (failedAttempts >= 3) {
+      await redis.set(`otp_lock:${email}`, "true", "EX", 1800); // 30 minutes lock
+      await redis.del(`otp:${email}`, failedAttemptsKey);
+      throw new ValidationError(
+        "Account locked due to multiple failed attempts, please try again after 30 minutes"
+      );
+    }
+    await redis.set(failedAttemptsKey, failedAttempts + 1, "EX", 300); // 5 minutes lock
+    throw new ValidationError(
+      `Incorrect OTP, you have ${3 - failedAttempts} attempts left`
+    );
+  }
+
+  // OTP is correct, so delete the OTP and failed attempts from Redis
+  await redis.del(`otp:${email}`, failedAttemptsKey);
 };
