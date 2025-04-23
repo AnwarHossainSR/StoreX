@@ -1,6 +1,6 @@
+import { ValidationError } from "@packages/error-handler";
+import prisma from "@packages/libs/prisma";
 import { NextFunction, Request, Response } from "express";
-import { ValidationError } from "../../../../packages/error-handler";
-import prisma from "../../../../packages/libs/prisma";
 import {
   checkOtpRestriction,
   sentOTP,

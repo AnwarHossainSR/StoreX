@@ -1,8 +1,8 @@
+import { errorMiddleware } from "@packages/error-handler/error-middleware";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
-import { errorMiddleware } from "../../../packages/error-handler/error-middleware";
 import AuthRouter from "./routes/auth.routes";
 dotenv.config();
 
