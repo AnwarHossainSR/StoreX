@@ -56,8 +56,6 @@ export const sendEmail = async (
 
 export const verifyOtpHelper = async (email: string, otp: string) => {
   const otpFromRedis = await redis.get(`otp:${email}`);
-  console.log("otpFromRedis:", otpFromRedis);
-  console.log("otp:", otp);
 
   if (!otpFromRedis) {
     throw new ValidationError("Invalid OTP, please try again");

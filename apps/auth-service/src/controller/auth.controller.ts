@@ -5,9 +5,11 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
   checkOtpRestriction,
+  handleForgotPassword,
   sentOTP,
   trackOtpRequest,
   validateRegistrationData,
+  verifyForgotPasswordOtp,
 } from "../utils/auth.helper";
 import { setCookie } from "../utils/cookies/setCookie";
 import { verifyOtpHelper } from "../utils/sendEmail";
@@ -141,6 +143,68 @@ export const loginUser = async (
         email: user.email,
       },
     });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const userForgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  await handleForgotPassword(req, res, next, "user");
+};
+
+export const verifyForgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  await verifyForgotPasswordOtp(req, res, next);
+};
+
+export const ResetUserForgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      throw next(new ValidationError("Missing required fields"));
+    }
+
+    const user = await prisma.users.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      throw next(new ValidationError("User not found"));
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password!);
+
+    if (isPasswordMatch) {
+      throw next(
+        new ValidationError("New password must be different from old password")
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await prisma.users.update({
+      where: {
+        email,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    res.status(200).json({ message: "Password reset successfully" });
   } catch (error: any) {
     return next(error);
   }
