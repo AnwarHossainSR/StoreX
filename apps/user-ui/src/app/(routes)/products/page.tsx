@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import ProductGrid from "../../components/products/ProductGrid";
-import FilterSidebar from "../../components/products/FilterSidebar";
+import Link from "next/link";
+import FilterSidebar from "../../../components/products/FilterSidebar";
+import ProductGrid from "../../../components/products/ProductGrid";
 
 export default function ProductsPage() {
   return (

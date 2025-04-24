@@ -17,8 +17,8 @@ export default function Footer() {
           {/* About Section */}
           <div>
             <div className="text-2xl font-bold mb-4">
-              <span className="text-yellow-400">E-</span>
-              <span className="text-white">Shop</span>
+              <span className="text-white">Store</span>
+              <span className="text-red-400">X</span>
             </div>
             <p className="mb-4 text-gray-400">
               StoreX is your one-stop destination for all your shopping needs.

@@ -18,7 +18,7 @@ export default function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <div className="text-2xl md:text-3xl font-bold">
-              <span className="text-gray-700">Store-</span>
+              <span className="text-gray-700">Store</span>
               <span className="text-yellow-400">X</span>
             </div>
           </Link>
@@ -40,7 +40,7 @@ export default function Header() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
             <Link
-              href="/account"
+              href="/auth/login"
               className="flex items-center hover:text-blue-500 transition-colors"
             >
               <User size={20} className="mr-1" />
