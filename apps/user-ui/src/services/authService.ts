@@ -1,8 +1,9 @@
-import axios from "axios";
+import apiClient from "@/lib/apiClient";
 
 export interface ApiResponse<T> {
   message: string;
   user?: T;
+  access_token?: string;
 }
 
 export interface User {
@@ -17,20 +18,11 @@ export interface BackendErrorResponse {
   details?: any;
 }
 
-const API_BASE_URL = "http://localhost:8080/api";
-
-const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
 export const authService = {
   // Register a new user
   async register(data: { name: string; email: string; password: string }) {
     try {
-      const response = await axiosInstance.post<ApiResponse<never>>(
+      const response = await apiClient.post<ApiResponse<never>>(
         "/register",
         data
       );
@@ -51,7 +43,7 @@ export const authService = {
     name: string;
   }) {
     try {
-      const response = await axiosInstance.post<ApiResponse<never>>(
+      const response = await apiClient.post<ApiResponse<never>>(
         "/verify-otp",
         data
       );
@@ -67,10 +59,7 @@ export const authService = {
   // Log in a user
   async login(data: { email: string; password: string }) {
     try {
-      const response = await axiosInstance.post<ApiResponse<User>>(
-        "/login",
-        data
-      );
+      const response = await apiClient.post<ApiResponse<User>>("/login", data);
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
@@ -83,7 +72,7 @@ export const authService = {
   // Initiate forgot password flow
   async forgotPassword(data: { email: string }) {
     try {
-      const response = await axiosInstance.post<ApiResponse<never>>(
+      const response = await apiClient.post<ApiResponse<never>>(
         "/forgot-password-user",
         data
       );
@@ -99,7 +88,7 @@ export const authService = {
   // Verify OTP for forgot password
   async verifyForgotPassword(data: { email: string; otp: string }) {
     try {
-      const response = await axiosInstance.post<ApiResponse<never>>(
+      const response = await apiClient.post<ApiResponse<never>>(
         "/verify-forgot-password-user",
         data
       );
@@ -115,7 +104,7 @@ export const authService = {
   // Reset user password
   async resetPassword(data: { email: string; password: string }) {
     try {
-      const response = await axiosInstance.post<ApiResponse<never>>(
+      const response = await apiClient.post<ApiResponse<never>>(
         "/reset-password-user",
         data
       );
@@ -143,7 +132,7 @@ export const authService = {
         : { email: data.email };
 
     try {
-      const response = await axiosInstance.post<ApiResponse<never>>(
+      const response = await apiClient.post<ApiResponse<never>>(
         endpoint,
         payload
       );
@@ -151,6 +140,36 @@ export const authService = {
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Resend OTP failed", {
+        cause: errorData,
+      });
+    }
+  },
+
+  // Refresh access token
+  async refreshToken() {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>(
+        "/refresh-token"
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Token refresh failed", {
+        cause: errorData,
+      });
+    }
+  },
+
+  // Get current authenticated user
+  async getCurrentUser() {
+    try {
+      const response = await apiClient.get<ApiResponse<User>>(
+        "/logged-in-user"
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to fetch user", {
         cause: errorData,
       });
     }
