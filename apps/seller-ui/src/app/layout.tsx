@@ -1,4 +1,4 @@
-import { Providers } from "@/providers/QueryProvider";
+// import { Providers } from "@/providers/QueryProvider";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -21,7 +21,8 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen flex flex-col`}>
         <div className="flex-grow">
           {" "}
-          <Providers>{children}</Providers>
+          {/* <Providers>{children}</Providers> */}
+          {children}
         </div>
       </body>
     </html>
