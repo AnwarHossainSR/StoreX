@@ -1,9 +1,11 @@
 "use client";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,28 +15,45 @@ export default function LoginPage() {
     {}
   );
   const { login, loginStatus, loginError, loginErrorDetails } = useAuth();
+  const { alert, setSuccess, setError, clearAlert } = useAlert();
+
+  useEffect(() => {
+    if (loginStatus === "success") {
+      setSuccess("Login successful! Redirecting...", { autoDismiss: 3000 });
+    } else if (loginError) {
+      setError(loginError, {
+        details: loginErrorDetails,
+        isBackendError: true,
+      });
+    }
+  }, [loginStatus, loginError, loginErrorDetails, setSuccess, setError]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
     let isValid = true;
 
     if (!email) {
-      newErrors.email = "Email is required";
+      newErrors.email = "Please enter your email address";
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email is invalid";
+      newErrors.email = "Please enter a valid email address";
       isValid = false;
     }
 
     if (!password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Please enter your password";
       isValid = false;
     } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = "Password must be at least 6 characters long";
       isValid = false;
     }
 
     setErrors(newErrors);
+    if (!isValid) {
+      setError("Please correct the following errors:", { details: newErrors });
+    } else {
+      clearAlert();
+    }
     return isValid;
   };
 
@@ -66,6 +85,19 @@ export default function LoginPage() {
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            {alert && (
+              <Alert
+                variant={alert.variant}
+                className="mb-4"
+                autoDismiss={alert.autoDismiss}
+                onDismiss={clearAlert}
+                details={alert.details}
+              >
+                <AlertTitle>{alert.title}</AlertTitle>
+                <AlertDescription>{alert.message}</AlertDescription>
+              </Alert>
+            )}
+
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label
@@ -86,10 +118,9 @@ export default function LoginPage() {
                     className={`appearance-none block w-full px-3 py-2 border ${
                       errors.email ? "border-red-300" : "border-gray-300"
                     } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "email-error" : undefined}
                   />
-                  {errors.email && (
-                    <p className="mt-2 text-sm text-red-600">{errors.email}</p>
-                  )}
                 </div>
               </div>
 
@@ -112,6 +143,10 @@ export default function LoginPage() {
                     className={`appearance-none block w-full px-3 py-2 border ${
                       errors.password ? "border-red-300" : "border-gray-300"
                     } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                    aria-invalid={!!errors.password}
+                    aria-describedby={
+                      errors.password ? "password-error" : undefined
+                    }
                   />
                   <button
                     type="button"
@@ -124,22 +159,8 @@ export default function LoginPage() {
                       <Eye className="h-5 w-5 text-gray-400" />
                     )}
                   </button>
-                  {errors.password && (
-                    <p className="mt-2 text-sm text-red-600">
-                      {errors.password}
-                    </p>
-                  )}
                 </div>
               </div>
-
-              {loginError && (
-                <p className="text-sm text-red-600">
-                  {loginError}
-                  {loginErrorDetails &&
-                    typeof loginErrorDetails === "string" &&
-                    `: ${loginErrorDetails}`}
-                </p>
-              )}
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center">

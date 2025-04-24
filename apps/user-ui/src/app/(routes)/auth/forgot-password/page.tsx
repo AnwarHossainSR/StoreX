@@ -1,12 +1,14 @@
 "use client";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const {
     forgotPassword,
@@ -14,24 +16,56 @@ export default function ForgotPasswordPage() {
     forgotPasswordError,
     forgotPasswordErrorDetails,
   } = useAuth();
+  const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
 
-  const validateForm = () => {
+  useEffect(() => {
+    setInfo(
+      "Enter your email address, and we’ll send you a link to reset your password."
+    );
+  }, [setInfo]);
+
+  useEffect(() => {
+    if (forgotPasswordStatus === "success") {
+      setSuccess(
+        `Password reset link sent to ${email}. Please check your email.`,
+        {
+          autoDismiss: 5000,
+        }
+      );
+      setIsSubmitted(true);
+    } else if (forgotPasswordError) {
+      setError(forgotPasswordError, {
+        details: forgotPasswordErrorDetails,
+        isBackendError: true,
+      });
+    }
+  }, [
+    forgotPasswordStatus,
+    forgotPasswordError,
+    forgotPasswordErrorDetails,
+    email,
+    setSuccess,
+    setError,
+  ]);
+
+  const validateEmail = () => {
     if (!email) {
-      setError("Email is required");
-      return false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Email is invalid");
+      setEmailError("Please enter your email address");
       return false;
     }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+    setEmailError("");
+    clearAlert();
     return true;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (validateForm()) {
+    if (validateEmail()) {
       forgotPassword({ email });
-      setIsSubmitted(true);
     }
   };
 
@@ -43,50 +77,32 @@ export default function ForgotPasswordPage() {
             Reset your password
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email address and we'll send you a link to reset your
-            password.
+            Or{" "}
+            <Link
+              href="/auth/login"
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
+              sign in to your account
+            </Link>
           </p>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            {isSubmitted ? (
-              <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                  <svg
-                    className="h-6 w-6 text-green-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <h3 className="mt-3 text-lg font-medium text-gray-900">
-                  Check your email
-                </h3>
-                <p className="mt-2 text-sm text-gray-500">
-                  We've sent a password reset link to{" "}
-                  <span className="font-semibold">{email}</span>. Please check
-                  your email inbox and follow the instructions to reset your
-                  password.
-                </p>
-                <div className="mt-6">
-                  <Link
-                    href="/auth/login"
-                    className="inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Back to login
-                  </Link>
-                </div>
-              </div>
-            ) : (
+            {alert && (
+              <Alert
+                variant={alert.variant}
+                className="mb-4"
+                autoDismiss={alert.autoDismiss}
+                onDismiss={clearAlert}
+                details={alert.details}
+              >
+                <AlertTitle>{alert.title}</AlertTitle>
+                <AlertDescription>{alert.message}</AlertDescription>
+              </Alert>
+            )}
+
+            {!isSubmitted ? (
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
                   <label
@@ -105,22 +121,11 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className={`appearance-none block w-full px-3 py-2 border ${
-                        error || forgotPasswordError
-                          ? "border-red-300"
-                          : "border-gray-300"
+                        emailError ? "border-red-300" : "border-gray-300"
                       } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                      aria-invalid={!!emailError}
+                      aria-describedby={emailError ? "email-error" : undefined}
                     />
-                    {(error || forgotPasswordError) && (
-                      <p className="mt-2 text-sm text-red-600">
-                        {error ||
-                          `${forgotPasswordError}${
-                            forgotPasswordErrorDetails &&
-                            typeof forgotPasswordErrorDetails === "string"
-                              ? `: ${forgotPasswordErrorDetails}`
-                              : ""
-                          }`}
-                      </p>
-                    )}
                   </div>
                 </div>
 
@@ -139,16 +144,22 @@ export default function ForgotPasswordPage() {
                       : "Send reset link"}
                   </button>
                 </div>
-
-                <div className="text-center">
-                  <Link
-                    href="/auth/login"
-                    className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                  >
-                    Back to login
-                  </Link>
-                </div>
               </form>
+            ) : (
+              <div className="text-center">
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600">
+                    Didn’t receive the email?{" "}
+                    <button
+                      onClick={() => forgotPassword({ email })}
+                      className="font-medium text-blue-600 hover:text-blue-500"
+                      disabled={forgotPasswordStatus === "pending"}
+                    >
+                      Resend
+                    </button>
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -1,185 +1,150 @@
 "use client";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface OtpInputProps {
   email: string;
   type: "register" | "forgot";
-  name?: string; // Required for register type
-  password?: string; // Required for register type
   onSubmit: (otp: string) => void;
-  isLoading: boolean;
-  error?: string;
+  isVerifyOtpPending: boolean;
 }
 
 export default function OtpInput({
   email,
   type,
-  name,
-  password,
   onSubmit,
-  isLoading,
-  error,
+  isVerifyOtpPending,
 }: OtpInputProps) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [canResend, setCanResend] = useState(false);
   const { resendOtp, resendOtpStatus, resendOtpError, resendOtpErrorDetails } =
     useAuth();
+  const { alert, setError, setWarning, clearAlert } = useAlert();
 
-  // @ts-ignore
   useEffect(() => {
-    inputRefs.current[0]?.focus();
-
-    if (timeLeft > 0) {
-      const countdownTimer = setInterval(() => {
-        setTimeLeft((prevTime) => prevTime - 1);
-      }, 1000);
-      return () => clearInterval(countdownTimer);
-    } else {
-      setCanResend(true);
+    if (resendOtpStatus === "success") {
+      setWarning(
+        "A new OTP has been sent to your email. Please check your inbox.",
+        {
+          autoDismiss: 5000,
+        }
+      );
+    } else if (resendOtpError) {
+      setError(resendOtpError, {
+        details: resendOtpErrorDetails,
+        isBackendError: true,
+      });
     }
-  }, [timeLeft]);
+  }, [
+    resendOtpStatus,
+    resendOtpError,
+    resendOtpErrorDetails,
+    setWarning,
+    setError,
+  ]);
 
-  const handleChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const value = e.target.value;
+    if (/^[0-9]?$/.test(value)) {
+      const newOtp = [...otp];
+      newOtp[index] = value;
+      setOtp(newOtp);
 
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+      if (value && index < 5) {
+        const nextInput = document.getElementById(`otp-${index + 1}`);
+        nextInput?.focus();
+      }
     }
   };
 
   const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
   ) => {
-    if (e.key === "ArrowRight" && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    } else if (e.key === "ArrowLeft" && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-
     if (e.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pasteData = e.clipboardData
-      .getData("text/plain")
-      .slice(0, 6)
-      .replace(/[^0-9]/g, "");
-
-    if (pasteData) {
-      const newOtp = [...otp];
-      for (let i = 0; i < pasteData.length; i++) {
-        if (i < 6) {
-          newOtp[i] = pasteData[i];
-        }
-      }
-      setOtp(newOtp);
-
-      const lastFilledIndex = Math.min(pasteData.length - 1, 5);
-      inputRefs.current[lastFilledIndex]?.focus();
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.some((digit) => !digit)) {
+    const otpValue = otp.join("");
+    if (otpValue.length !== 6) {
+      setError("Please enter a 6-digit OTP");
       return;
     }
-    onSubmit(otp.join(""));
+    clearAlert();
+    onSubmit(otpValue);
   };
 
-  const handleResendCode = () => {
-    if (!canResend) return;
-    setOtp(["", "", "", "", "", ""]);
-    setTimeLeft(60);
-    setCanResend(false);
-    inputRefs.current[0]?.focus();
-    resendOtp({ email, type, name, password });
+  const handleResend = () => {
+    clearAlert();
+    resendOtp({ email, type });
   };
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      <div>
-        <label
-          htmlFor="otp"
-          className="block text-sm font-medium text-gray-700"
+    <div className="space-y-6">
+      {alert && (
+        <Alert
+          variant={alert.variant}
+          className="mb-4"
+          autoDismiss={alert.autoDismiss}
+          onDismiss={clearAlert}
+          details={alert.details}
         >
-          Verification code
-        </label>
-        <div className="mt-2 flex gap-2 items-center justify-center">
+          <AlertTitle>{alert.title}</AlertTitle>
+          <AlertDescription>{alert.message}</AlertDescription>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex justify-center space-x-2">
           {otp.map((digit, index) => (
             <input
               key={index}
-              ref={(el) => {
-                inputRefs.current[index] = el;
-              }}
+              id={`otp-${index}`}
               type="text"
               maxLength={1}
               value={digit}
-              onChange={(e) => handleChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              onPaste={index === 0 ? handlePaste : undefined}
-              className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onChange={(e) => handleChange(e, index)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className="w-12 h-12 text-center text-lg border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              aria-label={`OTP digit ${index + 1}`}
             />
           ))}
         </div>
-        {error && (
-          <p className="mt-2 text-sm text-red-600 text-center">{error}</p>
-        )}
-        {resendOtpError && (
-          <p className="mt-2 text-sm text-red-600 text-center">
-            {resendOtpError}
-            {resendOtpErrorDetails &&
-              typeof resendOtpErrorDetails === "string" &&
-              `: ${resendOtpErrorDetails}`}
-          </p>
-        )}
-      </div>
 
-      <div>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue36500 ${
-            isLoading ? "opacity-70 cursor-not-allowed" : ""
-          }`}
-        >
-          {isLoading ? "Verifying..." : "Verify Code"}
-        </button>
-      </div>
-
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          Didn't receive the code?{" "}
+        <div>
           <button
-            type="button"
-            onClick={handleResendCode}
-            disabled={!canResend || resendOtpStatus === "pending"}
-            className={`font-medium ${
-              canResend && resendOtpStatus !== "pending"
-                ? "text-blue-600 hover:text-blue-500 cursor-pointer"
-                : "text-gray-400 cursor-not-allowed"
+            type="submit"
+            disabled={isVerifyOtpPending}
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              isVerifyOtpPending ? "opacity-70 cursor-not-allowed" : ""
             }`}
           >
-            {resendOtpStatus === "pending"
-              ? "Resending..."
-              : canResend
-              ? "Resend code"
-              : `Resend code in ${timeLeft} seconds`}
+            {isVerifyOtpPending ? "Verifying..." : "Verify OTP"}
+          </button>
+        </div>
+      </form>
+
+      <div className="text-center">
+        <p className="text-sm text-gray-600">
+          Didn’t receive the code?{" "}
+          <button
+            onClick={handleResend}
+            className="font-medium text-blue-600 hover:text-blue-500"
+            disabled={resendOtpStatus === "pending"}
+          >
+            Resend
           </button>
         </p>
       </div>
-    </form>
+    </div>
   );
 }
