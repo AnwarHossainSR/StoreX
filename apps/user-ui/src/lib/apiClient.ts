@@ -1,5 +1,15 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
-import { getCookie, setCookie } from "cookies-next";
+import axios, {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
+
+// Extend InternalAxiosRequestConfig to include _retry and _authOptional
+interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+  _authOptional?: boolean;
+}
 
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api`;
 
@@ -8,7 +18,7 @@ const apiClient: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Include cookies in requests
+  withCredentials: true, // Important for cookies
 });
 
 interface FailedRequest {
@@ -19,12 +29,13 @@ interface FailedRequest {
 
 let isRefreshing = false;
 let failedQueue: FailedRequest[] = [];
+let refreshAttemptCount = 0;
+const MAX_REFRESH_ATTEMPTS = 3;
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: any) => {
+  console.log("Processing queue", { error, queueLength: failedQueue.length });
   failedQueue.forEach(({ resolve, reject, config }) => {
-    if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
+    if (!error) {
       axios(config).then(resolve).catch(reject);
     } else {
       reject(error);
@@ -33,57 +44,104 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Helper to mark endpoints where auth is optional
+export const withOptionalAuth = (
+  config: AxiosRequestConfig
+): AxiosRequestConfig & { _authOptional?: boolean } => {
+  return {
+    ...config,
+    _authOptional: true,
+  };
+};
+
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = getCookie("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  (config: CustomAxiosRequestConfig) => {
+    console.log(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
+      retry: !!config._retry,
+      authOptional: !!config._authOptional,
+    });
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error("Request error:", error);
+    return Promise.reject(error);
+  }
 );
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest: CustomAxiosRequestConfig = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If this is an auth-optional endpoint and it failed with 401, just return the error
+    if (originalRequest?._authOptional && error.response?.status === 401) {
+      console.log(
+        "Auth-optional endpoint failed with 401, returning error",
+        originalRequest.url
+      );
+      return Promise.reject(error);
+    }
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      originalRequest.url !== "/refresh-token"
+    ) {
       if (isRefreshing) {
+        console.log(
+          "Refresh in progress, queuing request",
+          originalRequest.url
+        );
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject, config: originalRequest });
         });
       }
 
+      if (refreshAttemptCount >= MAX_REFRESH_ATTEMPTS) {
+        console.error("Max refresh attempts reached, redirecting to login");
+        if (typeof window !== "undefined") {
+          window.location.href = "/auth/login";
+        }
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
       isRefreshing = true;
+      refreshAttemptCount++;
 
       try {
-        const response = await axios.post(
+        console.log(
+          `Attempting to refresh token (attempt ${refreshAttemptCount})`
+        );
+        await delay(1000); // Delay to avoid rate limiting
+        await axios.post(
           `${API_BASE_URL}/refresh-token`,
           {},
           { withCredentials: true }
         );
 
-        const newAccessToken = response.data.access_token;
-        setCookie("access_token", newAccessToken);
-
-        processQueue(null, newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        console.log("Token refreshed successfully");
+        processQueue(null);
+        refreshAttemptCount = 0; // Reset on success
         return apiClient(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        // Clear tokens and redirect to login
-        setCookie("access_token", "", { maxAge: -1 });
-        setCookie("refresh_token", "", { maxAge: -1 });
-        window.location.href = "/auth/login";
+        console.error("Token refresh failed", refreshError);
+        processQueue(refreshError);
+        if (typeof window !== "undefined") {
+          window.location.href = "/auth/login";
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
+    console.error(
+      `Request failed: ${originalRequest?.url}`,
+      error.response?.data
+    );
     return Promise.reject(error);
   }
 );

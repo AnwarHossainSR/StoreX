@@ -9,6 +9,7 @@ const isAuthenticated = async (
   next: NextFunction
 ) => {
   try {
+    console.log("req.cookies", req.cookies);
     const token =
       req.cookies.access_token || req.headers.authorization?.split(" ")[1];
 
@@ -16,7 +17,7 @@ const isAuthenticated = async (
       throw new AuthError("Unauthenticated! Token not found");
     }
 
-    const decoded = Jwt.verify(token, process.env.JWT_SECRET!) as {
+    const decoded = Jwt.verify(token, process.env.JWT_SECRET_KEY!) as {
       id: string;
       role: "user" | "seller";
     };
@@ -38,7 +39,8 @@ const isAuthenticated = async (
     req.user = account;
 
     return next();
-  } catch (error) {
+  } catch (error: any) {
+    console.log("error", error.message || error);
     return next(new AuthError("Unauthenticated! Token expired or invalid"));
   }
 };

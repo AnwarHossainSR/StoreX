@@ -1,4 +1,4 @@
-import apiClient from "@/lib/apiClient";
+import apiClient, { withOptionalAuth } from "@/lib/apiClient";
 
 export interface ApiResponse<T> {
   message: string;
@@ -63,7 +63,21 @@ export const authService = {
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
+      console.log(errorData);
       throw new Error(errorData?.message || "Login failed", {
+        cause: errorData,
+      });
+    }
+  },
+
+  // Log out user
+  async logout() {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>("/logout");
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Logout failed", {
         cause: errorData,
       });
     }
@@ -160,11 +174,12 @@ export const authService = {
     }
   },
 
-  // Get current authenticated user
+  // Get current authenticated user - Mark this as optional auth
   async getCurrentUser() {
     try {
       const response = await apiClient.get<ApiResponse<User>>(
-        "/logged-in-user"
+        "/logged-in-user",
+        withOptionalAuth({}) // Mark this request as having optional authentication
       );
       return response.data;
     } catch (error) {

@@ -1,22 +1,33 @@
-import {
-  ApiResponse,
-  authService,
-  BackendErrorResponse,
-  User,
-} from "@/services/authService";
+import { authService, BackendErrorResponse } from "@/services/authService";
 import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 
 export const useCurrentUser = () => {
-  const { data, isLoading, isError, error, refetch } = useQuery<
-    ApiResponse<User>,
-    Error
-  >({
+  const pathname = usePathname();
+
+  // Define public paths where we shouldn't try to fetch the user by default
+  const isPublicPath = [
+    "/auth/login",
+    "/auth/register",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+  ].includes(pathname);
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["currentUser"],
     queryFn: () => authService.getCurrentUser(),
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes before marking as stale
-    gcTime: 10 * 60 * 1000, // Keep data in cache for 10 minutes
-    retry: 1, // Retry once on failure (apiClient handles 401 retries)
-    enabled: true, // Always fetch on mount
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+    enabled: !isPublicPath, // Don't run on public paths by default
+  });
+
+  console.log("Current user hook:", {
+    data,
+    isLoading,
+    isError,
+    error,
+    path: pathname,
+    isPublicPath,
   });
 
   const user = data?.user;
@@ -29,11 +40,12 @@ export const useCurrentUser = () => {
     : null;
 
   return {
-    user, // User data: { id, name, email }
-    isLoading, // Loading state
-    isError, // Error state
-    error: errorMessage, // Error message
-    errorDetails, // Additional error details
-    refetch, // Function to manually revalidate
+    user,
+    isLoading,
+    isError,
+    error: errorMessage,
+    errorDetails,
+    refetch,
+    isAuthenticated: !!user,
   };
 };

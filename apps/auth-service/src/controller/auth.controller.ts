@@ -235,7 +235,7 @@ export const refreshAccessToken = async (
         name: decoded.name,
       },
       process.env.JWT_SECRET_KEY!,
-      { expiresIn: "15m" }
+      { expiresIn: "1h" }
     );
     setCookie(res, "access_token", accessToken);
     res.status(200).json({ message: "Access token refreshed successfully" });
