@@ -5,7 +5,7 @@ import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function ResetPasswordPage() {
@@ -25,17 +25,26 @@ export default function ResetPasswordPage() {
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const email = searchParams.get("email") || "";
 
   useEffect(() => {
+    if (!email) {
+      setError(
+        "Email is missing. Please start the password reset process again."
+      );
+    }
     setInfo("Enter a new password for your account.");
-  }, [setInfo]);
+  }, [email, setError, setInfo]);
 
   useEffect(() => {
     if (resetPasswordStatus === "success") {
       setSuccess("Password reset successful! Redirecting to login...", {
         autoDismiss: 3000,
       });
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 3000);
     } else if (resetPasswordError) {
       setError(resetPasswordError, {
         details: resetPasswordErrorDetails,
@@ -48,6 +57,7 @@ export default function ResetPasswordPage() {
     resetPasswordErrorDetails,
     setSuccess,
     setError,
+    router,
   ]);
 
   const validateForm = () => {
@@ -81,6 +91,13 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email) {
+      setError(
+        "Email is missing. Please start the password reset process again."
+      );
+      return;
+    }
 
     if (validateForm()) {
       resetPassword({ email, password });
@@ -192,7 +209,6 @@ export default function ResetPasswordPage() {
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    acyjna{" "}
                     {showConfirmPassword ? (
                       <EyeOff className="h-5 w-5 text-gray-400" />
                     ) : (

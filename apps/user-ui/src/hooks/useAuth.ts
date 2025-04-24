@@ -91,7 +91,7 @@ export const useAuth = () => {
   const verifyForgotPasswordMutation = useMutation<
     ApiResponse<never>,
     Error,
-    { email: string; otp: string; password: string }
+    { email: string; otp: string }
   >({
     mutationFn: authService.verifyForgotPassword,
     onSuccess: () => {

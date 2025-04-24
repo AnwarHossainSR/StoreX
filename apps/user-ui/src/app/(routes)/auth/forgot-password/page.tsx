@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function ForgotPasswordPage() {
@@ -17,22 +18,26 @@ export default function ForgotPasswordPage() {
     forgotPasswordErrorDetails,
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
+  const router = useRouter();
 
   useEffect(() => {
     setInfo(
-      "Enter your email address, and we’ll send you a link to reset your password."
+      "Enter your email address, and we’ll send you a one-time code to reset your password."
     );
   }, [setInfo]);
 
   useEffect(() => {
     if (forgotPasswordStatus === "success") {
       setSuccess(
-        `Password reset link sent to ${email}. Please check your email.`,
+        `A one-time code has been sent to ${email}. Please check your email.`,
         {
           autoDismiss: 5000,
         }
       );
       setIsSubmitted(true);
+      setTimeout(() => {
+        router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+      }, 3000);
     } else if (forgotPasswordError) {
       setError(forgotPasswordError, {
         details: forgotPasswordErrorDetails,
@@ -46,6 +51,7 @@ export default function ForgotPasswordPage() {
     email,
     setSuccess,
     setError,
+    router,
   ]);
 
   const validateEmail = () => {
@@ -141,7 +147,7 @@ export default function ForgotPasswordPage() {
                   >
                     {forgotPasswordStatus === "pending"
                       ? "Sending..."
-                      : "Send reset link"}
+                      : "Send one-time code"}
                   </button>
                 </div>
               </form>
@@ -149,7 +155,7 @@ export default function ForgotPasswordPage() {
               <div className="text-center">
                 <div className="mt-4">
                   <p className="text-sm text-gray-600">
-                    Didn’t receive the email?{" "}
+                    Didn’t receive the code?{" "}
                     <button
                       onClick={() => forgotPassword({ email })}
                       className="font-medium text-blue-600 hover:text-blue-500"

@@ -92,11 +92,7 @@ export const authService = {
     }
   },
 
-  async verifyForgotPassword(data: {
-    email: string;
-    otp: string;
-    password: string;
-  }) {
+  async verifyForgotPassword(data: { email: string; otp: string }) {
     try {
       const response = await axiosInstance.post<ApiResponse<never>>(
         "/verify-forgot-password-user",

@@ -45,7 +45,7 @@ export const sentOTP = async (
   template: string,
   subject: string = "Verify Your Email!"
 ) => {
-  const otp = crypto.randomInt(1000, 9999).toString();
+  const otp = crypto.randomInt(100000, 999999).toString();
   await sendEmail(email, subject, template, { name, otp });
   await redis.set(`otp:${email}`, otp, "EX", 300);
   await redis.set(`otp_cooldown:${email}`, "true", "EX", 60);
@@ -103,8 +103,8 @@ export const verifyForgotPasswordOtp = async (
   next: NextFunction
 ) => {
   try {
-    const { email, otp, password } = req.body;
-    if (!email || !otp || !password) {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
       throw next(new ValidationError("Missing required fields"));
     }
 
