@@ -10,6 +10,7 @@ import {
 export const useAuth = () => {
   const router = useRouter();
 
+  // Login mutation
   const loginMutation = useMutation<
     ApiResponse<User>,
     Error,
@@ -28,17 +29,13 @@ export const useAuth = () => {
     },
   });
 
+  // Register mutation
   const registerMutation = useMutation<
     ApiResponse<never>,
     Error,
     { name: string; email: string; password: string }
   >({
     mutationFn: authService.register,
-    onSuccess: (data, variables) => {
-      router.push(
-        `/auth/verify-otp?email=${encodeURIComponent(variables.email)}`
-      );
-    },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {
@@ -48,15 +45,13 @@ export const useAuth = () => {
     },
   });
 
+  // Verify OTP for registration
   const verifyOtpMutation = useMutation<
     ApiResponse<never>,
     Error,
     { email: string; otp: string; password: string; name: string }
   >({
     mutationFn: authService.verifyOtp,
-    onSuccess: () => {
-      router.push("/auth/login");
-    },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {
@@ -66,19 +61,13 @@ export const useAuth = () => {
     },
   });
 
+  // Forgot password mutation
   const forgotPasswordMutation = useMutation<
     ApiResponse<never>,
     Error,
     { email: string }
   >({
     mutationFn: authService.forgotPassword,
-    onSuccess: (data, variables) => {
-      router.push(
-        `/auth/verify-otp?email=${encodeURIComponent(
-          variables.email
-        )}&type=forgot`
-      );
-    },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {
@@ -88,15 +77,13 @@ export const useAuth = () => {
     },
   });
 
+  // Verify OTP for forgot password
   const verifyForgotPasswordMutation = useMutation<
     ApiResponse<never>,
     Error,
     { email: string; otp: string }
   >({
     mutationFn: authService.verifyForgotPassword,
-    onSuccess: () => {
-      router.push("/auth/reset-password");
-    },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {
@@ -106,6 +93,7 @@ export const useAuth = () => {
     },
   });
 
+  // Reset password mutation
   const resetPasswordMutation = useMutation<
     ApiResponse<never>,
     Error,
@@ -124,6 +112,7 @@ export const useAuth = () => {
     },
   });
 
+  // Resend OTP mutation
   const resendOtpMutation = useMutation<
     ApiResponse<never>,
     Error,
@@ -135,9 +124,6 @@ export const useAuth = () => {
     }
   >({
     mutationFn: authService.resendOtp,
-    onSuccess: () => {
-      // No navigation needed; OTP is resent
-    },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {

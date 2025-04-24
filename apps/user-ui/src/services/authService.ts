@@ -27,6 +27,7 @@ const axiosInstance = axios.create({
 });
 
 export const authService = {
+  // Register a new user
   async register(data: { name: string; email: string; password: string }) {
     try {
       const response = await axiosInstance.post<ApiResponse<never>>(
@@ -42,6 +43,7 @@ export const authService = {
     }
   },
 
+  // Verify OTP for user registration
   async verifyOtp(data: {
     email: string;
     otp: string;
@@ -62,6 +64,7 @@ export const authService = {
     }
   },
 
+  // Log in a user
   async login(data: { email: string; password: string }) {
     try {
       const response = await axiosInstance.post<ApiResponse<User>>(
@@ -77,6 +80,7 @@ export const authService = {
     }
   },
 
+  // Initiate forgot password flow
   async forgotPassword(data: { email: string }) {
     try {
       const response = await axiosInstance.post<ApiResponse<never>>(
@@ -92,6 +96,7 @@ export const authService = {
     }
   },
 
+  // Verify OTP for forgot password
   async verifyForgotPassword(data: { email: string; otp: string }) {
     try {
       const response = await axiosInstance.post<ApiResponse<never>>(
@@ -107,6 +112,7 @@ export const authService = {
     }
   },
 
+  // Reset user password
   async resetPassword(data: { email: string; password: string }) {
     try {
       const response = await axiosInstance.post<ApiResponse<never>>(
@@ -122,6 +128,7 @@ export const authService = {
     }
   },
 
+  // Resend OTP for registration or forgot password
   async resendOtp(data: {
     email: string;
     type: "register" | "forgot";

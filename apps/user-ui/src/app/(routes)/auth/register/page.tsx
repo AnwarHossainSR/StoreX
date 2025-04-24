@@ -6,6 +6,7 @@ import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function RegisterPage() {
@@ -32,6 +33,7 @@ export default function RegisterPage() {
     verifyOtpErrorDetails,
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
+  const router = useRouter();
 
   useEffect(() => {
     if (registerStatus === "success" && !showOtp) {
@@ -40,7 +42,7 @@ export default function RegisterPage() {
       });
       setShowOtp(true);
       setInfo(
-        `We’ve sent a 6-digit code to ${formData.email}. Please enter it below to verify your account.`
+        `A 6-digit code has been sent to ${formData.email}. Enter it below to verify your account.`
       );
     } else if (registerError) {
       setError(registerError, {
@@ -64,6 +66,9 @@ export default function RegisterPage() {
       setSuccess("Email verified! Redirecting to login...", {
         autoDismiss: 3000,
       });
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 3000);
     } else if (verifyOtpError) {
       setError(verifyOtpError, {
         details: verifyOtpErrorDetails,
@@ -76,6 +81,7 @@ export default function RegisterPage() {
     verifyOtpErrorDetails,
     setSuccess,
     setError,
+    router,
   ]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -407,6 +413,8 @@ export default function RegisterPage() {
                 <OtpInput
                   email={formData.email}
                   type="register"
+                  name={`${formData.firstName} ${formData.lastName}`}
+                  password={formData.password}
                   onSubmit={handleOtpSubmit}
                   isVerifyOtpPending={verifyOtpStatus === "pending"}
                 />

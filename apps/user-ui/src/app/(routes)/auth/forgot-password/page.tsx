@@ -1,5 +1,6 @@
 "use client";
 
+import OtpInput from "@/components/Otp/OtpInput";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,34 +11,35 @@ import { useEffect, useState } from "react";
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
   const {
     forgotPassword,
     forgotPasswordStatus,
     forgotPasswordError,
     forgotPasswordErrorDetails,
+    verifyForgotPassword,
+    verifyForgotPasswordStatus,
+    verifyForgotPasswordError,
+    verifyForgotPasswordErrorDetails,
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
   const router = useRouter();
 
   useEffect(() => {
     setInfo(
-      "Enter your email address, and we’ll send you a one-time code to reset your password."
+      "Enter your email address to receive a one-time code for password reset."
     );
   }, [setInfo]);
 
   useEffect(() => {
     if (forgotPasswordStatus === "success") {
-      setSuccess(
-        `A one-time code has been sent to ${email}. Please check your email.`,
-        {
-          autoDismiss: 5000,
-        }
+      setSuccess(`A one-time code has been sent to ${email}.`, {
+        autoDismiss: 5000,
+      });
+      setIsOtpSent(true);
+      setInfo(
+        `A 6-digit code has been sent to ${email}. Enter it below to verify your identity.`
       );
-      setIsSubmitted(true);
-      setTimeout(() => {
-        router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
-      }, 3000);
     } else if (forgotPasswordError) {
       setError(forgotPasswordError, {
         details: forgotPasswordErrorDetails,
@@ -48,6 +50,30 @@ export default function ForgotPasswordPage() {
     forgotPasswordStatus,
     forgotPasswordError,
     forgotPasswordErrorDetails,
+    email,
+    setSuccess,
+    setError,
+    setInfo,
+  ]);
+
+  useEffect(() => {
+    if (verifyForgotPasswordStatus === "success") {
+      setSuccess("Code verified! Redirecting to reset password...", {
+        autoDismiss: 3000,
+      });
+      setTimeout(() => {
+        router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+      }, 3000);
+    } else if (verifyForgotPasswordError) {
+      setError(verifyForgotPasswordError, {
+        details: verifyForgotPasswordErrorDetails,
+        isBackendError: true,
+      });
+    }
+  }, [
+    verifyForgotPasswordStatus,
+    verifyForgotPasswordError,
+    verifyForgotPasswordErrorDetails,
     email,
     setSuccess,
     setError,
@@ -73,6 +99,10 @@ export default function ForgotPasswordPage() {
     if (validateEmail()) {
       forgotPassword({ email });
     }
+  };
+
+  const handleOtpSubmit = (otp: string) => {
+    verifyForgotPassword({ email, otp });
   };
 
   return (
@@ -108,7 +138,7 @@ export default function ForgotPasswordPage() {
               </Alert>
             )}
 
-            {!isSubmitted ? (
+            {!isOtpSent ? (
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
                   <label
@@ -152,19 +182,13 @@ export default function ForgotPasswordPage() {
                 </div>
               </form>
             ) : (
-              <div className="text-center">
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600">
-                    Didn’t receive the code?{" "}
-                    <button
-                      onClick={() => forgotPassword({ email })}
-                      className="font-medium text-blue-600 hover:text-blue-500"
-                      disabled={forgotPasswordStatus === "pending"}
-                    >
-                      Resend
-                    </button>
-                  </p>
-                </div>
+              <div className="space-y-6">
+                <OtpInput
+                  email={email}
+                  type="forgot"
+                  onSubmit={handleOtpSubmit}
+                  isVerifyOtpPending={verifyForgotPasswordStatus === "pending"}
+                />
               </div>
             )}
           </div>

@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 interface OtpInputProps {
   email: string;
   type: "register" | "forgot";
+  name?: string;
+  password?: string;
   onSubmit: (otp: string) => void;
   isVerifyOtpPending: boolean;
 }
@@ -15,6 +17,8 @@ interface OtpInputProps {
 export default function OtpInput({
   email,
   type,
+  name,
+  password,
   onSubmit,
   isVerifyOtpPending,
 }: OtpInputProps) {
@@ -25,12 +29,9 @@ export default function OtpInput({
 
   useEffect(() => {
     if (resendOtpStatus === "success") {
-      setWarning(
-        "A new OTP has been sent to your email. Please check your inbox.",
-        {
-          autoDismiss: 5000,
-        }
-      );
+      setWarning("A new OTP has been sent to your email. Check your inbox.", {
+        autoDismiss: 5000,
+      });
     } else if (resendOtpError) {
       setError(resendOtpError, {
         details: resendOtpErrorDetails,
@@ -85,7 +86,7 @@ export default function OtpInput({
 
   const handleResend = () => {
     clearAlert();
-    resendOtp({ email, type });
+    resendOtp({ email, type, name, password });
   };
 
   return (
@@ -135,7 +136,7 @@ export default function OtpInput({
 
       <div className="text-center">
         <p className="text-sm text-gray-600">
-          Didn’t receive the code?{" "}
+          Didn't receive the code?{" "}
           <button
             onClick={handleResend}
             className="font-medium text-blue-600 hover:text-blue-500"
