@@ -1,13 +1,19 @@
 "use client";
 
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { useState } from "react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const {
+    forgotPassword,
+    forgotPasswordStatus,
+    forgotPasswordError,
+    forgotPasswordErrorDetails,
+  } = useAuth();
 
   const validateForm = () => {
     if (!email) {
@@ -24,19 +30,13 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
 
     if (validateForm()) {
-      setIsLoading(true);
-      setError("");
-
-      // Simulate API call
-      setTimeout(() => {
-        setIsLoading(false);
-        setIsSubmitted(true);
-      }, 1500);
+      forgotPassword({ email });
+      setIsSubmitted(true);
     }
   };
 
   return (
-    <div className=" bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <h2 className="mt-1 text-center text-3xl font-bold tracking-tight text-gray-900">
@@ -105,11 +105,21 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className={`appearance-none block w-full px-3 py-2 border ${
-                        error ? "border-red-300" : "border-gray-300"
+                        error || forgotPasswordError
+                          ? "border-red-300"
+                          : "border-gray-300"
                       } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                     />
-                    {error && (
-                      <p className="mt-2 text-sm text-red-600">{error}</p>
+                    {(error || forgotPasswordError) && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {error ||
+                          `${forgotPasswordError}${
+                            forgotPasswordErrorDetails &&
+                            typeof forgotPasswordErrorDetails === "string"
+                              ? `: ${forgotPasswordErrorDetails}`
+                              : ""
+                          }`}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -117,12 +127,16 @@ export default function ForgotPasswordPage() {
                 <div>
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={forgotPasswordStatus === "pending"}
                     className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                      isLoading ? "opacity-70 cursor-not-allowed" : ""
+                      forgotPasswordStatus === "pending"
+                        ? "opacity-70 cursor-not-allowed"
+                        : ""
                     }`}
                   >
-                    {isLoading ? "Sending..." : "Send reset link"}
+                    {forgotPasswordStatus === "pending"
+                      ? "Sending..."
+                      : "Send reset link"}
                   </button>
                 </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -8,10 +9,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
   );
+  const { login, loginStatus, loginError, loginErrorDetails } = useAuth();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -41,19 +42,12 @@ export default function LoginPage() {
     e.preventDefault();
 
     if (validateForm()) {
-      setIsLoading(true);
-
-      // Simulate API call
-      setTimeout(() => {
-        setIsLoading(false);
-        // Redirect to dashboard or home page
-        window.location.href = "/";
-      }, 1500);
+      login({ email, password });
     }
   };
 
   return (
-    <div className=" bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <h2 className="mt-2 text-center text-3xl font-bold tracking-tight text-gray-900">
@@ -138,6 +132,15 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {loginError && (
+                <p className="text-sm text-red-600">
+                  {loginError}
+                  {loginErrorDetails &&
+                    typeof loginErrorDetails === "string" &&
+                    `: ${loginErrorDetails}`}
+                </p>
+              )}
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <input
@@ -167,12 +170,14 @@ export default function LoginPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={loginStatus === "pending"}
                   className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                    isLoading ? "opacity-70 cursor-not-allowed" : ""
+                    loginStatus === "pending"
+                      ? "opacity-70 cursor-not-allowed"
+                      : ""
                   }`}
                 >
-                  {isLoading ? "Signing in..." : "Sign in"}
+                  {loginStatus === "pending" ? "Signing in..." : "Sign in"}
                 </button>
               </div>
             </form>
