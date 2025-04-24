@@ -1,24 +1,22 @@
-'use client';
+"use client";
 
-import { useState, ReactNode } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Users, 
-  CreditCard, 
-  Calendar, 
-  Settings, 
+import {
   Bell,
-  Store,
+  Calendar,
+  CreditCard,
+  LayoutDashboard,
   LogOut,
-  ChevronDown,
-  ChevronRight,
   Menu,
+  Package,
+  Search,
+  Settings,
+  Store,
+  Users,
   X,
-  Search
-} from 'lucide-react';
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ReactNode, useState } from "react";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -27,19 +25,19 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  
+
   const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { name: 'Orders', href: '/admin/orders', icon: Package },
-    { name: 'Products', href: '/admin/products', icon: Store },
-    { name: 'Users', href: '/admin/users', icon: Users },
-    { name: 'Payments', href: '/admin/payments', icon: CreditCard },
-    { name: 'Events', href: '/admin/events', icon: Calendar },
+    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { name: "Orders", href: "/admin/orders", icon: Package },
+    { name: "Products", href: "/admin/products", icon: Store },
+    { name: "Users", href: "/admin/users", icon: Users },
+    { name: "Payments", href: "/admin/payments", icon: CreditCard },
+    { name: "Events", href: "/admin/events", icon: Calendar },
   ];
 
   const secondaryNavigation = [
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
-    { name: 'Notifications', href: '/admin/notifications', icon: Bell },
+    { name: "Settings", href: "/admin/settings", icon: Settings },
+    { name: "Notifications", href: "/admin/notifications", icon: Bell },
   ];
 
   const toggleSidebar = () => {
@@ -49,14 +47,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-900">
       {/* Sidebar for mobile */}
-      <div 
+      <div
         className={`fixed inset-0 z-40 lg:hidden ${
-          sidebarOpen ? 'block' : 'hidden'
+          sidebarOpen ? "block" : "hidden"
         }`}
         onClick={() => setSidebarOpen(false)}
       >
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75"></div>
-        
+
         <div className="fixed inset-0 flex z-40">
           <div className="relative flex-1 flex flex-col max-w-xs w-full bg-gray-900">
             <div className="absolute top-0 right-0 -mr-12 pt-2">
@@ -69,7 +67,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <X className="h-6 w-6 text-white" />
               </button>
             </div>
-            
+
             <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
               <div className="flex-shrink-0 flex items-center px-4">
                 <div className="text-2xl font-bold text-white">
@@ -84,15 +82,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     href={item.href}
                     className={`group flex items-center px-4 py-2 text-base font-medium rounded-md ${
                       pathname === item.href
-                        ? 'bg-gray-800 text-white'
-                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        ? "bg-gray-800 text-white"
+                        : "text-gray-300 hover:bg-gray-700 hover:text-white"
                     }`}
                   >
                     <item.icon
                       className={`mr-3 h-6 w-6 ${
                         pathname === item.href
-                          ? 'text-white'
-                          : 'text-gray-400 group-hover:text-gray-300'
+                          ? "text-white"
+                          : "text-gray-400 group-hover:text-gray-300"
                       }`}
                     />
                     {item.name}
@@ -100,7 +98,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 ))}
               </nav>
             </div>
-            
+
             <div className="flex-shrink-0 px-2 py-4 space-y-1">
               {secondaryNavigation.map((item) => (
                 <Link
@@ -108,21 +106,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   href={item.href}
                   className={`group flex items-center px-4 py-2 text-base font-medium rounded-md ${
                     pathname === item.href
-                      ? 'bg-gray-800 text-white'
-                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
                   }`}
                 >
                   <item.icon
                     className={`mr-3 h-6 w-6 ${
                       pathname === item.href
-                        ? 'text-white'
-                        : 'text-gray-400 group-hover:text-gray-300'
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-gray-300"
                     }`}
                   />
                   {item.name}
                 </Link>
               ))}
-              
+
               <div className="pt-4 border-t border-gray-700">
                 <Link
                   href="/"
@@ -134,7 +132,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               </div>
             </div>
           </div>
-          
+
           <div className="flex-shrink-0 w-14"></div>
         </div>
       </div>
@@ -154,7 +152,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   Shahriar Sajeeb
                 </div>
-                <div className="text-sm text-gray-300">support@becodemy.com</div>
+                <div className="text-sm text-gray-300">
+                  support@becodemy.com
+                </div>
               </div>
               <nav className="mt-8 flex-1 px-2 space-y-1">
                 {navigation.map((item) => (
@@ -163,15 +163,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     href={item.href}
                     className={`group flex items-center px-4 py-2 text-sm font-medium rounded-md ${
                       pathname === item.href
-                        ? 'bg-gray-800 text-white'
-                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        ? "bg-gray-800 text-white"
+                        : "text-gray-300 hover:bg-gray-700 hover:text-white"
                     }`}
                   >
                     <item.icon
                       className={`mr-3 h-5 w-5 ${
                         pathname === item.href
-                          ? 'text-white'
-                          : 'text-gray-400 group-hover:text-gray-300'
+                          ? "text-white"
+                          : "text-gray-400 group-hover:text-gray-300"
                       }`}
                     />
                     {item.name}
@@ -179,7 +179,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 ))}
               </nav>
             </div>
-            
+
             <div className="flex-shrink-0 px-2 py-4 space-y-1">
               {secondaryNavigation.map((item) => (
                 <Link
@@ -187,21 +187,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   href={item.href}
                   className={`group flex items-center px-4 py-2 text-sm font-medium rounded-md ${
                     pathname === item.href
-                      ? 'bg-gray-800 text-white'
-                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
                   }`}
                 >
                   <item.icon
                     className={`mr-3 h-5 w-5 ${
                       pathname === item.href
-                        ? 'text-white'
-                        : 'text-gray-400 group-hover:text-gray-300'
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-gray-300"
                     }`}
                   />
                   {item.name}
                 </Link>
               ))}
-              
+
               <div className="pt-4 border-t border-gray-700">
                 <Link
                   href="/"
@@ -228,7 +228,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <span className="sr-only">Open sidebar</span>
             <Menu className="h-6 w-6" />
           </button>
-          
+
           {/* Search */}
           <div className="flex-1 px-4 flex justify-between">
             <div className="flex-1 flex">
@@ -250,7 +250,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
               </div>
             </div>
-            
+
             <div className="ml-4 flex items-center md:ml-6">
               {/* Notification Icon */}
               <button className="p-1 text-gray-400 hover:text-gray-500 relative">
