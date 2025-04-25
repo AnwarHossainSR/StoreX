@@ -8,6 +8,7 @@ import {
   loginUser,
   refreshAccessToken,
   ResetUserForgotPassword,
+  sellerLogin,
   userForgotPassword,
   userRegistration,
   verifyForgotPassword,
@@ -29,6 +30,7 @@ router.get("/logged-in-user", isAuthenticated, getAuthenticatedUser);
 
 // seller
 router.post("/register-seller", createSellerAccount);
+router.post("/seller-login", sellerLogin);
 router.post("/verify-seller-otp", VerifySellerOtp);
 router.post("/create-shop", cerateShop);
 router.post("/create-stripe-connect-account", createStripeConnectAccount);

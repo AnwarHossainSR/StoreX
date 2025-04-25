@@ -306,6 +306,74 @@ export const createSellerAccount = async (
   }
 };
 
+export const sellerLogin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      throw next(new ValidationError("Missing required fields"));
+    }
+
+    const user = await prisma.sellers.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      throw next(new ValidationError("Seller not found"));
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password!);
+
+    if (!isPasswordMatch) {
+      throw next(new ValidationError("Invalid password"));
+    }
+
+    const accessToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      process.env.JWT_SECRET_KEY!,
+      {
+        expiresIn: "15m",
+      }
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      process.env.JWT_REFRESH_SECRET_KEY!,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    setCookie(res, "refresh_seller_token", refreshToken);
+    setCookie(res, "access_seller_token", accessToken);
+
+    res.status(200).json({
+      message: "User logged in successfully",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const VerifySellerOtp = async (
   req: Request,
   res: Response,
