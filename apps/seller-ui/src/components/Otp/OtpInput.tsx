@@ -2,7 +2,8 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
-import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
 
 interface OtpInputProps {
   email: string;
@@ -22,8 +23,28 @@ export default function OtpInput({
   isVerifyOtpPending,
 }: OtpInputProps) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-
+  const { resendOtp, resendOtpStatus, resendOtpError, resendOtpErrorDetails } =
+    useAuth();
   const { alert, setError, setWarning, clearAlert } = useAlert();
+
+  useEffect(() => {
+    if (resendOtpStatus === "success") {
+      setWarning("A new OTP has been sent to your email. Check your inbox.", {
+        autoDismiss: 5000,
+      });
+    } else if (resendOtpError) {
+      setError(resendOtpError, {
+        details: resendOtpErrorDetails,
+        isBackendError: true,
+      });
+    }
+  }, [
+    resendOtpStatus,
+    resendOtpError,
+    resendOtpErrorDetails,
+    setWarning,
+    setError,
+  ]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -65,6 +86,7 @@ export default function OtpInput({
 
   const handleResend = () => {
     clearAlert();
+    resendOtp({ email, type, name, password });
   };
 
   return (
@@ -118,6 +140,7 @@ export default function OtpInput({
           <button
             onClick={handleResend}
             className="font-medium text-blue-600 hover:text-blue-500"
+            disabled={resendOtpStatus === "pending"}
           >
             Resend
           </button>
