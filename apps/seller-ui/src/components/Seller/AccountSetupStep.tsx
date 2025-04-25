@@ -10,8 +10,11 @@ interface AccountSetupStepProps {
     password: string;
     confirmPassword: string;
     phone: string;
+    country: string;
   };
-  handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => void;
   errors: Record<string, string>;
   agreeTerms: boolean;
   setAgreeTerms: (value: boolean) => void;
@@ -29,7 +32,6 @@ export default function AccountSetupStep({
   isPending,
 }: AccountSetupStepProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
@@ -139,6 +141,38 @@ export default function AccountSetupStep({
 
       <div>
         <label
+          htmlFor="country"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Country
+        </label>
+        <div className="mt-1">
+          <select
+            id="country"
+            name="country"
+            required
+            value={formData.country}
+            onChange={handleChange}
+            className={`appearance-none block w-full px-3 py-2 border ${
+              errors.country ? "border-red-300" : "border-gray-300"
+            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white`}
+            aria-invalid={!!errors.country}
+            aria-describedby={errors.country ? "country-error" : undefined}
+          >
+            <option value="">Select a country</option>
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+            <option value="UK">United Kingdom</option>
+            <option value="AU">Australia</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+            <option value="JP">Japan</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label
           htmlFor="password"
           className="block text-sm font-medium text-gray-700"
         >
@@ -165,44 +199,6 @@ export default function AccountSetupStep({
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? (
-              <EyeOff className="h-5 w-5 text-gray-400" />
-            ) : (
-              <Eye className="h-5 w-5 text-gray-400" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label
-          htmlFor="confirmPassword"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Confirm password
-        </label>
-        <div className="mt-1 relative">
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type={showConfirmPassword ? "text" : "password"}
-            autoComplete="new-password"
-            required
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            className={`appearance-none block w-full px-3 py-2 border ${
-              errors.confirmPassword ? "border-red-300" : "border-gray-300"
-            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-            aria-invalid={!!errors.confirmPassword}
-            aria-describedby={
-              errors.confirmPassword ? "confirmPassword-error" : undefined
-            }
-          />
-          <button
-            type="button"
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-          >
-            {showConfirmPassword ? (
               <EyeOff className="h-5 w-5 text-gray-400" />
             ) : (
               <Eye className="h-5 w-5 text-gray-400" />
