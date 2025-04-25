@@ -1,76 +1,50 @@
 "use client";
 
-import {
-  ChevronRight,
-  Heart,
-  Minus,
-  Plus,
-  ShoppingCart,
-  Star,
-  Truck,
-} from "lucide-react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { ChevronRight, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 
-// Mock product data - In a real app, this would come from an API/database
-const product = {
-  id: 1,
-  name: "iPhone 14 Pro Max",
-  description:
-    "The latest Apple iPhone with A16 Bionic chip, 48MP camera system, and Dynamic Island. Experience the most advanced iPhone ever with revolutionary features and all-day battery life.",
-  price: 1099,
-  discountPrice: 999,
-  rating: 4.9,
-  reviews: 214,
-  stock: 10,
-  brand: "Apple",
-  category: "Electronics",
-  images: [
-    "https://images.pexels.com/photos/5750001/pexels-photo-5750001.jpeg",
-    "https://images.pexels.com/photos/5750002/pexels-photo-5750002.jpeg",
-    "https://images.pexels.com/photos/5750003/pexels-photo-5750003.jpeg",
-    "https://images.pexels.com/photos/5750004/pexels-photo-5750004.jpeg",
-  ],
-  features: [
-    "6.7-inch Super Retina XDR display",
-    "A16 Bionic chip",
-    "48MP Main camera",
-    "Dynamic Island",
-    "All-day battery life",
-    "iOS 16",
-  ],
-  specifications: {
-    Display: "6.7-inch Super Retina XDR",
-    Processor: "A16 Bionic chip",
-    RAM: "6GB",
-    Storage: "128GB/256GB/512GB/1TB",
-    Camera: "48MP Main + 12MP Ultra Wide + 12MP Telephoto",
-    Battery: "4323mAh",
-    OS: "iOS 16",
+// Mock cart data - In a real app, this would come from a state management solution
+const initialCartItems = [
+  {
+    id: 1,
+    name: "iPhone 14 Pro Max",
+    image: "https://images.pexels.com/photos/5750001/pexels-photo-5750001.jpeg",
+    price: 999,
+    quantity: 1,
   },
-};
+  {
+    id: 2,
+    name: "Blue Rose Gift Box",
+    image: "https://images.pexels.com/photos/2072152/pexels-photo-2072152.jpeg",
+    price: 49,
+    quantity: 2,
+  },
+];
 
-function ProductPage({ params }: { params: { id: string } }) {
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [quantity, setQuantity] = useState(1);
+export default function CartPage() {
+  const [cartItems, setCartItems] = useState(initialCartItems);
 
-  const decreaseQuantity = () => {
-    if (quantity > 1) {
-      setQuantity(quantity - 1);
-    }
+  const updateQuantity = (id: number, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    setCartItems(
+      cartItems.map((item) =>
+        item.id === id ? { ...item, quantity: newQuantity } : item
+      )
+    );
   };
 
-  const increaseQuantity = () => {
-    if (quantity < product.stock) {
-      setQuantity(quantity + 1);
-    }
+  const removeItem = (id: number) => {
+    setCartItems(cartItems.filter((item) => item.id !== id));
   };
 
-  const addToCart = () => {
-    // Implement cart functionality
-    console.log("Added to cart:", { ...product, quantity });
-  };
+  const subtotal = cartItems.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0
+  );
+  const shipping = subtotal > 100 ? 0 : 10;
+  const total = subtotal + shipping;
 
   return (
     <div className="bg-gray-50 py-8">
@@ -81,203 +55,164 @@ function ProductPage({ params }: { params: { id: string } }) {
             Home
           </Link>
           <ChevronRight size={16} className="mx-2" />
-          <Link
-            href="/category/electronics"
-            className="hover:text-blue-500 transition-colors"
-          >
-            Electronics
-          </Link>
-          <ChevronRight size={16} className="mx-2" />
-          <span className="text-gray-800">{product.name}</span>
+          <span className="text-gray-800">Shopping Cart</span>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Product Images */}
-            <div>
-              <div className="aspect-square relative mb-4 rounded-lg overflow-hidden">
-                <Image
-                  src={product.images[selectedImage]}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                />
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Cart Items */}
+          <div className="flex-grow">
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">
+                  Shopping Cart
+                </h1>
+                <span className="text-gray-600">{cartItems.length} items</span>
               </div>
-              <div className="grid grid-cols-4 gap-4">
-                {product.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`aspect-square relative rounded-lg overflow-hidden border-2 ${
-                      selectedImage === index
-                        ? "border-blue-500"
-                        : "border-transparent"
-                    }`}
+
+              {cartItems.length > 0 ? (
+                <div className="divide-y divide-gray-200">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="py-6 flex items-center">
+                      <div className="flex-shrink-0 w-24 h-24 relative rounded-lg overflow-hidden">
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="ml-6 flex-grow">
+                        <h3 className="text-lg font-medium text-gray-800">
+                          <Link
+                            href={`/product/${item.id}`}
+                            className="hover:text-blue-500"
+                          >
+                            {item.name}
+                          </Link>
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Unit Price: ${item.price}
+                        </p>
+                      </div>
+                      <div className="flex items-center ml-6">
+                        <div className="flex items-center border border-gray-300 rounded-md">
+                          <button
+                            onClick={() =>
+                              updateQuantity(item.id, item.quantity - 1)
+                            }
+                            className="p-2 hover:bg-gray-100 transition-colors"
+                          >
+                            <Minus size={16} className="text-gray-600" />
+                          </button>
+                          <span className="px-4 py-2 border-x border-gray-300">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() =>
+                              updateQuantity(item.id, item.quantity + 1)
+                            }
+                            className="p-2 hover:bg-gray-100 transition-colors"
+                          >
+                            <Plus size={16} className="text-gray-600" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="ml-6 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                      <div className="ml-6 text-right">
+                        <p className="text-lg font-medium text-gray-800">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <ShoppingCart
+                    size={48}
+                    className="mx-auto text-gray-400 mb-4"
+                  />
+                  <h3 className="text-lg font-medium text-gray-800 mb-2">
+                    Your cart is empty
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Looks like you haven't added anything to your cart yet.
+                  </p>
+                  <Link
+                    href="/products"
+                    className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                   >
-                    <Image
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+                    Continue Shopping
+                  </Link>
+                </div>
+              )}
             </div>
 
-            {/* Product Info */}
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">
-                {product.name}
-              </h1>
-
-              <div className="flex items-center mb-4">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      size={20}
-                      className={
-                        i < Math.floor(product.rating)
-                          ? "text-yellow-400 fill-current"
-                          : "text-gray-300"
-                      }
-                    />
-                  ))}
-                </div>
-                <span className="ml-2 text-sm text-gray-500">
-                  {product.rating} ({product.reviews} reviews)
-                </span>
-              </div>
-
-              <div className="mb-6">
-                <span className="text-3xl font-bold text-gray-800">
-                  ${product.discountPrice}
-                </span>
-                {product.discountPrice < product.price && (
-                  <span className="ml-2 text-xl text-gray-500 line-through">
-                    ${product.price}
-                  </span>
-                )}
-                <span className="ml-2 text-sm text-green-500">
-                  Save ${product.price - product.discountPrice}
-                </span>
-              </div>
-
-              <p className="text-gray-600 mb-6">{product.description}</p>
-
-              <div className="mb-6">
-                <h3 className="font-medium text-gray-800 mb-2">
-                  Key Features:
-                </h3>
-                <ul className="list-disc list-inside space-y-1 text-gray-600">
-                  {product.features.map((feature, index) => (
-                    <li key={index}>{feature}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="border-t border-gray-200 py-4 mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-600">Brand:</span>
-                  <span className="font-medium text-gray-800">
-                    {product.brand}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-600">Category:</span>
-                  <span className="font-medium text-gray-800">
-                    {product.category}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Availability:</span>
-                  <span
-                    className={`font-medium ${
-                      product.stock > 0 ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {product.stock > 0
-                      ? `In Stock (${product.stock})`
-                      : "Out of Stock"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center mb-6">
-                <div className="flex items-center border border-gray-300 rounded-md">
-                  <button
-                    onClick={decreaseQuantity}
-                    className="p-2 hover:bg-gray-100 transition-colors"
-                    disabled={quantity <= 1}
-                  >
-                    <Minus size={20} className="text-gray-600" />
-                  </button>
-                  <span className="px-4 py-2 border-x border-gray-300">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={increaseQuantity}
-                    className="p-2 hover:bg-gray-100 transition-colors"
-                    disabled={quantity >= product.stock}
-                  >
-                    <Plus size={20} className="text-gray-600" />
-                  </button>
-                </div>
-                <button
-                  onClick={() => {}}
-                  className="ml-4 p-3 rounded-md hover:bg-gray-100 transition-colors"
+            {cartItems.length > 0 && (
+              <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-6">
+                <Link
+                  href="/products"
+                  className="text-blue-600 hover:text-blue-500 font-medium"
                 >
-                  <Heart size={24} className="text-gray-600" />
+                  Continue Shopping
+                </Link>
+                <button
+                  onClick={() => setCartItems([])}
+                  className="text-red-600 hover:text-red-500 font-medium"
+                >
+                  Clear Cart
                 </button>
               </div>
+            )}
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={addToCart}
-                  className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  <ShoppingCart size={20} className="mr-2" />
-                  Add to Cart
-                </button>
+          {/* Order Summary */}
+          {cartItems.length > 0 && (
+            <div className="lg:w-96">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-6">
+                  Order Summary
+                </h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="text-gray-800">
+                      ${subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Shipping</span>
+                    <span className="text-gray-800">
+                      {shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}
+                    </span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold text-gray-800">
+                        Total
+                      </span>
+                      <span className="text-lg font-bold text-gray-800">
+                        ${total.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
                 <Link
                   href="/checkout"
-                  className="flex items-center justify-center px-6 py-3 bg-gray-800 text-white rounded-md hover:bg-gray-900 transition-colors"
+                  className="mt-6 w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Buy Now
+                  Proceed to Checkout
                 </Link>
               </div>
-
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center text-gray-600">
-                  <Truck size={20} className="mr-2" />
-                  <span>Free shipping on orders over $100</span>
-                </div>
-              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Specifications */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Specifications
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Object.entries(product.specifications).map(([key, value]) => (
-              <div
-                key={key}
-                className="flex items-center justify-between py-2 border-b border-gray-200"
-              >
-                <span className="text-gray-600">{key}</span>
-                <span className="font-medium text-gray-800">{value}</span>
-              </div>
-            ))}
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-export default ProductPage;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -8,6 +9,7 @@ import MobileMenu from "./MobileMenu";
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { user, isLoading } = useCurrentUser();
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -15,7 +17,6 @@ export default function Header() {
     <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
           <Link href="/" className="flex items-center">
             <div className="text-2xl md:text-3xl font-bold">
               <span className="text-gray-700">Store</span>
@@ -23,7 +24,6 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Search */}
           <div className="hidden md:flex relative flex-grow max-w-2xl mx-4">
             <input
               type="text"
@@ -37,24 +37,32 @@ export default function Header() {
             </button>
           </div>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
+            {/* Only show loading state if we're actually trying to fetch the user */}
+            {isLoading ? (
+              <div className="flex items-center">
+                <span className="animate-pulse">Loading...</span>
+              </div>
+            ) : (
+              <Link
+                href={user ? "/dashboard" : "/auth/login"}
+                className="flex items-center hover:text-blue-500 transition-colors"
+              >
+                <User size={20} className="mr-1" />
+                <span>{user ? "Dashboard" : "Login"}</span>
+              </Link>
+            )}
             <Link
-              href="/auth/login"
-              className="flex items-center hover:text-blue-500 transition-colors"
-            >
-              <User size={20} className="mr-1" />
-              <span>Account</span>
-            </Link>
-            <Link
-              href="/wishlist"
+              href={user ? "/wishlist" : "/auth/login"}
               className="flex items-center hover:text-blue-500 transition-colors relative"
             >
               <Heart size={20} className="mr-1" />
               <span>Wishlist</span>
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                0
-              </span>
+              {user && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  0
+                </span>
+              )}
             </Link>
             <Link
               href="/cart"
@@ -68,7 +76,6 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center">
             <Link href="/cart" className="mr-4 relative">
               <ShoppingCart size={24} />
@@ -82,7 +89,6 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Categories Navigation */}
         <nav className="hidden md:block border-t border-gray-100">
           <div className="flex items-center py-3">
             <div className="relative group">
@@ -137,10 +143,8 @@ export default function Header() {
         </nav>
       </div>
 
-      {/* Mobile Menu */}
       {isMenuOpen && <MobileMenu onClose={toggleMenu} />}
 
-      {/* Mobile Search - Displayed only on mobile */}
       <div className="md:hidden px-4 py-2 bg-gray-50">
         <div className="relative flex">
           <input

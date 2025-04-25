@@ -209,3 +209,52 @@ export const ResetUserForgotPassword = async (
     return next(error);
   }
 };
+
+export const refreshAccessToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) {
+      throw new ValidationError("Refresh token not found");
+    }
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET_KEY!
+    ) as {
+      id: string;
+      email: string;
+      name: string;
+    };
+    const accessToken = jwt.sign(
+      {
+        id: decoded.id,
+        email: decoded.email,
+        name: decoded.name,
+      },
+      process.env.JWT_SECRET_KEY!,
+      { expiresIn: "1h" }
+    );
+    setCookie(res, "access_token", accessToken);
+    res.status(200).json({ message: "Access token refreshed successfully" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+// get authenticated user
+export const getAuthenticatedUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const user = req.user;
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
+    return next(error);
+  }
+};

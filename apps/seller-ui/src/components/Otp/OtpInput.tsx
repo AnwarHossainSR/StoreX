@@ -1,0 +1,128 @@
+"use client";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAlert } from "@/hooks/useAlert";
+import { useState } from "react";
+
+interface OtpInputProps {
+  email: string;
+  type: "register" | "forgot";
+  name?: string;
+  password?: string;
+  onSubmit: (otp: string) => void;
+  isVerifyOtpPending: boolean;
+}
+
+export default function OtpInput({
+  email,
+  type,
+  name,
+  password,
+  onSubmit,
+  isVerifyOtpPending,
+}: OtpInputProps) {
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+
+  const { alert, setError, setWarning, clearAlert } = useAlert();
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const value = e.target.value;
+    if (/^[0-9]?$/.test(value)) {
+      const newOtp = [...otp];
+      newOtp[index] = value;
+      setOtp(newOtp);
+
+      if (value && index < 5) {
+        const nextInput = document.getElementById(`otp-${index + 1}`);
+        nextInput?.focus();
+      }
+    }
+  };
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const otpValue = otp.join("");
+    if (otpValue.length !== 6) {
+      setError("Please enter a 6-digit OTP");
+      return;
+    }
+    clearAlert();
+    onSubmit(otpValue);
+  };
+
+  const handleResend = () => {
+    clearAlert();
+  };
+
+  return (
+    <div className="space-y-6">
+      {alert && (
+        <Alert
+          variant={alert.variant}
+          className="mb-4"
+          autoDismiss={alert.autoDismiss}
+          onDismiss={clearAlert}
+          details={alert.details}
+        >
+          <AlertTitle>{alert.title}</AlertTitle>
+          <AlertDescription>{alert.message}</AlertDescription>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex justify-center space-x-2">
+          {otp.map((digit, index) => (
+            <input
+              key={index}
+              id={`otp-${index}`}
+              type="text"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleChange(e, index)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className="w-12 h-12 text-center text-lg border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              aria-label={`OTP digit ${index + 1}`}
+            />
+          ))}
+        </div>
+
+        <div>
+          <button
+            type="submit"
+            disabled={isVerifyOtpPending}
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              isVerifyOtpPending ? "opacity-70 cursor-not-allowed" : ""
+            }`}
+          >
+            {isVerifyOtpPending ? "Verifying..." : "Verify OTP"}
+          </button>
+        </div>
+      </form>
+
+      <div className="text-center">
+        <p className="text-sm text-gray-600">
+          Didn't receive the code?{" "}
+          <button
+            onClick={handleResend}
+            className="font-medium text-blue-600 hover:text-blue-500"
+          >
+            Resend
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
