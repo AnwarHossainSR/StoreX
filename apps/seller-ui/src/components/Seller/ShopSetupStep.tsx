@@ -1,9 +1,11 @@
 interface ShopSetupStepProps {
   formData: {
-    shopName: string;
-    shopDescription: string;
-    shopCategory: string;
-    shopLocation: string;
+    name: string;
+    bio: string;
+    address: string;
+    opening_hour: string;
+    website: string;
+    category: string;
   };
   handleChange: (
     e: React.ChangeEvent<
@@ -34,81 +36,150 @@ export default function ShopSetupStep({
   ];
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <form className="space-y-4" onSubmit={handleSubmit}>
       <div>
         <label
-          htmlFor="shopName"
+          htmlFor="name"
           className="block text-sm font-medium text-gray-700"
         >
           Shop Name
         </label>
         <div className="mt-1">
           <input
-            id="shopName"
-            name="shopName"
+            id="name"
+            name="name"
             type="text"
             required
-            value={formData.shopName}
+            value={formData.name}
             onChange={handleChange}
             className={`appearance-none block w-full px-3 py-2 border ${
-              errors.shopName ? "border-red-300" : "border-gray-300"
+              errors.name ? "border-red-300" : "border-gray-300"
             } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-            aria-invalid={!!errors.shopName}
-            aria-describedby={errors.shopName ? "shopName-error" : undefined}
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "name-error" : undefined}
           />
         </div>
       </div>
 
       <div>
         <label
-          htmlFor="shopDescription"
+          htmlFor="bio"
           className="block text-sm font-medium text-gray-700"
         >
-          Shop Description
+          Shop Bio
         </label>
         <div className="mt-1">
           <textarea
-            id="shopDescription"
-            name="shopDescription"
-            rows={3}
+            id="bio"
+            name="bio"
+            rows={2}
             required
-            value={formData.shopDescription}
+            value={formData.bio}
             onChange={handleChange}
             className={`appearance-none block w-full px-3 py-2 border ${
-              errors.shopDescription ? "border-red-300" : "border-gray-300"
+              errors.bio ? "border-red-300" : "border-gray-300"
             } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-            aria-invalid={!!errors.shopDescription}
+            aria-invalid={!!errors.bio}
+            aria-describedby={errors.bio ? "bio-error" : undefined}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor="address"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Shop Address
+        </label>
+        <div className="mt-1">
+          <input
+            id="address"
+            name="address"
+            type="text"
+            required
+            value={formData.address}
+            onChange={handleChange}
+            className={`appearance-none block w-full px-3 py-2 border ${
+              errors.address ? "border-red-300" : "border-gray-300"
+            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+            aria-invalid={!!errors.address}
+            aria-describedby={errors.address ? "address-error" : undefined}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor="opening_hour"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Opening Hours
+        </label>
+        <div className="mt-1">
+          <input
+            id="opening_hour"
+            name="opening_hour"
+            type="text"
+            required
+            value={formData.opening_hour}
+            onChange={handleChange}
+            className={`appearance-none block w-full px-3 py-2 border ${
+              errors.opening_hour ? "border-red-300" : "border-gray-300"
+            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+            aria-invalid={!!errors.opening_hour}
             aria-describedby={
-              errors.shopDescription ? "shopDescription-error" : undefined
+              errors.opening_hour ? "opening_hour-error" : undefined
             }
           />
+        </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor="website"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Website (Optional)
+        </label>
+        <div className="mt-1">
+          <input
+            id="website"
+            name="website"
+            type="url"
+            value={formData.website}
+            onChange={handleChange}
+            className={`appearance-none block w-full px-3 py-2 border ${
+              errors.website ? "border-red-300" : "border-gray-300"
+            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+            aria-invalid={!!errors.website}
+            aria-describedby={errors.website ? "website-error" : undefined}
+          />
           <p className="mt-1 text-sm text-gray-500">
-            Brief description of your shop and what you sell
+            e.g., https://yourshop.com
           </p>
         </div>
       </div>
 
       <div>
         <label
-          htmlFor="shopCategory"
+          htmlFor="category"
           className="block text-sm font-medium text-gray-700"
         >
           Shop Category
         </label>
         <div className="mt-1">
           <select
-            id="shopCategory"
-            name="shopCategory"
+            id="category"
+            name="category"
             required
-            value={formData.shopCategory}
+            value={formData.category}
             onChange={handleChange}
             className={`appearance-none block w-full px-3 py-2 border ${
-              errors.shopCategory ? "border-red-300" : "border-gray-300"
+              errors.category ? "border-red-300" : "border-gray-300"
             } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-            aria-invalid={!!errors.shopCategory}
-            aria-describedby={
-              errors.shopCategory ? "shopCategory-error" : undefined
-            }
+            aria-invalid={!!errors.category}
+            aria-describedby={errors.category ? "category-error" : undefined}
           >
             {categoryOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -116,33 +187,6 @@ export default function ShopSetupStep({
               </option>
             ))}
           </select>
-        </div>
-      </div>
-
-      <div>
-        <label
-          htmlFor="shopLocation"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Shop Location
-        </label>
-        <div className="mt-1">
-          <input
-            id="shopLocation"
-            name="shopLocation"
-            type="text"
-            required
-            value={formData.shopLocation}
-            onChange={handleChange}
-            className={`appearance-none block w-full px-3 py-2 border ${
-              errors.shopLocation ? "border-red-300" : "border-gray-300"
-            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-            aria-invalid={!!errors.shopLocation}
-            aria-describedby={
-              errors.shopLocation ? "shopLocation-error" : undefined
-            }
-          />
-          <p className="mt-1 text-sm text-gray-500">City, Country or Region</p>
         </div>
       </div>
 

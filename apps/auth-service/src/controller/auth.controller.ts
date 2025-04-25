@@ -335,7 +335,7 @@ export const VerifySellerOtp = async (
 
     const hashPassword = await bcrypt.hash(password, 10);
 
-    await prisma.sellers.create({
+    const newSeller = await prisma.sellers.create({
       data: {
         name,
         email,
@@ -343,9 +343,20 @@ export const VerifySellerOtp = async (
         phone_number,
         country,
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone_number: true,
+        country: true,
+      }, // Exclude password
     });
 
-    res.status(200).json({ message: "Seller created successfully" });
+    res.status(200).json({
+      message: "Seller created successfully",
+      sellerId: newSeller.id,
+      seller: newSeller,
+    });
   } catch (error) {
     return next(error);
   }
@@ -425,10 +436,14 @@ export const cerateShop = async (
   next: NextFunction
 ) => {
   try {
-    const { name, bio, address, openning_hour, website, category, sellerId } =
+    const { name, bio, address, opening_hour, website, category, sellerId } =
       req.body;
 
-    if (!name || !address || !openning_hour || !category) {
+    if (!sellerId) {
+      throw next(new ValidationError("Seler id is missing"));
+    }
+
+    if (!name || !address || !opening_hour || !category) {
       throw next(new ValidationError("Missing required fields"));
     }
 
@@ -436,7 +451,7 @@ export const cerateShop = async (
       name,
       bio,
       address,
-      openning_hour,
+      opening_hour,
       category,
       sellerId,
     };

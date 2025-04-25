@@ -7,25 +7,26 @@ import ShopSetupStep from "@/components/Seller/ShopSetupStep";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 export default function SellerSignupPage() {
-  // Initialize state from localStorage
-  const [currentStep, setCurrentStep] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedStep = localStorage.getItem("sellerSignupStep");
-      return savedStep ? parseInt(savedStep, 10) : 1;
-    }
-    return 1;
-  });
-  const [showOtp, setShowOtp] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("sellerSignupShowOtp") === "true";
-    }
-    return false;
-  });
+  // Use custom localStorage hook
+  const [currentStep, setCurrentStep] = useLocalStorage<number>(
+    "sellerSignup_step",
+    1
+  );
+  const [showOtp, setShowOtp] = useLocalStorage<boolean>(
+    "sellerSignup_showOtp",
+    false
+  );
+  const [sellerId, setSellerId] = useLocalStorage<string | null>(
+    "sellerSignup_sellerId",
+    null
+  );
+
   const [formData, setFormData] = useState({
     // Account Information
     firstName: "",
@@ -35,10 +36,12 @@ export default function SellerSignupPage() {
     phone: "",
     country: "",
     // Shop Information
-    shopName: "",
-    shopDescription: "",
-    shopCategory: "",
-    shopLocation: "",
+    name: "",
+    bio: "",
+    address: "",
+    opening_hour: "",
+    website: "",
+    category: "",
     // Payment Information
     accountType: "individual",
     currency: "",
@@ -56,15 +59,15 @@ export default function SellerSignupPage() {
     verifySellerOtpError,
     verifySellerOtpErrorDetails,
     resetSellerRegister,
+    createShop,
+    createShopStatus,
+    createShopError,
+    createShopErrorDetails,
+    sellerId: authSellerId,
+    seller: authSeller, // From verifySellerOtp
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
   const router = useRouter();
-
-  // Persist currentStep and showOtp to localStorage
-  useEffect(() => {
-    localStorage.setItem("sellerSignupStep", currentStep.toString());
-    localStorage.setItem("sellerSignupShowOtp", showOtp.toString());
-  }, [currentStep, showOtp]);
 
   // Handle seller registration status
   useEffect(() => {
@@ -104,12 +107,33 @@ export default function SellerSignupPage() {
   useEffect(() => {
     console.log("verifySellerOtpStatus:", verifySellerOtpStatus);
     console.log("verifySellerOtpError:", verifySellerOtpError);
+    console.log("authSellerId:", authSellerId);
+    console.log("authSeller:", authSeller);
 
     if (verifySellerOtpStatus === "success") {
       console.log("OTP verification successful, transitioning to shop setup");
       setSuccess("Email verified! Continuing with shop setup...", {
         autoDismiss: 3000,
       });
+      // Store sellerId from verifySellerOtp response
+      if (authSellerId) {
+        setSellerId(authSellerId);
+      } else {
+        console.error("No sellerId received from verifySellerOtp");
+        setError("Failed to retrieve seller ID. Please try again.");
+      }
+      // Pre-fill formData with seller details if available
+      if (authSeller) {
+        setFormData((prev) => ({
+          ...prev,
+          firstName: authSeller.name.split(" ")[0] || prev.firstName,
+          lastName:
+            authSeller.name.split(" ").slice(1).join(" ") || prev.lastName,
+          email: authSeller.email || prev.email,
+          phone: authSeller.phone_number || prev.phone,
+          country: authSeller.country || prev.country,
+        }));
+      }
       setTimeout(() => {
         console.log("Setting showOtp to false and currentStep to 2");
         setShowOtp(false);
@@ -126,19 +150,52 @@ export default function SellerSignupPage() {
     verifySellerOtpStatus,
     verifySellerOtpError,
     verifySellerOtpErrorDetails,
+    authSellerId,
+    authSeller,
     setSuccess,
     setError,
+    setSellerId,
+    setShowOtp,
+    setCurrentStep,
+    setFormData,
     resetSellerRegister,
   ]);
 
+  // Handle shop creation status
+  useEffect(() => {
+    console.log("createShopStatus:", createShopStatus);
+    console.log("createShopError:", createShopError);
+
+    if (createShopStatus === "success") {
+      console.log("Shop created successfully, transitioning to payment setup");
+      setSuccess("Shop created successfully!", {
+        autoDismiss: 3000,
+      });
+      setTimeout(() => {
+        setCurrentStep(3);
+      }, 3000);
+    } else if (createShopError) {
+      setError(createShopError, {
+        details: createShopErrorDetails,
+        isBackendError: true,
+      });
+    }
+  }, [
+    createShopStatus,
+    createShopError,
+    createShopErrorDetails,
+    setSuccess,
+    setError,
+    setCurrentStep,
+  ]);
+
   // Clear localStorage on signup completion
-  // @ts-ignore
   useEffect(() => {
     if (currentStep === 3 && !showOtp) {
-      // Clear localStorage when payment step is reached and submitted
       const handleCompletion = () => {
-        localStorage.removeItem("sellerSignupStep");
-        localStorage.removeItem("sellerSignupShowOtp");
+        localStorage.removeItem("sellerSignup_step");
+        localStorage.removeItem("sellerSignup_showOtp");
+        localStorage.removeItem("sellerSignup_sellerId");
       };
       window.addEventListener("beforeunload", handleCompletion);
       return () => window.removeEventListener("beforeunload", handleCompletion);
@@ -223,23 +280,41 @@ export default function SellerSignupPage() {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
-    if (!formData.shopName.trim()) {
-      newErrors.shopName = "Please enter your shop name";
+    if (!formData.name.trim()) {
+      newErrors.name = "Please enter your shop name";
       isValid = false;
     }
 
-    if (!formData.shopDescription.trim()) {
-      newErrors.shopDescription = "Please enter your shop description";
+    if (!formData.bio.trim()) {
+      newErrors.bio = "Please enter your shop bio";
       isValid = false;
     }
 
-    if (!formData.shopCategory) {
-      newErrors.shopCategory = "Please select a category for your shop";
+    if (!formData.address.trim()) {
+      newErrors.address = "Please enter your shop address";
       isValid = false;
     }
 
-    if (!formData.shopLocation.trim()) {
-      newErrors.shopLocation = "Please enter your shop location";
+    if (!formData.opening_hour.trim()) {
+      newErrors.opening_hour = "Please enter your shop opening hours";
+      isValid = false;
+    }
+
+    if (
+      formData.website &&
+      !/^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/.*)?$/.test(formData.website)
+    ) {
+      newErrors.website = "Please enter a valid website URL";
+      isValid = false;
+    }
+
+    if (!formData.category) {
+      newErrors.category = "Please select a category for your shop";
+      isValid = false;
+    }
+
+    if (!sellerId) {
+      newErrors.sellerId = "Seller ID is missing";
       isValid = false;
     }
 
@@ -250,7 +325,7 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  }, [formData, setError, clearAlert]);
+  }, [formData, sellerId, setError, clearAlert]);
 
   const validatePaymentForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
@@ -303,14 +378,28 @@ export default function SellerSignupPage() {
     (e: React.FormEvent) => {
       e.preventDefault();
 
-      if (validateShopForm()) {
-        setSuccess("Shop information saved successfully!", {
-          autoDismiss: 3000,
+      if (validateShopForm() && sellerId) {
+        console.log("Submitting shop creation:", {
+          sellerId,
+          name: formData.name,
+          bio: formData.bio,
+          address: formData.address,
+          opening_hour: formData.opening_hour,
+          website: formData.website,
+          category: formData.category,
         });
-        setCurrentStep(3);
+        createShop({
+          sellerId,
+          name: formData.name,
+          bio: formData.bio,
+          address: formData.address,
+          opening_hour: formData.opening_hour,
+          website: formData.website || undefined,
+          category: formData.category,
+        });
       }
     },
-    [validateShopForm, setSuccess]
+    [formData, validateShopForm, createShop, sellerId]
   );
 
   const handlePaymentSubmit = useCallback(
@@ -323,9 +412,9 @@ export default function SellerSignupPage() {
         });
 
         setTimeout(() => {
-          // Clear localStorage on completion
-          localStorage.removeItem("sellerSignupStep");
-          localStorage.removeItem("sellerSignupShowOtp");
+          localStorage.removeItem("sellerSignup_step");
+          localStorage.removeItem("sellerSignup_showOtp");
+          localStorage.removeItem("sellerSignup_sellerId");
           router.push("/seller/dashboard");
         }, 3000);
       }

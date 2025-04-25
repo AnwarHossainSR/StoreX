@@ -1,9 +1,19 @@
 import apiClient, { withOptionalAuth } from "@/lib/apiClient";
 
+export interface Seller {
+  id: string;
+  name: string;
+  email: string;
+  phone_number: string;
+  country: string;
+}
+
 export interface ApiResponse<T> {
   message: string;
   user?: T;
   access_token?: string;
+  sellerId?: string;
+  seller?: Seller;
 }
 
 export interface User {
@@ -205,6 +215,28 @@ export const authService = {
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Seller login failed", {
+        cause: errorData,
+      });
+    }
+  },
+  async createShop(data: {
+    sellerId: string;
+    name: string;
+    bio: string;
+    address: string;
+    opening_hour: string;
+    website?: string;
+    category: string;
+  }) {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>(
+        "/create-shop",
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Shop creation failed", {
         cause: errorData,
       });
     }

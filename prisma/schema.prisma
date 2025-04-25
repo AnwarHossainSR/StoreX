@@ -43,22 +43,22 @@ model shopReviews {
 }
 
 model shops {
-  id            String        @id @default(auto()) @map("_id") @db.ObjectId
-  name          String
-  bio           String?
-  category      String
-  avater        images?
-  coverBanner   String?
-  address       String
-  openning_hour String
-  website       String?
-  social_links  Json[]
-  ratings       Float         @default(0)
-  reviews       shopReviews[]
-  sellerId      String        @unique @db.ObjectId
-  sellers       sellers       @relation(fields: [sellerId], references: [id])
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  bio          String?
+  category     String
+  avater       images?
+  coverBanner  String?
+  address      String
+  opening_hour String
+  website      String?
+  social_links Json[]
+  ratings      Float         @default(0)
+  reviews      shopReviews[]
+  sellerId     String        @unique @db.ObjectId
+  sellers      sellers       @relation(fields: [sellerId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model sellers {

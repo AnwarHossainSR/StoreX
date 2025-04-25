@@ -32,6 +32,30 @@ export const useAuth = () => {
     },
   });
 
+  // Create shop mutation
+  const createShopMutation = useMutation<
+    ApiResponse<never>,
+    Error,
+    {
+      sellerId: string;
+      name: string;
+      bio: string;
+      address: string;
+      opening_hour: string;
+      website?: string;
+      category: string;
+    }
+  >({
+    mutationFn: authService.createShop,
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      return {
+        message: error.message,
+        details: errorData?.details,
+      };
+    },
+  });
+
   // Forgot password mutation
   const forgotPasswordMutation = useMutation<
     ApiResponse<never>,
@@ -49,7 +73,7 @@ export const useAuth = () => {
   });
 
   // Verify OTP for forgot password
-  const verifyForgotPasswordMutation = useMutation<
+  const forgotPasswordOtpMutation = useMutation<
     ApiResponse<never>,
     Error,
     { email: string; otp: string }
@@ -157,13 +181,11 @@ export const useAuth = () => {
       forgotPasswordMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    verifyForgotPassword: verifyForgotPasswordMutation.mutate,
-    verifyForgotPasswordStatus: verifyForgotPasswordMutation.status,
-    verifyForgotPasswordError: verifyForgotPasswordMutation.error?.message,
+    verifyForgotPassword: forgotPasswordOtpMutation.mutate,
+    verifyForgotPasswordStatus: forgotPasswordOtpMutation.status,
+    verifyForgotPasswordError: forgotPasswordOtpMutation.error?.message,
     verifyForgotPasswordErrorDetails: (
-      verifyForgotPasswordMutation.error?.cause as
-        | BackendErrorResponse
-        | undefined
+      forgotPasswordOtpMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
     resetPassword: resetPasswordMutation.mutate,
@@ -194,7 +216,14 @@ export const useAuth = () => {
       sellerRegisterMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    resetSellerRegister: sellerRegisterMutation.reset, // Expose reset function
+    resetSellerRegister: sellerRegisterMutation.reset,
+
+    createShop: createShopMutation.mutate,
+    createShopStatus: createShopMutation.status,
+    createShopError: createShopMutation.error?.message,
+    createShopErrorDetails: (
+      createShopMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
 
     verifySellerOtp: verifySellerOtpMutation.mutate,
     verifySellerOtpStatus: verifySellerOtpMutation.status,
@@ -202,5 +231,7 @@ export const useAuth = () => {
     verifySellerOtpErrorDetails: (
       verifySellerOtpMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
+    sellerId: verifySellerOtpMutation.data?.sellerId,
+    seller: verifySellerOtpMutation.data?.seller, // Expose seller object
   };
 };
