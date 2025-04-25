@@ -1,5 +1,5 @@
 // app/dashboard/notifications/page.tsx
-import DashboardLayout from "@/components/Layouts/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   Bell,
   CheckCircle,

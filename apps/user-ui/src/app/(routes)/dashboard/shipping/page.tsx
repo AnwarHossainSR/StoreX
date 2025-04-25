@@ -1,5 +1,5 @@
 // app/dashboard/shipping/page.tsx
-import DashboardLayout from "@/components/Layouts/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Edit, MapPin, Plus, Trash } from "lucide-react";
 
 export default function ShippingAddressPage() {

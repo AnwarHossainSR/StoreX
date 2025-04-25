@@ -1,5 +1,5 @@
 // app/dashboard/change-password/page.tsx
-import DashboardLayout from "@/components/Layouts/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Eye, Lock } from "lucide-react";
 
 export default function ChangePasswordPage() {

@@ -1,5 +1,5 @@
 // app/dashboard/orders/page.tsx
-import DashboardLayout from "@/components/Layouts/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Filter, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
