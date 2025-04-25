@@ -7,9 +7,11 @@ import { useEffect, useState } from "react";
 
 interface OtpInputProps {
   email: string;
-  type: "register" | "forgot";
+  type: "seller-register" | "forgot";
   name?: string;
   password?: string;
+  phone_number?: string;
+  country?: string;
   onSubmit: (otp: string) => void;
   isVerifyOtpPending: boolean;
 }
@@ -19,6 +21,8 @@ export default function OtpInput({
   type,
   name,
   password,
+  phone_number,
+  country,
   onSubmit,
   isVerifyOtpPending,
 }: OtpInputProps) {
@@ -86,7 +90,7 @@ export default function OtpInput({
 
   const handleResend = () => {
     clearAlert();
-    resendOtp({ email, type, name, password });
+    resendOtp({ email, type, name, password, phone_number, country });
   };
 
   return (

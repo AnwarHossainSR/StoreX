@@ -10,6 +10,28 @@ import {
 export const useAuth = () => {
   const router = useRouter();
 
+  // Seller register mutation
+  const sellerRegisterMutation = useMutation<
+    ApiResponse<never>,
+    Error,
+    {
+      name: string;
+      email: string;
+      password: string;
+      phone_number: string;
+      country: string;
+    }
+  >({
+    mutationFn: authService.registerSeller,
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      return {
+        message: error.message,
+        details: errorData?.details,
+      };
+    },
+  });
+
   // Forgot password mutation
   const forgotPasswordMutation = useMutation<
     ApiResponse<never>,
@@ -103,28 +125,6 @@ export const useAuth = () => {
     },
   });
 
-  // Seller register mutation
-  const sellerRegisterMutation = useMutation<
-    ApiResponse<never>,
-    Error,
-    {
-      name: string;
-      email: string;
-      password: string;
-      phone_number: string;
-      country: string;
-    }
-  >({
-    mutationFn: authService.registerSeller,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
-    },
-  });
-
   // Verify OTP for seller registration
   const verifySellerOtpMutation = useMutation<
     ApiResponse<never>,
@@ -146,6 +146,7 @@ export const useAuth = () => {
         details: errorData?.details,
       };
     },
+    retry: 0,
   });
 
   return {
@@ -192,6 +193,8 @@ export const useAuth = () => {
     sellerRegisterErrorDetails: (
       sellerRegisterMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
+
+    resetSellerRegister: sellerRegisterMutation.reset, // Expose reset function
 
     verifySellerOtp: verifySellerOtpMutation.mutate,
     verifySellerOtpStatus: verifySellerOtpMutation.status,

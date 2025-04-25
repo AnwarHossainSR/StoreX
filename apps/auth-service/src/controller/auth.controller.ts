@@ -301,6 +301,51 @@ export const createSellerAccount = async (
     await checkOtpRestriction(email);
     await trackOtpRequest(email);
     await sentOTP(name, email, "user-activation-email", "Verify Your Email!");
+    return res
+      .status(200)
+      .json({ message: "OTP sent to email, please verify" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const VerifySellerOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, otp, password, name, phone_number, country } = req.body;
+
+    if (!email || !otp || !password || !name || !phone_number || !country) {
+      throw next(new ValidationError("Missing required fields"));
+    }
+
+    const isExistSeller = await prisma.sellers.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (isExistSeller) {
+      throw next(new ValidationError("Seller already exist with this email"));
+    }
+
+    await verifyOtpHelper(email, otp);
+
+    const hashPassword = await bcrypt.hash(password, 10);
+
+    await prisma.sellers.create({
+      data: {
+        name,
+        email,
+        password: hashPassword,
+        phone_number,
+        country,
+      },
+    });
+
+    res.status(200).json({ message: "Seller created successfully" });
   } catch (error) {
     return next(error);
   }
@@ -369,48 +414,6 @@ export const sellerLogin = async (
         email: user.email,
       },
     });
-  } catch (error) {
-    return next(error);
-  }
-};
-
-export const VerifySellerOtp = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { email, otp, password, name, phone_number, country } = req.body;
-
-    if (!email || !otp || !password || !name || !phone_number || !country) {
-      throw next(new ValidationError("Missing required fields"));
-    }
-
-    const isExistSeller = await prisma.sellers.findUnique({
-      where: {
-        email,
-      },
-    });
-
-    if (isExistSeller) {
-      throw next(new ValidationError("Seller already exist with this email"));
-    }
-
-    await verifyOtpHelper(email, otp);
-
-    const hashPassword = await bcrypt.hash(password, 10);
-
-    await prisma.sellers.create({
-      data: {
-        name,
-        email,
-        password: hashPassword,
-        phone_number,
-        country,
-      },
-    });
-
-    res.status(200).json({ message: "Seller created successfully" });
   } catch (error) {
     return next(error);
   }

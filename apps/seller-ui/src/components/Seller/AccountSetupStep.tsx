@@ -8,7 +8,6 @@ interface AccountSetupStepProps {
     lastName: string;
     email: string;
     password: string;
-    confirmPassword: string;
     phone: string;
     country: string;
   };

@@ -6,21 +6,34 @@ import PaymentSetupStep from "@/components/Seller/PaymentSetupStep";
 import ShopSetupStep from "@/components/Seller/ShopSetupStep";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function SellerSignupPage() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [showOtp, setShowOtp] = useState(false);
+  // Initialize state from localStorage
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedStep = localStorage.getItem("sellerSignupStep");
+      return savedStep ? parseInt(savedStep, 10) : 1;
+    }
+    return 1;
+  });
+  const [showOtp, setShowOtp] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("sellerSignupShowOtp") === "true";
+    }
+    return false;
+  });
   const [formData, setFormData] = useState({
     // Account Information
     firstName: "",
     lastName: "",
     email: "",
     password: "",
-    confirmPassword: "",
     phone: "",
+    country: "",
     // Shop Information
     shopName: "",
     shopDescription: "",
@@ -28,24 +41,40 @@ export default function SellerSignupPage() {
     shopLocation: "",
     // Payment Information
     accountType: "individual",
-    country: "",
     currency: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const {
+    sellerRegister,
+    sellerRegisterStatus,
+    sellerRegisterError,
+    sellerRegisterErrorDetails,
+    verifySellerOtp,
+    verifySellerOtpStatus,
+    verifySellerOtpError,
+    verifySellerOtpErrorDetails,
+    resetSellerRegister,
+  } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
   const router = useRouter();
 
-  // Mock auth states
-  const [registerStatus, setRegisterStatus] = useState("idle");
-  // @ts-ignore
-  const [registerError, setRegisterError] = useState("");
-  const [verifyOtpStatus, setVerifyOtpStatus] = useState("idle");
-  const [verifyOtpError, setVerifyOtpError] = useState("");
-
+  // Persist currentStep and showOtp to localStorage
   useEffect(() => {
-    if (registerStatus === "success" && !showOtp) {
+    localStorage.setItem("sellerSignupStep", currentStep.toString());
+    localStorage.setItem("sellerSignupShowOtp", showOtp.toString());
+  }, [currentStep, showOtp]);
+
+  // Handle seller registration status
+  useEffect(() => {
+    console.log("sellerRegisterStatus:", sellerRegisterStatus);
+    console.log("sellerRegisterError:", sellerRegisterError);
+    console.log("showOtp:", showOtp);
+    console.log("currentStep:", currentStep);
+
+    if (sellerRegisterStatus === "success" && !showOtp && currentStep === 1) {
+      console.log("Triggering OTP screen");
       setSuccess("Account created! Please verify your email.", {
         autoDismiss: 3000,
       });
@@ -53,55 +82,85 @@ export default function SellerSignupPage() {
       setInfo(
         `A 6-digit code has been sent to ${formData.email}. Enter it below to verify your account.`
       );
-    } else if (registerError) {
-      setError(registerError, {
-        details: { general: registerError },
+    } else if (sellerRegisterError) {
+      setError(sellerRegisterError, {
+        details: sellerRegisterErrorDetails,
         isBackendError: true,
       });
     }
   }, [
-    registerStatus,
-    registerError,
+    sellerRegisterStatus,
+    sellerRegisterError,
+    sellerRegisterErrorDetails,
     showOtp,
+    currentStep,
     formData.email,
     setSuccess,
     setError,
     setInfo,
   ]);
 
+  // Handle OTP verification status
   useEffect(() => {
-    if (verifyOtpStatus === "success") {
-      console.log("otp verified");
+    console.log("verifySellerOtpStatus:", verifySellerOtpStatus);
+    console.log("verifySellerOtpError:", verifySellerOtpError);
+
+    if (verifySellerOtpStatus === "success") {
+      console.log("OTP verification successful, transitioning to shop setup");
       setSuccess("Email verified! Continuing with shop setup...", {
         autoDismiss: 3000,
       });
-      setRegisterStatus("idle");
-      setShowOtp(false);
-      setCurrentStep(2);
-    } else if (verifyOtpError) {
-      console.log("otp error", verifyOtpError);
-      setError(verifyOtpError, {
-        details: { otp: verifyOtpError },
+      setTimeout(() => {
+        console.log("Setting showOtp to false and currentStep to 2");
+        setShowOtp(false);
+        setCurrentStep(2);
+        resetSellerRegister();
+      }, 3000);
+    } else if (verifySellerOtpError) {
+      setError(verifySellerOtpError, {
+        details: verifySellerOtpErrorDetails,
         isBackendError: true,
       });
     }
-  }, [verifyOtpStatus, verifyOtpError, setSuccess, setError]);
+  }, [
+    verifySellerOtpStatus,
+    verifySellerOtpError,
+    verifySellerOtpErrorDetails,
+    setSuccess,
+    setError,
+    resetSellerRegister,
+  ]);
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-  console.log("current step", currentStep);
-  console.log("show otp", showOtp);
+  // Clear localStorage on signup completion
+  // @ts-ignore
+  useEffect(() => {
+    if (currentStep === 3 && !showOtp) {
+      // Clear localStorage when payment step is reached and submitted
+      const handleCompletion = () => {
+        localStorage.removeItem("sellerSignupStep");
+        localStorage.removeItem("sellerSignupShowOtp");
+      };
+      window.addEventListener("beforeunload", handleCompletion);
+      return () => window.removeEventListener("beforeunload", handleCompletion);
+    }
+  }, [currentStep, showOtp]);
 
-  const validateAccountForm = () => {
+  const handleChange = useCallback(
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >
+    ) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    },
+    []
+  );
+
+  const validateAccountForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
@@ -133,19 +192,16 @@ export default function SellerSignupPage() {
       isValid = false;
     }
 
+    if (!formData.country) {
+      newErrors.country = "Please select your country";
+      isValid = false;
+    }
+
     if (!formData.password) {
       newErrors.password = "Please enter a password";
       isValid = false;
     } else if (formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters long";
-      isValid = false;
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-      isValid = false;
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
       isValid = false;
     }
 
@@ -161,9 +217,9 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  };
+  }, [formData, agreeTerms, setError, clearAlert]);
 
-  const validateShopForm = () => {
+  const validateShopForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
@@ -194,9 +250,9 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  };
+  }, [formData, setError, clearAlert]);
 
-  const validatePaymentForm = () => {
+  const validatePaymentForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
@@ -217,60 +273,80 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  };
+  }, [formData, setError, clearAlert]);
 
-  const handleAccountSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAccountSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
 
-    if (validateAccountForm()) {
-      // Mock API call
-      setRegisterStatus("pending");
-
-      // Simulate API response
-      setTimeout(() => {
-        setRegisterStatus("success");
-      }, 1500);
-    }
-  };
-
-  const handleShopSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateShopForm()) {
-      setSuccess("Shop information saved successfully!", { autoDismiss: 3000 });
-      setCurrentStep(3);
-    }
-  };
-
-  const handlePaymentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validatePaymentForm()) {
-      setSuccess("Account setup completed! Redirecting to dashboard...", {
-        autoDismiss: 3000,
-      });
-
-      // Simulate redirect to dashboard
-      setTimeout(() => {
-        router.push("/seller/dashboard");
-      }, 3000);
-    }
-  };
-
-  const handleOtpSubmit = (otp: string) => {
-    setVerifyOtpStatus("pending");
-
-    // Simulate OTP verification
-    setTimeout(() => {
-      if (otp === "123456") {
-        // For demo purposes
-        setVerifyOtpStatus("success");
-      } else {
-        setVerifyOtpError("Invalid verification code. Please try again.");
-        setVerifyOtpStatus("error");
+      if (validateAccountForm()) {
+        console.log("Submitting seller registration:", {
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          password: formData.password,
+          phone_number: formData.phone,
+          country: formData.country,
+        });
+        sellerRegister({
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          password: formData.password,
+          phone_number: formData.phone,
+          country: formData.country,
+        });
       }
-    }, 1500);
-  };
+    },
+    [formData, validateAccountForm, sellerRegister]
+  );
+
+  const handleShopSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (validateShopForm()) {
+        setSuccess("Shop information saved successfully!", {
+          autoDismiss: 3000,
+        });
+        setCurrentStep(3);
+      }
+    },
+    [validateShopForm, setSuccess]
+  );
+
+  const handlePaymentSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (validatePaymentForm()) {
+        setSuccess("Account setup completed! Redirecting to dashboard...", {
+          autoDismiss: 3000,
+        });
+
+        setTimeout(() => {
+          // Clear localStorage on completion
+          localStorage.removeItem("sellerSignupStep");
+          localStorage.removeItem("sellerSignupShowOtp");
+          router.push("/seller/dashboard");
+        }, 3000);
+      }
+    },
+    [validatePaymentForm, setSuccess, router]
+  );
+
+  const handleOtpSubmit = useCallback(
+    (otp: string) => {
+      console.log("Submitting OTP:", otp);
+      verifySellerOtp({
+        email: formData.email,
+        otp,
+        password: formData.password,
+        name: `${formData.firstName} ${formData.lastName}`,
+        phone_number: formData.phone,
+        country: formData.country,
+      });
+    },
+    [formData, verifySellerOtp]
+  );
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -288,7 +364,7 @@ export default function SellerSignupPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Already have a seller account?{" "}
             <Link
-              href="/"
+              href="/auth/seller/login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Sign in
@@ -387,7 +463,7 @@ export default function SellerSignupPage() {
                     agreeTerms={agreeTerms}
                     setAgreeTerms={setAgreeTerms}
                     handleSubmit={handleAccountSubmit}
-                    isPending={registerStatus === "pending"}
+                    isPending={sellerRegisterStatus === "pending"}
                   />
                 )}
 
@@ -413,11 +489,13 @@ export default function SellerSignupPage() {
               <div className="space-y-6">
                 <OtpInput
                   email={formData.email}
-                  type="register"
+                  type="seller-register"
                   name={`${formData.firstName} ${formData.lastName}`}
                   password={formData.password}
+                  phone_number={formData.phone}
+                  country={formData.country}
                   onSubmit={handleOtpSubmit}
-                  isVerifyOtpPending={verifyOtpStatus === "pending"}
+                  isVerifyOtpPending={verifySellerOtpStatus === "pending"}
                 />
               </div>
             )}
