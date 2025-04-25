@@ -1,9 +1,19 @@
 import apiClient, { withOptionalAuth } from "@/lib/apiClient";
 
+export interface Seller {
+  id: string;
+  name: string;
+  email: string;
+  phone_number: string;
+  country: string;
+}
+
 export interface ApiResponse<T> {
   message: string;
   user?: T;
   access_token?: string;
+  sellerId?: string;
+  seller?: Seller;
 }
 
 export interface User {
@@ -19,57 +29,6 @@ export interface BackendErrorResponse {
 }
 
 export const authService = {
-  // Register a new user
-  async register(data: { name: string; email: string; password: string }) {
-    try {
-      const response = await apiClient.post<ApiResponse<never>>(
-        "/register",
-        data
-      );
-      return response.data;
-    } catch (error) {
-      const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "Registration failed", {
-        cause: errorData,
-      });
-    }
-  },
-
-  // Verify OTP for user registration
-  async verifyOtp(data: {
-    email: string;
-    otp: string;
-    password: string;
-    name: string;
-  }) {
-    try {
-      const response = await apiClient.post<ApiResponse<never>>(
-        "/verify-otp",
-        data
-      );
-      return response.data;
-    } catch (error) {
-      const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "OTP verification failed", {
-        cause: errorData,
-      });
-    }
-  },
-
-  // Log in a user
-  async login(data: { email: string; password: string }) {
-    try {
-      const response = await apiClient.post<ApiResponse<User>>("/login", data);
-      return response.data;
-    } catch (error) {
-      const errorData = (error as any).response?.data as BackendErrorResponse;
-      console.log(errorData);
-      throw new Error(errorData?.message || "Login failed", {
-        cause: errorData,
-      });
-    }
-  },
-
   // Log out user
   async logout() {
     try {
@@ -134,15 +93,25 @@ export const authService = {
   // Resend OTP for registration or forgot password
   async resendOtp(data: {
     email: string;
-    type: "register" | "forgot";
+    type: "register" | "forgot" | "seller-register";
     name?: string;
     password?: string;
+    phone_number?: string;
+    country?: string;
   }) {
     const endpoint =
-      data.type === "register" ? "/register" : "/forgot-password-user";
+      data.type === "seller-register"
+        ? "/register-seller"
+        : "/forgot-password-user";
     const payload =
-      data.type === "register"
-        ? { name: data.name, email: data.email, password: data.password }
+      data.type === "seller-register"
+        ? {
+            name: data.name,
+            email: data.email,
+            password: data.password,
+            phone_number: data.phone_number,
+            country: data.country,
+          }
         : { email: data.email };
 
     try {
@@ -174,17 +143,100 @@ export const authService = {
     }
   },
 
-  // Get current authenticated user - Mark this as optional auth
+  // Get current authenticated user
   async getCurrentUser() {
     try {
       const response = await apiClient.get<ApiResponse<User>>(
         "/logged-in-user",
-        withOptionalAuth({}) // Mark this request as having optional authentication
+        withOptionalAuth({})
       );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Failed to fetch user", {
+        cause: errorData,
+      });
+    }
+  },
+
+  // Register a new seller
+  async registerSeller(data: {
+    name: string;
+    email: string;
+    password: string;
+    phone_number: string;
+    country: string;
+  }) {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>(
+        "/register-seller",
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Seller registration failed", {
+        cause: errorData,
+      });
+    }
+  },
+
+  // Verify OTP for seller registration
+  async verifySellerOtp(data: {
+    email: string;
+    otp: string;
+    password: string;
+    name: string;
+    phone_number: string;
+    country: string;
+  }) {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>(
+        "/verify-seller-otp",
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Seller OTP verification failed", {
+        cause: errorData,
+      });
+    }
+  },
+
+  // Log in a seller
+  async sellerLogin(data: { email: string; password: string }) {
+    try {
+      const response = await apiClient.post<ApiResponse<User>>(
+        "/seller-login",
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Seller login failed", {
+        cause: errorData,
+      });
+    }
+  },
+  async createShop(data: {
+    sellerId: string;
+    name: string;
+    bio: string;
+    address: string;
+    opening_hour: string;
+    website?: string;
+    category: string;
+  }) {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>(
+        "/create-shop",
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Shop creation failed", {
         cause: errorData,
       });
     }

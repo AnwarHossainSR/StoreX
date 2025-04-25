@@ -2,9 +2,9 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
+import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function SellerLoginPage() {
@@ -14,26 +14,33 @@ export default function SellerLoginPage() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
   );
-  const router = useRouter();
+  const {
+    sellerLogin,
+    sellerLoginStatus,
+    sellerLoginError,
+    sellerLoginErrorDetails,
+  } = useAuth();
   const { alert, setSuccess, setError, clearAlert } = useAlert();
 
-  // Mock auth states
-  const [loginStatus, setLoginStatus] = useState("idle");
-  const [loginError, setLoginError] = useState("");
-
   useEffect(() => {
-    if (loginStatus === "success") {
+    if (sellerLoginStatus === "success") {
       setSuccess("Login successful! Redirecting...", { autoDismiss: 3000 });
       setTimeout(() => {
-        router.push("/seller/dashboard");
+        window.location.href = "/seller/dashboard";
       }, 3000);
-    } else if (loginError) {
-      setError(loginError, {
-        details: { general: loginError },
+    } else if (sellerLoginError) {
+      setError(sellerLoginError, {
+        details: sellerLoginErrorDetails,
         isBackendError: true,
       });
     }
-  }, [loginStatus, loginError, setSuccess, setError, router]);
+  }, [
+    sellerLoginStatus,
+    sellerLoginError,
+    sellerLoginErrorDetails,
+    setSuccess,
+    setError,
+  ]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -68,19 +75,7 @@ export default function SellerLoginPage() {
     e.preventDefault();
 
     if (validateForm()) {
-      // Mock API call
-      setLoginStatus("pending");
-
-      // Simulate a successful login for demo purposes
-      // In a real implementation, you would call your authentication API
-      setTimeout(() => {
-        if (email === "demo@example.com" && password === "password123") {
-          setLoginStatus("success");
-        } else {
-          setLoginError("Invalid email or password. Please try again.");
-          setLoginStatus("error");
-        }
-      }, 1500);
+      sellerLogin({ email, password });
     }
   };
 
@@ -199,7 +194,7 @@ export default function SellerLoginPage() {
 
                 <div className="text-sm">
                   <Link
-                    href="/forgot-password"
+                    href="/auth/seller/forgot-password"
                     className="font-medium text-blue-600 hover:text-blue-500"
                   >
                     Forgot your password?
@@ -210,14 +205,16 @@ export default function SellerLoginPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={loginStatus === "pending"}
+                  disabled={sellerLoginStatus === "pending"}
                   className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                    loginStatus === "pending"
+                    sellerLoginStatus === "pending"
                       ? "opacity-70 cursor-not-allowed"
                       : ""
                   }`}
                 >
-                  {loginStatus === "pending" ? "Signing in..." : "Sign in"}
+                  {sellerLoginStatus === "pending"
+                    ? "Signing in..."
+                    : "Sign in"}
                 </button>
               </div>
             </form>

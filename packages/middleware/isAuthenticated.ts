@@ -9,7 +9,6 @@ const isAuthenticated = async (
   next: NextFunction
 ) => {
   try {
-    console.log("req.cookies", req.cookies);
     const token =
       req.cookies.access_token || req.headers.authorization?.split(" ")[1];
 
