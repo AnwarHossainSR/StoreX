@@ -26,29 +26,43 @@ export default function SellerSignupPage() {
     "sellerSignup_sellerId",
     null
   );
-
-  const [formData, setFormData] = useState({
-    // Account Information
+  const [formData, setFormData] = useLocalStorage<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    phone: string;
+    country: string;
+    name: string;
+    bio: string;
+    address: string;
+    opening_hour: string;
+    website: string;
+    category: string;
+    accountType: string;
+    currency: string;
+  }>("sellerSignup_formData", {
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     phone: "",
     country: "",
-    // Shop Information
     name: "",
     bio: "",
     address: "",
     opening_hour: "",
     website: "",
     category: "",
-    // Payment Information
     accountType: "individual",
     currency: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useLocalStorage<boolean>(
+    "sellerSignup_agreeTerms",
+    false
+  );
   const {
     sellerRegister,
     sellerRegisterStatus,
@@ -64,10 +78,30 @@ export default function SellerSignupPage() {
     createShopError,
     createShopErrorDetails,
     sellerId: authSellerId,
-    seller: authSeller, // From verifySellerOtp
+    seller: authSeller,
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
   const router = useRouter();
+
+  // Debug localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      console.log("localStorage on mount:", {
+        step: localStorage.getItem("sellerSignup_step"),
+        showOtp: localStorage.getItem("sellerSignup_showOtp"),
+        sellerId: localStorage.getItem("sellerSignup_sellerId"),
+        formData: localStorage.getItem("sellerSignup_formData"),
+        agreeTerms: localStorage.getItem("sellerSignup_agreeTerms"),
+      });
+      console.log("Current state:", {
+        currentStep,
+        showOtp,
+        sellerId,
+        formData,
+        agreeTerms,
+      });
+    }
+  }, []);
 
   // Handle seller registration status
   useEffect(() => {
@@ -138,7 +172,6 @@ export default function SellerSignupPage() {
         console.log("Setting showOtp to false and currentStep to 2");
         setShowOtp(false);
         setCurrentStep(2);
-        resetSellerRegister();
       }, 3000);
     } else if (verifySellerOtpError) {
       setError(verifySellerOtpError, {
@@ -158,7 +191,6 @@ export default function SellerSignupPage() {
     setShowOtp,
     setCurrentStep,
     setFormData,
-    resetSellerRegister,
   ]);
 
   // Handle shop creation status
@@ -189,18 +221,10 @@ export default function SellerSignupPage() {
     setCurrentStep,
   ]);
 
-  // Clear localStorage on signup completion
+  // Clear localStorage only after payment submission
   useEffect(() => {
-    if (currentStep === 3 && !showOtp) {
-      const handleCompletion = () => {
-        localStorage.removeItem("sellerSignup_step");
-        localStorage.removeItem("sellerSignup_showOtp");
-        localStorage.removeItem("sellerSignup_sellerId");
-      };
-      window.addEventListener("beforeunload", handleCompletion);
-      return () => window.removeEventListener("beforeunload", handleCompletion);
-    }
-  }, [currentStep, showOtp]);
+    // Cleanup is handled in handlePaymentSubmit
+  }, []);
 
   const handleChange = useCallback(
     (
@@ -214,7 +238,7 @@ export default function SellerSignupPage() {
         [name]: value,
       }));
     },
-    []
+    [setFormData]
   );
 
   const validateAccountForm = useCallback(() => {
@@ -412,9 +436,12 @@ export default function SellerSignupPage() {
         });
 
         setTimeout(() => {
+          // Clear all localStorage keys
           localStorage.removeItem("sellerSignup_step");
           localStorage.removeItem("sellerSignup_showOtp");
           localStorage.removeItem("sellerSignup_sellerId");
+          localStorage.removeItem("sellerSignup_formData");
+          localStorage.removeItem("sellerSignup_agreeTerms");
           router.push("/seller/dashboard");
         }, 3000);
       }
