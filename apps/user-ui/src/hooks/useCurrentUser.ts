@@ -21,14 +21,14 @@ export const useCurrentUser = () => {
     enabled: !isPublicPath, // Don't run on public paths by default
   });
 
-  console.log("Current user hook:", {
-    data,
-    isLoading,
-    isError,
-    error,
-    path: pathname,
-    isPublicPath,
-  });
+  // console.log("Current user hook:", {
+  //   data,
+  //   isLoading,
+  //   isError,
+  //   error,
+  //   path: pathname,
+  //   isPublicPath,
+  // });
 
   const user = data?.user;
   const errorMessage = isError
