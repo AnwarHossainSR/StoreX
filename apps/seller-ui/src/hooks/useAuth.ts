@@ -160,7 +160,7 @@ export const useAuth = () => {
   >({
     mutationFn: authService.sellerLogin,
     onSuccess: () => {
-      router.push("/seller/dashboard");
+      router.push("/");
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
