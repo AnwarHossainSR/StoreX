@@ -60,9 +60,10 @@ export const useAuth = () => {
   const createStripeConnectAccountMutation = useMutation<
     ApiResponse<never>,
     Error,
-    string
+    { sellerId: string; country: string; currency: string }
   >({
-    mutationFn: authService.createStripeConnectAccount,
+    mutationFn: ({ sellerId, country, currency }) =>
+      authService.createStripeConnectAccount(sellerId, country, currency),
     onSuccess: (data) => {
       if (data.accountLink) {
         window.location.href = data.accountLink; // Redirect to Stripe

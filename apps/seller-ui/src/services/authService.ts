@@ -243,11 +243,15 @@ export const authService = {
     }
   },
 
-  async createStripeConnectAccount(sellerId: string) {
+  async createStripeConnectAccount(
+    sellerId: string,
+    country: string,
+    currency: string
+  ) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
         "/create-stripe-connect-account",
-        { sellerId }
+        { sellerId, country, currency }
       );
       return response.data;
     } catch (error) {

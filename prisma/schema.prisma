@@ -69,6 +69,7 @@ model sellers {
   country      String
   password     String
   stripeId     String?
+  currency     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   shopId       String?  @db.ObjectId

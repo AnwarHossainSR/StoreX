@@ -233,7 +233,12 @@ export default function SellerSignupPage() {
   // Handle Stripe Connect errors
   useEffect(() => {
     if (createStripeConnectAccountError) {
-      setError(createStripeConnectAccountError, {
+      const errorMessage = createStripeConnectAccountError.includes(
+        "Connect onboarding"
+      )
+        ? "Failed to initiate Stripe Connect. Please contact support to enable Stripe Connect for your account."
+        : createStripeConnectAccountError;
+      setError(errorMessage, {
         details: createStripeConnectAccountErrorDetails,
         isBackendError: true,
       });
@@ -251,6 +256,7 @@ export default function SellerSignupPage() {
       >
     ) => {
       const { name, value } = e.target;
+      console.log(`handleChange: Updating ${name} to ${value}`);
       setFormData((prev) => ({
         ...prev,
         [name]: value,
@@ -373,6 +379,16 @@ export default function SellerSignupPage() {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
+    if (!formData.country) {
+      newErrors.country = "Please select your country";
+      isValid = false;
+    }
+
+    if (!formData.currency) {
+      newErrors.currency = "Please select your currency";
+      isValid = false;
+    }
+
     setErrors(newErrors);
     if (!isValid) {
       setError("Please correct the following errors:", { details: newErrors });
@@ -451,7 +467,7 @@ export default function SellerSignupPage() {
           localStorage.removeItem("sellerSignup_formData");
           localStorage.removeItem("sellerSignup_agreeTerms");
           localStorage.removeItem("sellerSignup_errors");
-          router.push("/");
+          router.push("/auth/seller/login");
         }, 3000);
       }
     },
@@ -603,6 +619,9 @@ export default function SellerSignupPage() {
 
                 {currentStep === 3 && (
                   <PaymentSetupStep
+                    formData={formData}
+                    handleChange={handleChange}
+                    errors={errors}
                     setErrors={setErrors}
                     handleSubmit={handlePaymentSubmit}
                     sellerId={sellerId}

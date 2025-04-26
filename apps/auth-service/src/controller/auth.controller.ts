@@ -483,10 +483,26 @@ export const createStripeConnectAccount = async (
   next: NextFunction
 ) => {
   try {
-    const { sellerId } = req.body;
+    const { sellerId, country, currency } = req.body;
 
-    if (!sellerId) {
-      throw new ValidationError("Missing sellerId fields");
+    if (!sellerId || !country || !currency) {
+      throw new ValidationError(
+        "Missing required fields: sellerId, country, or currency"
+      );
+    }
+
+    // Validate country (basic check for ISO 3166-1 alpha-2 code)
+    if (!/^[A-Z]{2}$/.test(country)) {
+      throw new ValidationError(
+        "Invalid country code. Use ISO 3166-1 alpha-2 format (e.g., US, GB)."
+      );
+    }
+
+    // Validate currency (basic check for ISO 4217 code)
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new ValidationError(
+        "Invalid currency code. Use ISO 4217 format (e.g., USD, GBP)."
+      );
     }
 
     const seller = await prisma.sellers.findUnique({
@@ -501,8 +517,9 @@ export const createStripeConnectAccount = async (
 
     const account = await stripe.accounts.create({
       type: "express",
-      country: "US",
-      email: seller?.email,
+      country: country.toUpperCase(),
+      default_currency: currency.toLowerCase(),
+      email: seller.email,
       capabilities: {
         card_payments: { requested: true },
         transfers: { requested: true },
@@ -515,6 +532,7 @@ export const createStripeConnectAccount = async (
       },
       data: {
         stripeId: account.id,
+        currency: currency.toUpperCase(),
       },
     });
 
@@ -530,11 +548,12 @@ export const createStripeConnectAccount = async (
       accountLink: accountLink.url,
     });
   } catch (error: any) {
-    console.log("Error creating Stripe connect account:", error.raw);
     if (error.type === "StripeInvalidRequestError") {
       return next(
         new ValidationError(
-          "Stripe Connect is not enabled for this account. Please complete Connect onboarding in the Stripe Dashboard."
+          error.message.includes("Connect")
+            ? "Stripe Connect is not enabled for this account. Please complete Connect onboarding in the Stripe Dashboard."
+            : error.message
         )
       );
     }
