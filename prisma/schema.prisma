@@ -73,7 +73,7 @@ model sellers {
   updatedAt    DateTime @updatedAt
   shopId       String?  @db.ObjectId
   shopsId      String?  @db.ObjectId
-  shops        shops?
+  shop         shops?
 }
 
 // products

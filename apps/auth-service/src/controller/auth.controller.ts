@@ -118,6 +118,7 @@ export const loginUser = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "user",
       },
       process.env.JWT_SECRET_KEY!,
       {
@@ -130,6 +131,7 @@ export const loginUser = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "user",
       },
       process.env.JWT_REFRESH_SECRET_KEY!,
       {
@@ -395,6 +397,7 @@ export const sellerLogin = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "seller",
       },
       process.env.JWT_SECRET_KEY!,
       {
@@ -407,6 +410,7 @@ export const sellerLogin = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "seller",
       },
       process.env.JWT_REFRESH_SECRET_KEY!,
       {
@@ -482,7 +486,7 @@ export const createStripeConnectAccount = async (
     const { sellerId } = req.body;
 
     if (!sellerId) {
-      throw next(new ValidationError("Missing sellerId fields"));
+      throw new ValidationError("Missing sellerId fields");
     }
 
     const seller = await prisma.sellers.findUnique({
@@ -492,7 +496,7 @@ export const createStripeConnectAccount = async (
     });
 
     if (!seller) {
-      throw next(new ValidationError("Seller not found"));
+      throw new ValidationError("Seller not found");
     }
 
     const account = await stripe.accounts.create({
@@ -525,7 +529,15 @@ export const createStripeConnectAccount = async (
       message: "Stripe connect account created successfully",
       accountLink: accountLink.url,
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.log("Error creating Stripe connect account:", error.raw);
+    if (error.type === "StripeInvalidRequestError") {
+      return next(
+        new ValidationError(
+          "Stripe Connect is not enabled for this account. Please complete Connect onboarding in the Stripe Dashboard."
+        )
+      );
+    }
     return next(error);
   }
 };

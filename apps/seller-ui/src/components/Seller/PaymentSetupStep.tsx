@@ -1,51 +1,47 @@
 import { CreditCard } from "lucide-react";
 
 interface PaymentSetupStepProps {
-  formData: {
-    accountType: string;
-    country: string;
-    currency: string;
-  };
-  handleChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => void;
-  errors: Record<string, string>;
+  setErrors: (errors: Record<string, string>) => void;
   handleSubmit: (e: React.FormEvent) => void;
+  sellerId: string | null;
+  createStripeConnectAccount: (sellerId: string) => void;
+  createStripeConnectAccountStatus: "idle" | "pending" | "success" | "error";
+  createStripeConnectAccountError: string | undefined;
 }
 
 export default function PaymentSetupStep({
-  formData,
-  handleChange,
-  errors,
+  setErrors,
   handleSubmit,
+  sellerId,
+  createStripeConnectAccount,
+  createStripeConnectAccountStatus,
+  createStripeConnectAccountError,
 }: PaymentSetupStepProps) {
-  const countryOptions = [
-    { value: "", label: "Select a country" },
-    { value: "us", label: "United States" },
-    { value: "ca", label: "Canada" },
-    { value: "gb", label: "United Kingdom" },
-    { value: "au", label: "Australia" },
-    { value: "de", label: "Germany" },
-    { value: "fr", label: "France" },
-    { value: "jp", label: "Japan" },
-    { value: "in", label: "India" },
-    { value: "br", label: "Brazil" },
-  ];
-
-  const currencyOptions = [
-    { value: "", label: "Select a currency" },
-    { value: "usd", label: "USD - US Dollar" },
-    { value: "cad", label: "CAD - Canadian Dollar" },
-    { value: "gbp", label: "GBP - British Pound" },
-    { value: "eur", label: "EUR - Euro" },
-    { value: "aud", label: "AUD - Australian Dollar" },
-    { value: "jpy", label: "JPY - Japanese Yen" },
-    { value: "inr", label: "INR - Indian Rupee" },
-    { value: "brl", label: "BRL - Brazilian Real" },
-  ];
+  const handleStripeConnect = () => {
+    if (!sellerId) {
+      window.alert("Seller ID is missing. Please restart the signup process.");
+      setErrors({ sellerId: "Seller ID is required." });
+      return;
+    }
+    console.log("Initiating Stripe Connect for sellerId:", sellerId);
+    createStripeConnectAccount(sellerId);
+  };
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
+    <form className="space-y-2" onSubmit={handleSubmit}>
+      {createStripeConnectAccountError && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{createStripeConnectAccountError}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
         <div className="flex">
           <div className="flex-shrink-0">
@@ -66,114 +62,17 @@ export default function PaymentSetupStep({
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Account Type
-        </label>
-        <div className="mt-2 space-y-2">
-          <div className="flex items-center">
-            <input
-              id="accountType-individual"
-              name="accountType"
-              type="radio"
-              value="individual"
-              checked={formData.accountType === "individual"}
-              onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-            />
-            <label
-              htmlFor="accountType-individual"
-              className="ml-3 block text-sm font-medium text-gray-700"
-            >
-              Individual
-            </label>
-          </div>
-          <div className="flex items-center">
-            <input
-              id="accountType-business"
-              name="accountType"
-              type="radio"
-              value="business"
-              checked={formData.accountType === "business"}
-              onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-            />
-            <label
-              htmlFor="accountType-business"
-              className="ml-3 block text-sm font-medium text-gray-700"
-            >
-              Business
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label
-          htmlFor="country"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Country
-        </label>
-        <div className="mt-1">
-          <select
-            id="country"
-            name="country"
-            required
-            value={formData.country}
-            onChange={handleChange}
-            className={`appearance-none block w-full px-3 py-2 border ${
-              errors.country ? "border-red-300" : "border-gray-300"
-            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-            aria-invalid={!!errors.country}
-            aria-describedby={errors.country ? "country-error" : undefined}
-          >
-            {countryOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label
-          htmlFor="currency"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Currency
-        </label>
-        <div className="mt-1">
-          <select
-            id="currency"
-            name="currency"
-            required
-            value={formData.currency}
-            onChange={handleChange}
-            className={`appearance-none block w-full px-3 py-2 border ${
-              errors.currency ? "border-red-300" : "border-gray-300"
-            } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-            aria-invalid={!!errors.currency}
-            aria-describedby={errors.currency ? "currency-error" : undefined}
-          >
-            {currencyOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       <div className="mt-6 border-t border-gray-200 pt-6">
         <div className="text-center">
           <button
             type="button"
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            onClick={() =>
-              window.alert("This would redirect to Stripe Connect")
-            }
+            className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+              createStripeConnectAccountStatus === "pending"
+                ? "opacity-50 cursor-not-allowed"
+                : ""
+            }`}
+            onClick={handleStripeConnect}
+            disabled={createStripeConnectAccountStatus === "pending"}
           >
             <svg
               className="w-5 h-5 mr-2"

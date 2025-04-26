@@ -56,6 +56,27 @@ export const useAuth = () => {
     },
   });
 
+  // Create Stripe Connect account mutation
+  const createStripeConnectAccountMutation = useMutation<
+    ApiResponse<never>,
+    Error,
+    string
+  >({
+    mutationFn: authService.createStripeConnectAccount,
+    onSuccess: (data) => {
+      if (data.accountLink) {
+        window.location.href = data.accountLink; // Redirect to Stripe
+      }
+    },
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      return {
+        message: error.message,
+        details: errorData?.details,
+      };
+    },
+  });
+
   // Forgot password mutation
   const forgotPasswordMutation = useMutation<
     ApiResponse<never>,
@@ -232,6 +253,16 @@ export const useAuth = () => {
       verifySellerOtpMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
     sellerId: verifySellerOtpMutation.data?.sellerId,
-    seller: verifySellerOtpMutation.data?.seller, // Expose seller object
+    seller: verifySellerOtpMutation.data?.seller,
+
+    createStripeConnectAccount: createStripeConnectAccountMutation.mutate,
+    createStripeConnectAccountStatus: createStripeConnectAccountMutation.status,
+    createStripeConnectAccountError:
+      createStripeConnectAccountMutation.error?.message,
+    createStripeConnectAccountErrorDetails: (
+      createStripeConnectAccountMutation.error?.cause as
+        | BackendErrorResponse
+        | undefined
+    )?.details,
   };
 };

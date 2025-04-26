@@ -14,6 +14,7 @@ export interface ApiResponse<T> {
   access_token?: string;
   sellerId?: string;
   seller?: Seller;
+  accountLink?: string;
 }
 
 export interface User {
@@ -239,6 +240,24 @@ export const authService = {
       throw new Error(errorData?.message || "Shop creation failed", {
         cause: errorData,
       });
+    }
+  },
+
+  async createStripeConnectAccount(sellerId: string) {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>(
+        "/create-stripe-connect-account",
+        { sellerId }
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(
+        errorData?.message || "Failed to create Stripe Connect account",
+        {
+          cause: errorData,
+        }
+      );
     }
   },
 };

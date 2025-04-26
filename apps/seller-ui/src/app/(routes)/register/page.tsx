@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 export default function SellerSignupPage() {
   // Use custom localStorage hook
@@ -58,7 +58,10 @@ export default function SellerSignupPage() {
     currency: "",
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useLocalStorage<Record<string, string>>(
+    "sellerSignup_errors",
+    {}
+  );
   const [agreeTerms, setAgreeTerms] = useLocalStorage<boolean>(
     "sellerSignup_agreeTerms",
     false
@@ -79,6 +82,10 @@ export default function SellerSignupPage() {
     createShopErrorDetails,
     sellerId: authSellerId,
     seller: authSeller,
+    createStripeConnectAccount,
+    createStripeConnectAccountStatus,
+    createStripeConnectAccountError,
+    createStripeConnectAccountErrorDetails,
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
   const router = useRouter();
@@ -92,6 +99,7 @@ export default function SellerSignupPage() {
         sellerId: localStorage.getItem("sellerSignup_sellerId"),
         formData: localStorage.getItem("sellerSignup_formData"),
         agreeTerms: localStorage.getItem("sellerSignup_agreeTerms"),
+        errors: localStorage.getItem("sellerSignup_errors"),
       });
       console.log("Current state:", {
         currentStep,
@@ -99,6 +107,7 @@ export default function SellerSignupPage() {
         sellerId,
         formData,
         agreeTerms,
+        errors,
       });
     }
   }, []);
@@ -221,10 +230,19 @@ export default function SellerSignupPage() {
     setCurrentStep,
   ]);
 
-  // Clear localStorage only after payment submission
+  // Handle Stripe Connect errors
   useEffect(() => {
-    // Cleanup is handled in handlePaymentSubmit
-  }, []);
+    if (createStripeConnectAccountError) {
+      setError(createStripeConnectAccountError, {
+        details: createStripeConnectAccountErrorDetails,
+        isBackendError: true,
+      });
+    }
+  }, [
+    createStripeConnectAccountError,
+    createStripeConnectAccountErrorDetails,
+    setError,
+  ]);
 
   const handleChange = useCallback(
     (
@@ -298,7 +316,7 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  }, [formData, agreeTerms, setError, clearAlert]);
+  }, [formData, agreeTerms, setError, clearAlert, setErrors]);
 
   const validateShopForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
@@ -349,21 +367,11 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  }, [formData, sellerId, setError, clearAlert]);
+  }, [formData, sellerId, setError, clearAlert, setErrors]);
 
   const validatePaymentForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
-
-    if (!formData.country) {
-      newErrors.country = "Please select your country";
-      isValid = false;
-    }
-
-    if (!formData.currency) {
-      newErrors.currency = "Please select your currency";
-      isValid = false;
-    }
 
     setErrors(newErrors);
     if (!isValid) {
@@ -372,7 +380,7 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  }, [formData, setError, clearAlert]);
+  }, [formData, setError, clearAlert, setErrors]);
 
   const handleAccountSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -431,7 +439,7 @@ export default function SellerSignupPage() {
       e.preventDefault();
 
       if (validatePaymentForm()) {
-        setSuccess("Account setup completed! Redirecting to dashboard...", {
+        setSuccess("Account setup completed! Redirecting to login...", {
           autoDismiss: 3000,
         });
 
@@ -442,7 +450,8 @@ export default function SellerSignupPage() {
           localStorage.removeItem("sellerSignup_sellerId");
           localStorage.removeItem("sellerSignup_formData");
           localStorage.removeItem("sellerSignup_agreeTerms");
-          router.push("/seller/dashboard");
+          localStorage.removeItem("sellerSignup_errors");
+          router.push("/");
         }, 3000);
       }
     },
@@ -594,10 +603,16 @@ export default function SellerSignupPage() {
 
                 {currentStep === 3 && (
                   <PaymentSetupStep
-                    formData={formData}
-                    handleChange={handleChange}
-                    errors={errors}
+                    setErrors={setErrors}
                     handleSubmit={handlePaymentSubmit}
+                    sellerId={sellerId}
+                    createStripeConnectAccount={createStripeConnectAccount}
+                    createStripeConnectAccountStatus={
+                      createStripeConnectAccountStatus
+                    }
+                    createStripeConnectAccountError={
+                      createStripeConnectAccountError
+                    }
                   />
                 )}
               </>
