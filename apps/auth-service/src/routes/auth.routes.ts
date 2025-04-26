@@ -4,8 +4,10 @@ import {
   cerateShop,
   createSellerAccount,
   createStripeConnectAccount,
+  getAuthenticatedSeller,
   getAuthenticatedUser,
   loginUser,
+  logout,
   refreshAccessToken,
   ResetUserForgotPassword,
   sellerLogin,
@@ -34,5 +36,8 @@ router.post("/seller-login", sellerLogin);
 router.post("/verify-seller-otp", VerifySellerOtp);
 router.post("/create-shop", cerateShop);
 router.post("/create-stripe-connect-account", createStripeConnectAccount);
+router.get("/logged-in-seller", isAuthenticated, getAuthenticatedSeller);
+
+router.post("/logout", isAuthenticated, logout);
 
 export default router;

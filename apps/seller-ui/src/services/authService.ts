@@ -1,4 +1,4 @@
-import apiClient, { withOptionalAuth } from "@/lib/apiClient";
+import apiClient from "@/lib/apiClient";
 
 export interface Seller {
   id: string;
@@ -147,9 +147,8 @@ export const authService = {
   // Get current authenticated user
   async getCurrentUser() {
     try {
-      const response = await apiClient.get<ApiResponse<User>>(
-        "/logged-in-user",
-        withOptionalAuth({})
+      const response = await apiClient.get<ApiResponse<any>>(
+        "/logged-in-seller"
       );
       return response.data;
     } catch (error) {

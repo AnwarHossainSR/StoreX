@@ -195,6 +195,24 @@ export const useAuth = () => {
     retry: 0,
   });
 
+  const logoutSeller = useMutation<ApiResponse<never>, Error>({
+    mutationFn: authService.logout,
+    onSuccess: () => {
+      // clear localstorage access-seller-token and refresh-seller-token
+      localStorage.removeItem("access_seller_token");
+      localStorage.removeItem("refresh_seller_token");
+      window.location.href = "/login";
+    },
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      return {
+        message: error.message,
+        details: errorData?.details,
+      };
+    },
+    retry: 0,
+  });
+
   return {
     forgotPassword: forgotPasswordMutation.mutate,
     forgotPasswordStatus: forgotPasswordMutation.status,
@@ -265,5 +283,7 @@ export const useAuth = () => {
         | BackendErrorResponse
         | undefined
     )?.details,
+
+    logoutSeller: logoutSeller.mutate,
   };
 };

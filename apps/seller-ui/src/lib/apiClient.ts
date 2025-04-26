@@ -102,7 +102,7 @@ apiClient.interceptors.response.use(
       if (refreshAttemptCount >= MAX_REFRESH_ATTEMPTS) {
         console.error("Max refresh attempts reached, redirecting to login");
         if (typeof window !== "undefined") {
-          window.location.href = "/auth/login";
+          window.location.href = "/login";
         }
         return Promise.reject(error);
       }
@@ -130,7 +130,7 @@ apiClient.interceptors.response.use(
         console.error("Token refresh failed", refreshError);
         processQueue(refreshError);
         if (typeof window !== "undefined") {
-          window.location.href = "/auth/login";
+          window.location.href = "/login";
         }
         return Promise.reject(refreshError);
       } finally {

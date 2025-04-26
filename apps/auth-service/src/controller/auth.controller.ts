@@ -560,3 +560,17 @@ export const createStripeConnectAccount = async (
     return next(error);
   }
 };
+
+export const getAuthenticatedSeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const user = req.seller;
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
+    return next(error);
+  }
+};

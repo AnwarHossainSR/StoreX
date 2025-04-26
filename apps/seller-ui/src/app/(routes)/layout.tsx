@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   Bell,
   Calendar,
@@ -15,8 +17,8 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useState } from "react";
+import { usePathname } from "next/navigation";
+import { ReactNode, useEffect, useState } from "react";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -25,7 +27,8 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
+  const { isLoading, user } = useCurrentUser();
+  const { logoutSeller } = useAuth();
 
   const navigation = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -44,6 +47,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  const handleLogout = () => {
+    // redirect to login page
+    logoutSeller();
+  };
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      window.location.href = "/login";
+    }
+  }, [user, isLoading]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-900">
@@ -71,12 +85,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
             <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
               <div className="flex-shrink-0 flex items-center px-4">
-                <div
-                  className="text-2xl font-bold text-white"
-                  onClick={() => router.push("/")}
-                >
-                  <span>Store</span>
-                  <span className="text-yellow-400">X</span>
+                <div className="text-2xl font-bold text-white">
+                  <span className="text-yellow-400">E-</span>
+                  <span>Shop</span>
                 </div>
               </div>
               <nav className="mt-8 flex-1 px-2 space-y-1">
@@ -126,13 +137,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               ))}
 
               <div className="pt-4 border-t border-gray-700">
-                <Link
-                  href="/"
-                  className="group flex items-center px-4 py-2 text-base font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white"
+                <button
+                  onClick={handleLogout}
+                  className="group flex items-center px-4 py-2 text-base font-medium rounded-md text-red-400 hover:text-red-700"
                 >
-                  <LogOut className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-300" />
+                  <LogOut className="mr-3 h-6 w-6 text-red-400 group-hover:text-red-300" />
                   Logout
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -148,15 +159,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <div className="flex items-center flex-shrink-0 px-4">
                 <div className="text-2xl font-bold text-white">
-                  <span>Store</span>
-                  <span className="text-yellow-400">X</span>
+                  <span className="text-yellow-400">E-</span>
+                  <span>Shop</span>
                 </div>
               </div>
               <div className="mt-8 px-4">
                 <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Anwar Hossain
+                  Shahriar Sajeeb
                 </div>
-                <div className="text-sm text-gray-300">support@storex.com</div>
+                <div className="text-sm text-gray-300">
+                  support@becodemy.com
+                </div>
               </div>
               <nav className="mt-8 flex-1 px-2 space-y-1">
                 {navigation.map((item) => (
@@ -205,13 +218,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               ))}
 
               <div className="pt-4 border-t border-gray-700">
-                <Link
-                  href="/"
-                  className="group flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white"
+                <button
+                  onClick={handleLogout}
+                  className="group flex items-center px-4 py-2 text-sm font-medium rounded-md text-red-400 hover:text-red-700"
                 >
-                  <LogOut className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-300" />
+                  <LogOut className="mr-3 h-5 w-5 text-red-400 group-hover:text-red-300" />
                   Logout
-                </Link>
+                </button>
               </div>
             </div>
           </div>
