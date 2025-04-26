@@ -29,6 +29,7 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
   const pathname = usePathname();
   const { isLoading, user } = useCurrentUser();
   const { logoutSeller } = useAuth();
+  console.log("user", user);
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -40,8 +41,8 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
   ];
 
   const secondaryNavigation = [
-    { name: "Settings", href: "/admin/settings", icon: Settings },
-    { name: "Notifications", href: "/admin/notifications", icon: Bell },
+    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Notifications", href: "/notifications", icon: Bell },
   ];
 
   const toggleSidebar = () => {
@@ -86,7 +87,7 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
             <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
               <div className="flex-shrink-0 flex items-center px-4">
                 <div className="text-2xl font-bold text-white">
-                  <span className="text-yellow-400">E-</span>
+                  <span className="text-yellow-400">{user?.shop?.name}</span>
                   <span>Shop</span>
                 </div>
               </div>
@@ -159,17 +160,15 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <div className="flex items-center flex-shrink-0 px-4">
                 <div className="text-2xl font-bold text-white">
-                  <span className="text-yellow-400">E-</span>
-                  <span>Shop</span>
+                  <span className="text-yellow-400">{user?.shop?.name}</span>
+                  {/* <span>Shop</span> */}
                 </div>
               </div>
               <div className="mt-8 px-4">
                 <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Shahriar Sajeeb
+                  {user?.name}
                 </div>
-                <div className="text-sm text-gray-300">
-                  support@becodemy.com
-                </div>
+                <div className="text-sm text-gray-300">{user?.email}</div>
               </div>
               <nav className="mt-8 flex-1 px-2 space-y-1">
                 {navigation.map((item) => (
