@@ -33,7 +33,9 @@ export const authService = {
   // Log out user
   async logout() {
     try {
-      const response = await apiClient.post<ApiResponse<never>>("/logout");
+      const response = await apiClient.post<ApiResponse<never>>(
+        "/logout-seller"
+      );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;

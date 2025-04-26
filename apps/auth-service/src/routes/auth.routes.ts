@@ -7,7 +7,8 @@ import {
   getAuthenticatedSeller,
   getAuthenticatedUser,
   loginUser,
-  logout,
+  logoutSeller,
+  logoutUser,
   refreshAccessToken,
   ResetUserForgotPassword,
   sellerLogin,
@@ -38,6 +39,7 @@ router.post("/create-shop", cerateShop);
 router.post("/create-stripe-connect-account", createStripeConnectAccount);
 router.get("/logged-in-seller", isAuthenticated, getAuthenticatedSeller);
 
-router.post("/logout", isAuthenticated, logout);
+router.post("/logout-seller", isAuthenticated, logoutSeller);
+router.post("/logout-user", isAuthenticated, logoutUser);
 
 export default router;

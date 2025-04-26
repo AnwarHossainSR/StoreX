@@ -265,7 +265,7 @@ export const getAuthenticatedUser = async (
   }
 };
 
-export const logout = async (
+export const logoutUser = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -273,6 +273,20 @@ export const logout = async (
   try {
     res.clearCookie("refresh_token");
     res.clearCookie("access_token");
+    res.status(200).json({ message: "User logged out successfully" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const logoutSeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    res.clearCookie("refresh_seller_token");
+    res.clearCookie("access_seller_token");
     res.status(200).json({ message: "User logged out successfully" });
   } catch (error: any) {
     return next(error);
