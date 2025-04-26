@@ -1,20 +1,20 @@
 "use client";
 
-import { CheckCircle, ArrowRight } from "lucide-react";
+import { useSellerSignupStore } from "@/lib/store";
+import { ArrowRight, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 
 export default function SuccessPage() {
-  // Clear localStorage on mount
+  const resetSignupState = useSellerSignupStore(
+    (state) => state.resetSignupState
+  );
+
+  // Reset Zustand state on mount
   useEffect(() => {
-    localStorage.removeItem("sellerSignup_step");
-    localStorage.removeItem("sellerSignup_showOtp");
-    localStorage.removeItem("sellerSignup_sellerId");
-    localStorage.removeItem("sellerSignup_formData");
-    localStorage.removeItem("sellerSignup_agreeTerms");
-    localStorage.removeItem("sellerSignup_errors");
-    console.log("localStorage cleared on SuccessPage");
-  }, []);
+    resetSignupState();
+    console.log("Zustand signup state reset on SuccessPage");
+  }, [resetSignupState]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">

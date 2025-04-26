@@ -3,7 +3,8 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useSellerSignupStore } from "@/lib/store";
+import { useEffect } from "react";
 
 interface OtpInputProps {
   email: string;
@@ -26,7 +27,7 @@ export default function OtpInput({
   onSubmit,
   isVerifyOtpPending,
 }: OtpInputProps) {
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const { otp, setOtp } = useSellerSignupStore();
   const { resendOtp, resendOtpStatus, resendOtpError, resendOtpErrorDetails } =
     useAuth();
   const { alert, setError, setWarning, clearAlert } = useAlert();
@@ -138,7 +139,7 @@ export default function OtpInput({
               value={digit}
               onChange={(e) => handleChange(e, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              onPaste={index === 0 ? handlePaste : undefined} // Add onPaste only to the first input
+              onPaste={index === 0 ? handlePaste : undefined}
               className="w-12 h-12 text-center text-lg border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               aria-label={`OTP digit ${index + 1}`}
             />

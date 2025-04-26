@@ -20,23 +20,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
-interface AdminLayoutProps {
+interface SellerLayoutProps {
   children: ReactNode;
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function SellerLayout({ children }: SellerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const { isLoading, user } = useCurrentUser();
   const { logoutSeller } = useAuth();
 
   const navigation = [
-    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-    { name: "Orders", href: "/admin/orders", icon: Package },
-    { name: "Products", href: "/admin/products", icon: Store },
-    { name: "Users", href: "/admin/users", icon: Users },
-    { name: "Payments", href: "/admin/payments", icon: CreditCard },
-    { name: "Events", href: "/admin/events", icon: Calendar },
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Orders", href: "/orders", icon: Package },
+    { name: "Products", href: "/products", icon: Store },
+    { name: "Users", href: "/users", icon: Users },
+    { name: "Payments", href: "/payments", icon: CreditCard },
+    { name: "Events", href: "/events", icon: Calendar },
   ];
 
   const secondaryNavigation = [

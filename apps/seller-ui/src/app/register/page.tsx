@@ -7,64 +7,26 @@ import ShopSetupStep from "@/components/Seller/ShopSetupStep";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSellerSignupStore } from "@/lib/store";
 import Link from "next/link";
 import { useCallback, useEffect } from "react";
 
 export default function SellerSignupPage() {
-  // Use custom localStorage hook
-  const [currentStep, setCurrentStep] = useLocalStorage<number>(
-    "sellerSignup_step",
-    1
-  );
-  const [showOtp, setShowOtp] = useLocalStorage<boolean>(
-    "sellerSignup_showOtp",
-    false
-  );
-  const [sellerId, setSellerId] = useLocalStorage<string | null>(
-    "sellerSignup_sellerId",
-    null
-  );
-  const [formData, setFormData] = useLocalStorage<{
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    phone: string;
-    country: string;
-    name: string;
-    bio: string;
-    address: string;
-    opening_hour: string;
-    website: string;
-    category: string;
-    accountType: string;
-    currency: string;
-  }>("sellerSignup_formData", {
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    phone: "",
-    country: "",
-    name: "",
-    bio: "",
-    address: "",
-    opening_hour: "",
-    website: "",
-    category: "",
-    accountType: "individual",
-    currency: "",
-  });
+  const {
+    currentStep,
+    setCurrentStep,
+    showOtp,
+    setShowOtp,
+    sellerId,
+    setSellerId,
+    formData,
+    setFormData,
+    errors,
+    setErrors,
+    agreeTerms,
+    setAgreeTerms,
+  } = useSellerSignupStore();
 
-  const [errors, setErrors] = useLocalStorage<Record<string, string>>(
-    "sellerSignup_errors",
-    {}
-  );
-  const [agreeTerms, setAgreeTerms] = useLocalStorage<boolean>(
-    "sellerSignup_agreeTerms",
-    false
-  );
   const {
     sellerRegister,
     sellerRegisterStatus,
@@ -87,27 +49,17 @@ export default function SellerSignupPage() {
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
 
-  // Debug localStorage on mount
+  // Debug state on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      console.log("localStorage on mount:", {
-        step: localStorage.getItem("sellerSignup_step"),
-        showOtp: localStorage.getItem("sellerSignup_showOtp"),
-        sellerId: localStorage.getItem("sellerSignup_sellerId"),
-        formData: localStorage.getItem("sellerSignup_formData"),
-        agreeTerms: localStorage.getItem("sellerSignup_agreeTerms"),
-        errors: localStorage.getItem("sellerSignup_errors"),
-      });
-      console.log("Current state:", {
-        currentStep,
-        showOtp,
-        sellerId,
-        formData,
-        agreeTerms,
-        errors,
-      });
-    }
-  }, []);
+    console.log("Current state:", {
+      currentStep,
+      showOtp,
+      sellerId,
+      formData,
+      agreeTerms,
+      errors,
+    });
+  }, [currentStep, showOtp, sellerId, formData, agreeTerms, errors]);
 
   // Handle seller registration status
   useEffect(() => {
@@ -141,6 +93,7 @@ export default function SellerSignupPage() {
     setSuccess,
     setError,
     setInfo,
+    setShowOtp,
   ]);
 
   // Handle OTP verification status
@@ -164,15 +117,14 @@ export default function SellerSignupPage() {
       }
       // Pre-fill formData with seller details if available
       if (authSeller) {
-        setFormData((prev) => ({
-          ...prev,
-          firstName: authSeller.name.split(" ")[0] || prev.firstName,
+        setFormData({
+          firstName: authSeller.name.split(" ")[0] || formData.firstName,
           lastName:
-            authSeller.name.split(" ").slice(1).join(" ") || prev.lastName,
-          email: authSeller.email || prev.email,
-          phone: authSeller.phone_number || prev.phone,
-          country: authSeller.country || prev.country,
-        }));
+            authSeller.name.split(" ").slice(1).join(" ") || formData.lastName,
+          email: authSeller.email || formData.email,
+          phone: authSeller.phone_number || formData.phone,
+          country: authSeller.country || formData.country,
+        });
       }
       setTimeout(() => {
         console.log("Setting showOtp to false and currentStep to 2");
@@ -191,12 +143,6 @@ export default function SellerSignupPage() {
     verifySellerOtpErrorDetails,
     authSellerId,
     authSeller,
-    setSuccess,
-    setError,
-    setSellerId,
-    setShowOtp,
-    setCurrentStep,
-    setFormData,
   ]);
 
   // Handle shop creation status
@@ -254,10 +200,7 @@ export default function SellerSignupPage() {
     ) => {
       const { name, value } = e.target;
       console.log(`handleChange: Updating ${name} to ${value}`);
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setFormData({ [name]: value });
     },
     [setFormData]
   );
@@ -455,7 +398,7 @@ export default function SellerSignupPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Already have a seller account?{" "}
             <Link
-              href="/login"
+              href="/auth/seller/login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Sign in
