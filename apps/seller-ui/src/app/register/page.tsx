@@ -9,7 +9,6 @@ import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 
 export default function SellerSignupPage() {
@@ -75,7 +74,6 @@ export default function SellerSignupPage() {
     verifySellerOtpStatus,
     verifySellerOtpError,
     verifySellerOtpErrorDetails,
-    resetSellerRegister,
     createShop,
     createShopStatus,
     createShopError,
@@ -88,7 +86,6 @@ export default function SellerSignupPage() {
     createStripeConnectAccountErrorDetails,
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
-  const router = useRouter();
 
   // Debug localStorage on mount
   useEffect(() => {
@@ -375,29 +372,6 @@ export default function SellerSignupPage() {
     return isValid;
   }, [formData, sellerId, setError, clearAlert, setErrors]);
 
-  const validatePaymentForm = useCallback(() => {
-    const newErrors: Record<string, string> = {};
-    let isValid = true;
-
-    if (!formData.country) {
-      newErrors.country = "Please select your country";
-      isValid = false;
-    }
-
-    if (!formData.currency) {
-      newErrors.currency = "Please select your currency";
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    if (!isValid) {
-      setError("Please correct the following errors:", { details: newErrors });
-    } else {
-      clearAlert();
-    }
-    return isValid;
-  }, [formData, setError, clearAlert, setErrors]);
-
   const handleAccountSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
@@ -448,30 +422,6 @@ export default function SellerSignupPage() {
       }
     },
     [formData, validateShopForm, createShop, sellerId]
-  );
-
-  const handlePaymentSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-
-      if (validatePaymentForm()) {
-        setSuccess("Account setup completed! Redirecting to login...", {
-          autoDismiss: 3000,
-        });
-
-        setTimeout(() => {
-          // Clear all localStorage keys
-          localStorage.removeItem("sellerSignup_step");
-          localStorage.removeItem("sellerSignup_showOtp");
-          localStorage.removeItem("sellerSignup_sellerId");
-          localStorage.removeItem("sellerSignup_formData");
-          localStorage.removeItem("sellerSignup_agreeTerms");
-          localStorage.removeItem("sellerSignup_errors");
-          router.push("/login");
-        }, 3000);
-      }
-    },
-    [validatePaymentForm, setSuccess, router]
   );
 
   const handleOtpSubmit = useCallback(
@@ -623,7 +573,6 @@ export default function SellerSignupPage() {
                     handleChange={handleChange}
                     errors={errors}
                     setErrors={setErrors}
-                    handleSubmit={handlePaymentSubmit}
                     sellerId={sellerId}
                     createStripeConnectAccount={createStripeConnectAccount}
                     createStripeConnectAccountStatus={
