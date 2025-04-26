@@ -77,6 +77,25 @@ export default function OtpInput({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").trim();
+
+    // Validate pasted data: must be a 6-digit number
+    if (/^\d{6}$/.test(pastedData)) {
+      const newOtp = pastedData.split("").slice(0, 6);
+      setOtp(newOtp);
+
+      // Focus the last input field after pasting
+      const lastInput = document.getElementById(`otp-5`);
+      lastInput?.focus();
+
+      clearAlert();
+    } else {
+      setError("Please paste a valid 6-digit OTP");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const otpValue = otp.join("");
@@ -119,6 +138,7 @@ export default function OtpInput({
               value={digit}
               onChange={(e) => handleChange(e, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
+              onPaste={index === 0 ? handlePaste : undefined} // Add onPaste only to the first input
               className="w-12 h-12 text-center text-lg border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               aria-label={`OTP digit ${index + 1}`}
             />

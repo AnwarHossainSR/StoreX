@@ -20,18 +20,21 @@ export default function FailedPage() {
           </h2>
           <p className="mt-4 text-sm sm:text-base text-gray-600 text-center leading-relaxed">
             We encountered an issue while setting up your payment method with
-            Stripe. Please try again or reach out to support for assistance.
+            Stripe. Don't worry - we have not charged you anything yet. We will
+            contact you shortly to resolve this issue. In the meantime, you can
+            retry setting up your payment method or contact our support team for
+            assistance.
           </p>
         </div>
 
         {/* Action Buttons */}
         <div className="space-y-4">
           <Link
-            href="/register"
+            href="/login"
             className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
           >
             <ArrowLeft className="mr-2 h-5 w-5" />
-            Retry Payment Setup
+            You can logged in to your dashboard
           </Link>
         </div>
 
