@@ -2,8 +2,19 @@
 
 import { ArrowLeft, XCircle } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function FailedPage() {
+  // Clear localStorage on mount
+  useEffect(() => {
+    localStorage.removeItem("sellerSignup_step");
+    localStorage.removeItem("sellerSignup_showOtp");
+    localStorage.removeItem("sellerSignup_sellerId");
+    localStorage.removeItem("sellerSignup_formData");
+    localStorage.removeItem("sellerSignup_agreeTerms");
+    localStorage.removeItem("sellerSignup_errors");
+    console.log("localStorage cleared on SuccessPage");
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-lg w-full space-y-8 bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-100">
