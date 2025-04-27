@@ -223,7 +223,13 @@ export const refreshAccessToken = async (
   next: NextFunction
 ) => {
   try {
-    const refreshToken = req.cookies.refresh_token;
+    const { type } = req.body;
+    let refreshToken;
+    if (type === "user") {
+      refreshToken = req.cookies["refresh_token"];
+    } else if (type === "seller") {
+      refreshToken = req.cookies["refresh_seller_token"];
+    }
     if (!refreshToken) {
       throw new ValidationError("Refresh token not found");
     }
@@ -240,11 +246,16 @@ export const refreshAccessToken = async (
         id: decoded.id,
         email: decoded.email,
         name: decoded.name,
+        role: type,
       },
       process.env.JWT_SECRET_KEY!,
-      { expiresIn: "1h" }
+      { expiresIn: "1m" }
     );
-    setCookie(res, "access_token", accessToken);
+    setCookie(
+      res,
+      type === "user" ? "access_token" : "access_seller_token",
+      accessToken
+    );
     res.status(200).json({ message: "Access token refreshed successfully" });
   } catch (error: any) {
     return next(error);
@@ -415,7 +426,7 @@ export const sellerLogin = async (
       },
       process.env.JWT_SECRET_KEY!,
       {
-        expiresIn: "15m",
+        expiresIn: "1m",
       }
     );
 

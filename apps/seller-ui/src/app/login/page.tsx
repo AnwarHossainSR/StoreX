@@ -26,7 +26,8 @@ export default function SellerLoginPage() {
     if (sellerLoginStatus === "success") {
       setSuccess("Login successful! Redirecting...", { autoDismiss: 3000 });
       setTimeout(() => {
-        window.location.href = "/";
+        console.log("Redirecting to home page...");
+        // window.location.href = "/";
       }, 3000);
     } else if (sellerLoginError) {
       setError(sellerLoginError, {

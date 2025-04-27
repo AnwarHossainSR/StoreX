@@ -80,8 +80,9 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
   };
 
   useEffect(() => {
-    if (!isLoading && !user) window.location.href = "/login";
-  }, [isLoading, user]);
+    console.log("layout:", user);
+    if (!isLoading && !user) alert("You are not logged in");
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-900">

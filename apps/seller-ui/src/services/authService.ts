@@ -130,9 +130,15 @@ export const authService = {
   },
 
   async refreshToken() {
+    const data = {
+      type: "seller",
+    };
     try {
-      const response = await apiClient.post<ApiResponse<never>>(
-        `${AUTH_BASE_URL}/refresh-token`
+      console.log("Refreshing token", data);
+      const response = await apiClient.post<ApiResponse<any>>(
+        `${AUTH_BASE_URL}/refresh-token`,
+        data,
+        { withCredentials: true }
       );
       return response.data;
     } catch (error) {

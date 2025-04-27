@@ -161,9 +161,13 @@ export const authService = {
 
   // Refresh access token
   async refreshToken() {
+    const data = {
+      type: "user",
+    };
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/refresh-token"
+        "/refresh-token",
+        data
       );
       return response.data;
     } catch (error) {

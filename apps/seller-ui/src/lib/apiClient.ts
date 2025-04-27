@@ -123,7 +123,9 @@ apiClient.interceptors.response.use(
         // Use Gateway's auth route for refresh token
         await axios.post(
           `${API_BASE_URL}/auth/refresh-token`,
-          {},
+          {
+            type: "seller",
+          },
           { withCredentials: true }
         );
 
