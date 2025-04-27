@@ -22,7 +22,7 @@ app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use(cookieParser());
 app.set("trust proxy", 1);
 
-// apply rate limiting
+// Apply rate limiting
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -34,9 +34,15 @@ app.use(
   })
 );
 
-app.use("/", proxy("http://localhost:6001"));
-app.use("/product", proxy("http://localhost:6002"));
+// Route-specific proxying
+app.use("/api/auth", proxy("http://localhost:6001/api")); // Proxy auth requests to Auth Service
+app.use("/api/products", proxy("http://localhost:6002/api")); // Proxy product requests to Product Service
+app.use("/api/auth/api-docs", proxy("http://localhost:6001/api-docs"));
+app.use("/api/auth/docs-json", proxy("http://localhost:6001/docs-json"));
+app.use("/api/products/api-docs", proxy("http://localhost:6002/api-docs"));
+app.use("/api/products/docs-json", proxy("http://localhost:6002/docs-json"));
 
+// Health check endpoint
 app.use("/gateway-health", (req, res) => {
   res.send({ status: "ok", message: "API Gateway is healthy" });
 });

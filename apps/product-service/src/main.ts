@@ -10,6 +10,7 @@ dotenv.config();
 
 // @ts-ignore
 import swaggerDocument from "./swagger-output.json";
+
 const host = process.env.HOST ?? "localhost";
 const port = process.env.PORT ? Number(process.env.PORT) : 6002;
 
@@ -17,24 +18,35 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"],
+    origin: ["http://localhost:3000", "http://localhost:8080"], // Allow Gateway and frontend
     allowedHeaders: ["Authorization", "Content-Type"],
     credentials: true,
   })
 );
+
+app.use(express.json());
+app.use(cookieParser());
+
+// Health check
+app.get("/", (req, res) => {
+  res.send({ message: "Product Service is healthy" });
+});
+
+// Optional: Add a base /api route for debugging
+app.get("/api", (req, res) => {
+  res.send({ message: "Product Service API" });
+});
+
+// Swagger documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get("/docs-json", (req, res) => {
   res.send(swaggerDocument);
 });
 
-app.use(express.json());
-app.use(cookieParser());
-
-app.get("/", (req, res) => {
-  res.send({ message: "Product Service is healthy" });
-});
-
+// Product routes
 app.use("/api", productRoutes);
+
+// Error handling
 app.use(errorMiddleware);
 
 const server = app.listen(port, host, () => {
@@ -43,3 +55,10 @@ const server = app.listen(port, host, () => {
 });
 
 server.on("error", console.error);
+
+// process.on("SIGTERM", () => {
+//   console.log("SIGTERM signal received: closing HTTP server");
+//   server.close(() => {
+//     console.log("HTTP server closed");
+//   });
+// });
