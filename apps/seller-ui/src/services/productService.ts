@@ -45,6 +45,13 @@ export interface BackendErrorResponse {
   details?: any;
 }
 
+// Define the raw response type from the backend
+interface RawCategoriesResponse {
+  id: string;
+  categories: string[];
+  subCategories: Record<string, string[]>;
+}
+
 export const productService = {
   async createProduct(data: {
     sellerId: string;
@@ -99,10 +106,18 @@ export const productService = {
 
   async getCategories() {
     try {
-      const response = await apiClient.get<ApiResponse<Category[]>>(
+      const response = await apiClient.get<RawCategoriesResponse>(
         `${PRODUCT_BASE_URL}/get-categories`
       );
-      return response.data;
+      // Transform the raw response into ApiResponse<Category[]>
+      const transformedData: ApiResponse<Category[]> = {
+        message: "Categories fetched successfully",
+        data: response.data.categories.map((name) => ({
+          name,
+          subCategories: response.data.subCategories[name] || [],
+        })),
+      };
+      return transformedData;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Failed to fetch categories", {

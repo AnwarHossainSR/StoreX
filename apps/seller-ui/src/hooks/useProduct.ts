@@ -1,15 +1,13 @@
 // hooks/useProduct.ts
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   ApiResponse,
   BackendErrorResponse,
   Category,
   Product,
   productService,
-  Property,
-  Specification,
-} from "@/services/productService";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+} from "../services/productService";
 
 export const useProduct = () => {
   const router = useRouter();
@@ -28,15 +26,15 @@ export const useProduct = () => {
       brand: string;
       colors: string[];
       image?: File;
-      specifications: Specification[];
-      properties: Property[];
+      specifications: any;
+      properties: any;
       category: string;
       subCategory?: string;
     }
   >({
     mutationFn: productService.createProduct,
     onSuccess: () => {
-      router.push("/seller/products"); // Redirect to product list or dashboard
+      router.push("/seller/products"); // Updated to match CreateProductPage redirect
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
@@ -61,7 +59,7 @@ export const useProduct = () => {
       createProductMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    categories: categoriesQuery.data?.data || [],
+    categories: categoriesQuery.data?.data || [], // Access data property
     categoriesStatus: categoriesQuery.status,
     categoriesError: categoriesQuery.error?.message,
     categoriesErrorDetails: (

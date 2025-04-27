@@ -11,7 +11,7 @@ export const getCategories = async (
     if (!config) {
       throw new Error("Site Config not found");
     }
-    res.status(200).json({ categories: config });
+    res.status(200).json(config);
   } catch (error) {
     return next(error);
   }

@@ -135,7 +135,7 @@ apiClient.interceptors.response.use(
         console.error("Token refresh failed", refreshError);
         processQueue(refreshError);
         if (typeof window !== "undefined") {
-          window.location.href = "/seller-login";
+          window.location.href = "/login";
         }
         return Promise.reject(refreshError);
       } finally {

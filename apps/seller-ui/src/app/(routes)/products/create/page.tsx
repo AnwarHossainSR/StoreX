@@ -1,3 +1,4 @@
+// pages/CreateProductPage.tsx
 "use client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
@@ -51,9 +52,11 @@ export default function CreateProductPage() {
 
   useEffect(() => {
     if (createProductStatus === "success") {
-      setSuccess("Product created successfully!", { autoDismiss: 3000 });
+      setSuccess("Product created successfully! Redirecting...", {
+        autoDismiss: 3000,
+      });
       setTimeout(() => {
-        window.location.href = "/products";
+        window.location.href = "/seller/products";
       }, 3000);
     } else if (createProductError) {
       setError(createProductError, {
@@ -96,27 +99,33 @@ export default function CreateProductPage() {
     let isValid = true;
 
     if (!title) {
-      newErrors.title = "Product title is required";
+      newErrors.title = "Please enter the product title";
       isValid = false;
     }
     if (!description) {
-      newErrors.description = "Description is required";
+      newErrors.description = "Please enter the product description";
       isValid = false;
     }
     if (!tags) {
-      newErrors.tags = "Tags are required";
+      newErrors.tags = "Please enter product tags";
+      isValid = false;
+    } else if (tags.split(",").every((tag) => tag.trim() === "")) {
+      newErrors.tags = "Please enter valid tags";
       isValid = false;
     }
     if (!warranty) {
-      newErrors.warranty = "Warranty information is required";
+      newErrors.warranty = "Please enter warranty information";
       isValid = false;
     }
     if (!slug) {
-      newErrors.slug = "Slug is required";
+      newErrors.slug = "Please enter the product slug";
+      isValid = false;
+    } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      newErrors.slug = "Slug must be lowercase, alphanumeric, and hyphenated";
       isValid = false;
     }
     if (!category) {
-      newErrors.category = "Category is required";
+      newErrors.category = "Please select a category";
       isValid = false;
     }
 
@@ -132,12 +141,15 @@ export default function CreateProductPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context or state
+      const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
       createProduct({
         sellerId,
         title,
         description,
-        tags: tags.split(",").map((tag) => tag.trim()),
+        tags: tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag),
         warranty,
         slug,
         brand,
@@ -155,7 +167,7 @@ export default function CreateProductPage() {
     <div className="p-6 bg-white rounded-lg shadow-sm">
       <h1 className="text-2xl font-bold text-gray-800 mb-2">Create Product</h1>
       <nav className="text-sm text-gray-500 mb-6">
-        Dashboard {">"} Create Product
+        Dashboard &gt; Create Product
       </nav>
 
       {alert && (
@@ -173,7 +185,6 @@ export default function CreateProductPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Image uploader */}
           <div>
             <div className="border-dashed border-2 border-gray-300 rounded-lg h-80 flex items-center justify-center relative">
               {previewUrl ? (
@@ -208,7 +219,6 @@ export default function CreateProductPage() {
             </div>
           </div>
 
-          {/* Form fields */}
           <div className="col-span-2 space-y-4">
             <InputField
               label="Product Title"
@@ -218,7 +228,6 @@ export default function CreateProductPage() {
               onChange={setTitle}
               error={errors.title}
             />
-
             <TextAreaField
               label="Short Description"
               required
@@ -228,7 +237,6 @@ export default function CreateProductPage() {
               onChange={setDescription}
               error={errors.description}
             />
-
             <InputField
               label="Tags"
               required
@@ -237,7 +245,6 @@ export default function CreateProductPage() {
               onChange={setTags}
               error={errors.tags}
             />
-
             <InputField
               label="Warranty"
               required
@@ -246,7 +253,6 @@ export default function CreateProductPage() {
               onChange={setWarranty}
               error={errors.warranty}
             />
-
             <InputField
               label="Slug"
               required
@@ -255,14 +261,12 @@ export default function CreateProductPage() {
               onChange={setSlug}
               error={errors.slug}
             />
-
             <InputField
               label="Brand"
               placeholder="Apple"
               value={brand}
               onChange={setBrand}
             />
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Category <span className="text-red-500">*</span>
@@ -271,7 +275,7 @@ export default function CreateProductPage() {
                 value={category}
                 onChange={(e) => {
                   setCategory(e.target.value);
-                  setSubCategory(""); // Reset subcategory when category changes
+                  setSubCategory("");
                 }}
                 className={`block w-full px-3 py-2 border ${
                   errors.category ? "border-red-300" : "border-gray-300"
@@ -294,7 +298,6 @@ export default function CreateProductPage() {
                 </p>
               )}
             </div>
-
             {category && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -316,14 +319,12 @@ export default function CreateProductPage() {
                 </select>
               </div>
             )}
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Colors
               </label>
               <ColorPicker colors={colors} onChange={setColors} />
             </div>
-
             <CustomSpecifications specifications={specs} onChange={setSpecs} />
             <CustomProperties
               properties={properties}
@@ -331,15 +332,14 @@ export default function CreateProductPage() {
             />
           </div>
         </div>
-
         <div className="mt-6 flex justify-end">
           <button
             type="submit"
             disabled={createProductStatus === "pending"}
-            className={`px-6 py-2 text-white rounded-md ${
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
               createProductStatus === "pending"
-                ? "bg-blue-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
+                ? "opacity-70 cursor-not-allowed"
+                : ""
             }`}
           >
             {createProductStatus === "pending" ? "Saving..." : "Save Product"}
