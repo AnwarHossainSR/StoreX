@@ -206,7 +206,8 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
                         isCollapsed ? "justify-center" : ""
                       }`}
                     >
-                      <item.icon className="h-5 w-5" />
+                      <item.icon className="h-5 w-5" />{" "}
+                      <span className="ml-3">{item.name}</span>
                     </button>
                   ) : (
                     <Link
