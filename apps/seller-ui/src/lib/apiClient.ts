@@ -1,3 +1,4 @@
+// lib/apiClient.ts
 import axios, {
   AxiosInstance,
   AxiosRequestConfig,
@@ -5,20 +6,19 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 
-// Extend InternalAxiosRequestConfig to include _retry and _authOptional
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
   _authOptional?: boolean;
 }
 
-const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api`;
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api`;
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Important for cookies
+  withCredentials: true,
 });
 
 interface FailedRequest {
@@ -46,7 +46,6 @@ const processQueue = (error: any) => {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Helper to mark endpoints where auth is optional
 export const withOptionalAuth = (
   config: AxiosRequestConfig
 ): AxiosRequestConfig & { _authOptional?: boolean } => {
@@ -58,6 +57,13 @@ export const withOptionalAuth = (
 
 apiClient.interceptors.request.use(
   (config: CustomAxiosRequestConfig) => {
+    // If the URL is absolute (starts with http:// or https://), bypass baseURL
+    if (
+      config.url?.startsWith("http://") ||
+      config.url?.startsWith("https://")
+    ) {
+      config.baseURL = undefined;
+    }
     console.log(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
       retry: !!config._retry,
       authOptional: !!config._authOptional,
@@ -75,7 +81,6 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest: CustomAxiosRequestConfig = error.config;
 
-    // If this is an auth-optional endpoint and it failed with 401, just return the error
     if (originalRequest?._authOptional && error.response?.status === 401) {
       console.log(
         "Auth-optional endpoint failed with 401, returning error",
@@ -87,7 +92,7 @@ apiClient.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== "/refresh-token"
+      !originalRequest.url?.endsWith("/refresh-token")
     ) {
       if (isRefreshing) {
         console.log(
@@ -115,16 +120,16 @@ apiClient.interceptors.response.use(
         console.log(
           `Attempting to refresh token (attempt ${refreshAttemptCount})`
         );
-        await delay(1000); // Delay to avoid rate limiting
-        await axios.post(
-          `${API_BASE_URL}/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
+        await delay(1000);
+        const refreshUrl = `${
+          process.env.NEXT_PUBLIC_AUTH_SERVICE_URL ||
+          "http://localhost:3001/api"
+        }/refresh-token`;
+        await axios.post(refreshUrl, {}, { withCredentials: true });
 
         console.log("Token refreshed successfully");
         processQueue(null);
-        refreshAttemptCount = 0; // Reset on success
+        refreshAttemptCount = 0;
         return apiClient(originalRequest);
       } catch (refreshError) {
         console.error("Token refresh failed", refreshError);

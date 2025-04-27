@@ -1,6 +1,10 @@
 // services/productService.ts
 import apiClient from "@/lib/apiClient";
 
+const PRODUCT_BASE_URL =
+  `${process.env.NEXT_PUBLIC_SERVER_URL}/product/api` ||
+  "http://localhost:8080/product/api";
+
 export interface Category {
   name: string;
   subCategories: string[];
@@ -44,7 +48,6 @@ export interface BackendErrorResponse {
 }
 
 export const productService = {
-  // Create a new product
   async createProduct(data: {
     sellerId: string;
     title: string;
@@ -81,7 +84,7 @@ export const productService = {
       }
 
       const response = await apiClient.post<ApiResponse<Product>>(
-        "/create-product",
+        `${PRODUCT_BASE_URL}/create-product`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -96,11 +99,10 @@ export const productService = {
     }
   },
 
-  // Fetch categories
   async getCategories() {
     try {
       const response = await apiClient.get<ApiResponse<Category[]>>(
-        "/get-categories"
+        `${PRODUCT_BASE_URL}/get-categories`
       );
       return response.data;
     } catch (error) {
