@@ -2,6 +2,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
+import apiClient from "@/lib/apiClient";
 import { ColorPicker } from "@/packages/components/colorPicker";
 import {
   CustomProperties,
@@ -168,11 +169,37 @@ export default function CreateProductPage() {
     router,
   ]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const makeBase64 = (file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        if (reader.result) {
+          resolve(reader.result as string);
+        } else {
+          reject(new Error("Failed to read file"));
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error("Failed to read file"));
+      };
+    });
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+    if (!file) return;
+    setImageFile(file);
+    const fileBase64 = await makeBase64(file);
+    setPreviewUrl(fileBase64);
+
+    try {
+      const response = await apiClient.post("/products/upload-product-image", {
+        file: fileBase64,
+      });
+      console.log("Image uploaded successfully:", response.data);
+    } catch (error: any) {
+      console.log("Error uploading image:", error);
     }
   };
 
