@@ -19,10 +19,11 @@
       }
     ],
     "paths": {
-      "@/*": ["apps/seller-ui/src/*"]
+      "@/*": ["apps/seller-ui/src/*"],
+      "@/packages/*": ["packages/*"]
     },
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "../../",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": [
@@ -33,7 +34,8 @@
     "src/**/*.jsx",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "../../packages/**/*.tsx"
   ],
   "exclude": [
     "out-tsc",
