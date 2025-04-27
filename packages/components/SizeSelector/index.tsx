@@ -7,6 +7,7 @@ export interface SizeSelectorProps {
   availableSizes?: string[];
   className?: string;
   error?: string;
+  disabled?: boolean;
 }
 
 export const SizeSelector: React.FC<SizeSelectorProps> = ({
@@ -15,6 +16,7 @@ export const SizeSelector: React.FC<SizeSelectorProps> = ({
   availableSizes = ["XS", "S", "M", "L", "XL", "XXL"],
   className = "",
   error,
+  disabled,
 }) => {
   const toggleSize = (size: string) => {
     if (sizes.includes(size)) {
@@ -38,6 +40,7 @@ export const SizeSelector: React.FC<SizeSelectorProps> = ({
                 ? "bg-blue-600 text-white border-blue-600"
                 : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
             }`}
+            disabled={disabled}
           >
             {size}
           </button>

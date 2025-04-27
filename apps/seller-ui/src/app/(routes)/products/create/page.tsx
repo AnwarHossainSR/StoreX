@@ -13,7 +13,7 @@ import { InputField } from "@/packages/components/InputField";
 import RichTextEditor from "@/packages/components/RichTextEditor";
 import { SizeSelector } from "@/packages/components/SizeSelector";
 import { TextAreaField } from "@/packages/components/TextAreaField";
-import { Edit2, Upload } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit2, Eye, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -40,6 +40,15 @@ export default function CreateProductPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [specs, setSpecs] = useState<Specification[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({
+    basic: true,
+    media: true,
+    pricing: true,
+    inventory: true,
+    specifications: true,
+  });
+
   const [errors, setErrors] = useState<{
     title?: string;
     shortDescription?: string;
@@ -59,6 +68,7 @@ export default function CreateProductPage() {
   const router = useRouter();
   const {
     createProduct,
+    saveDraft,
     createProductStatus,
     createProductError,
     createProductErrorDetails,
@@ -106,98 +116,86 @@ export default function CreateProductPage() {
     }
   };
 
-  const validateForm = () => {
-    const newErrors: {
-      title?: string;
-      shortDescription?: string;
-      detailedDescription?: string;
-      tags?: string;
-      warranty?: string;
-      slug?: string;
-      category?: string;
-      regularPrice?: string;
-      salePrice?: string;
-      videoUrl?: string;
-      stock?: string;
-      sizes?: string;
-    } = {};
+  const validateForm = (isDraft: boolean = false) => {
+    const newErrors: typeof errors = {};
     let isValid = true;
 
-    if (!title) {
-      newErrors.title = "Please enter the product title";
-      isValid = false;
-    }
-    if (!shortDescription) {
-      newErrors.shortDescription = "Please enter the short description";
-      isValid = false;
-    }
-    if (!detailedDescription || detailedDescription === "<p><br></p>") {
-      newErrors.detailedDescription = "Please enter the detailed description";
-      isValid = false;
-    }
-    if (!tags) {
-      newErrors.tags = "Please enter product tags";
-      isValid = false;
-    } else if (tags.split(",").every((tag) => tag.trim() === "")) {
-      newErrors.tags = "Please enter valid tags";
-      isValid = false;
-    }
-    if (!warranty) {
-      newErrors.warranty = "Please enter warranty information";
-      isValid = false;
-    }
-    if (!slug) {
-      newErrors.slug = "Please enter the product slug";
-      isValid = false;
-    } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      newErrors.slug = "Slug must be lowercase, alphanumeric, and hyphenated";
-      isValid = false;
-    }
-    if (!category) {
-      newErrors.category = "Please select a category";
-      isValid = false;
-    }
-    if (!regularPrice) {
-      newErrors.regularPrice = "Please enter the regular price";
-      isValid = false;
-    } else if (isNaN(Number(regularPrice)) || Number(regularPrice) <= 0) {
-      newErrors.regularPrice = "Regular price must be a positive number";
-      isValid = false;
-    }
-    if (salePrice && (isNaN(Number(salePrice)) || Number(salePrice) <= 0)) {
-      newErrors.salePrice = "Sale price must be a positive number";
-      isValid = false;
-    } else if (salePrice && Number(salePrice) >= Number(regularPrice)) {
-      newErrors.salePrice = "Sale price must be less than regular price";
-      isValid = false;
-    }
-    if (videoUrl) {
-      const youtubeRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+$/;
-      const vimeoRegex = /^https?:\/\/(www\.)?vimeo\.com\/.+$/;
-      if (!youtubeRegex.test(videoUrl) && !vimeoRegex.test(videoUrl)) {
-        newErrors.videoUrl = "Please enter a valid YouTube or Vimeo embed URL";
+    if (!isDraft) {
+      if (!title) {
+        newErrors.title = "Product title is required";
+        isValid = false;
+      }
+      if (!shortDescription) {
+        newErrors.shortDescription = "Short description is required";
+        isValid = false;
+      }
+      if (!detailedDescription || detailedDescription === "<p><br></p>") {
+        newErrors.detailedDescription = "Detailed description is required";
+        isValid = false;
+      }
+      if (!tags) {
+        newErrors.tags = "At least one tag is required";
+        isValid = false;
+      }
+      if (!warranty) {
+        newErrors.warranty = "Warranty information is required";
+        isValid = false;
+      }
+      if (!slug) {
+        newErrors.slug = "Product slug is required";
+        isValid = false;
+      } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+        newErrors.slug = "Slug must be lowercase, alphanumeric, and hyphenated";
+        isValid = false;
+      }
+      if (!category) {
+        newErrors.category = "Category selection is required";
+        isValid = false;
+      }
+      if (!regularPrice) {
+        newErrors.regularPrice = "Regular price is required";
+        isValid = false;
+      } else if (isNaN(Number(regularPrice)) || Number(regularPrice) <= 0) {
+        newErrors.regularPrice = "Regular price must be a positive number";
+        isValid = false;
+      }
+      if (salePrice && (isNaN(Number(salePrice)) || Number(salePrice) <= 0)) {
+        newErrors.salePrice = "Sale price must be a positive number";
+        isValid = false;
+      }
+      if (salePrice && Number(salePrice) >= Number(regularPrice)) {
+        newErrors.salePrice = "Sale price must be less than regular price";
+        isValid = false;
+      }
+      if (
+        videoUrl &&
+        !/^(https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)\/.+)$/.test(
+          videoUrl
+        )
+      ) {
+        newErrors.videoUrl = "Please enter a valid YouTube or Vimeo URL";
+        isValid = false;
+      }
+      if (!stock) {
+        newErrors.stock = "Stock quantity is required";
+        isValid = false;
+      } else if (
+        isNaN(Number(stock)) ||
+        Number(stock) < 0 ||
+        !Number.isInteger(Number(stock))
+      ) {
+        newErrors.stock = "Stock must be a non-negative integer";
+        isValid = false;
+      }
+      if (sizes.length === 0) {
+        newErrors.sizes = "At least one size is required";
         isValid = false;
       }
     }
-    if (!stock) {
-      newErrors.stock = "Please enter the stock quantity";
-      isValid = false;
-    } else if (
-      isNaN(Number(stock)) ||
-      Number(stock) < 0 ||
-      !Number.isInteger(Number(stock))
-    ) {
-      newErrors.stock = "Stock must be a non-negative integer";
-      isValid = false;
-    }
-    if (sizes.length === 0) {
-      newErrors.sizes = "Please select at least one size";
-      isValid = false;
-    }
 
     setErrors(newErrors);
-    if (!isValid) {
-      setError("Please correct the following errors:", { details: newErrors });
+    if (!isValid && !isDraft) {
+      setError("Please correct the form errors", { details: newErrors });
     } else {
       clearAlert();
     }
@@ -207,7 +205,7 @@ export default function CreateProductPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
+      const sellerId = "SELLER_ID";
       createProduct({
         sellerId,
         title,
@@ -242,19 +240,87 @@ export default function CreateProductPage() {
     }
   };
 
+  const handleSaveDraft = () => {
+    const sellerId = "SELLER_ID";
+    saveDraft({
+      sellerId,
+      title,
+      description: shortDescription,
+      detailedDescription,
+      tags: tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag),
+      warranty,
+      slug,
+      brand,
+      colors,
+      image: imageFile || undefined,
+      specifications: specs,
+      properties,
+      category,
+      subCategory: subCategory || undefined,
+      regularPrice: regularPrice ? Number(regularPrice) : undefined,
+      salePrice: salePrice ? Number(salePrice) : undefined,
+      videoUrl: videoUrl || undefined,
+      cashOnDelivery,
+      stock: stock ? Number(stock) : undefined,
+      sizes,
+      discountCodes:
+        discountCodes
+          .split(",")
+          .map((code) => code.trim())
+          .filter((code) => code) || undefined,
+      mode: "draft",
+    });
+    setSuccess("Draft saved successfully!", { autoDismiss: 3000 });
+  };
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const openPreview = () => {
+    setIsPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setIsPreviewOpen(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="overflow-hidden">
-          <div className=" px-8 py-6">
-            <h1 className="text-3xl font-bold">Create New Product</h1>
+        <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+          <div className="px-8 py-6 bg-gradient-to-r from-blue-600 to-blue-800">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  Create New Product
+                </h1>
+                <p className="text-blue-100 mt-1">
+                  Fill in the details to add a new product to your catalog
+                </p>
+              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  mode === "draft"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : mode === "edit"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                }`}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </span>
+            </div>
           </div>
 
           {alert && (
-            <div className="px-8 pt-6">
+            <div className="px-8 py-4">
               <Alert
                 variant={alert.variant}
-                className="mb-4 rounded-lg"
+                className="rounded-lg"
                 autoDismiss={alert.autoDismiss}
                 onDismiss={clearAlert}
                 details={alert.details}
@@ -265,287 +331,404 @@ export default function CreateProductPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="p-8 space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Column 1: Image */}
-              <div className="space-y-6">
-                <div className="relative group">
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 transition-colors group-hover:border-blue-400">
-                    {previewUrl ? (
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="object-cover h-full w-full rounded-xl"
+          <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            {/* Basic Information Section */}
+            <div className="border rounded-lg">
+              <button
+                type="button"
+                className="w-full px-4 py-3 flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-t-lg"
+                onClick={() => toggleSection("basic")}
+              >
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Basic Information
+                </h2>
+                {expandedSections.basic ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </button>
+              {expandedSections.basic && (
+                <div className="p-4 space-y-4">
+                  <InputField
+                    label="Product Title"
+                    required
+                    placeholder="Enter product title"
+                    value={title}
+                    onChange={setTitle}
+                    error={errors.title}
+                    helpText="Enter a clear, descriptive product name"
+                    disabled={mode === "lock"}
+                  />
+                  <InputField
+                    label="Slug"
+                    required
+                    placeholder="product-slug"
+                    value={slug}
+                    onChange={setSlug}
+                    error={errors.slug}
+                    helpText="Use lowercase letters, numbers, and hyphens"
+                    disabled={mode === "lock"}
+                  />
+                  <TextAreaField
+                    label="Short Description"
+                    required
+                    placeholder="Enter brief product description"
+                    value={shortDescription}
+                    onChange={setShortDescription}
+                    error={errors.shortDescription}
+                    helpText="Max 150 words"
+                    rows={4}
+                    disabled={mode === "lock"}
+                  />
+                  <RichTextEditor
+                    label="Detailed Description"
+                    required
+                    value={detailedDescription}
+                    onChange={setDetailedDescription}
+                    placeholder="Enter detailed product description"
+                    error={errors.detailedDescription}
+                    helpText="Use formatting to highlight key features"
+                    disabled={mode === "lock"}
+                  />
+                  <InputField
+                    label="Tags"
+                    required
+                    placeholder="electronics, smartphone, wireless"
+                    value={tags}
+                    onChange={setTags}
+                    error={errors.tags}
+                    helpText="Separate tags with commas"
+                    disabled={mode === "lock"}
+                  />
+                  <InputField
+                    label="Brand"
+                    placeholder="Enter brand name"
+                    value={brand}
+                    onChange={setBrand}
+                    helpText="Optional brand name"
+                    disabled={mode === "lock"}
+                  />
+                  <InputField
+                    label="Warranty"
+                    required
+                    placeholder="1 Year Warranty"
+                    value={warranty}
+                    onChange={setWarranty}
+                    error={errors.warranty}
+                    helpText="Specify warranty terms"
+                    disabled={mode === "lock"}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Media Section */}
+            <div className="border rounded-lg">
+              <button
+                type="button"
+                className="w-full px-4 py-3 flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-t-lg"
+                onClick={() => toggleSection("media")}
+              >
+                <h2 className="text-lg font-semibold text-gray-900">Media</h2>
+                {expandedSections.media ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </button>
+              {expandedSections.media && (
+                <div className="p-4 space-y-4">
+                  <div className="relative group">
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 hover:border-blue-400 transition-colors">
+                      {previewUrl ? (
+                        <img
+                          src={previewUrl}
+                          alt="Product Preview"
+                          className="object-cover h-full w-full rounded-xl"
+                        />
+                      ) : (
+                        <div className="text-center text-gray-500">
+                          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                          <p className="mt-2">Recommended: 765 x 850</p>
+                          <p>Upload product image</p>
+                          <p className="text-xs">Optimal ratio: 3:4</p>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-blue-50 transition-colors"
+                        disabled={mode === "lock"}
+                      >
+                        <Edit2 className="h-5 w-5 text-blue-600" />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageChange}
+                        disabled={mode === "lock"}
                       />
-                    ) : (
-                      <div className="text-center text-gray-500">
-                        <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                        <p className="mt-2">765 x 850</p>
-                        <p>Upload product image</p>
-                        <p className="text-xs">Optimal ratio: 3:4</p>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-blue-50 transition-colors"
-                    >
-                      <Edit2 className="h-5 w-5 text-blue-600" />
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageChange}
+                    </div>
+                  </div>
+                  <InputField
+                    label="Video URL"
+                    placeholder="YouTube/Vimeo URL"
+                    value={videoUrl}
+                    onChange={setVideoUrl}
+                    error={errors.videoUrl}
+                    helpText="Optional promotional video URL"
+                    disabled={mode === "lock"}
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Colors
+                    </label>
+                    <ColorPicker
+                      colors={colors}
+                      onChange={setColors}
+                      disabled={mode === "lock"}
                     />
                   </div>
                 </div>
-                <InputField
-                  label="Product Title"
-                  required
-                  placeholder="Enter product title"
-                  value={title}
-                  onChange={setTitle}
-                  error={errors.title}
-                  helpText="Enter a concise product name"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <InputField
-                  label="Slug"
-                  required
-                  placeholder="product-slug"
-                  value={slug}
-                  onChange={setSlug}
-                  error={errors.slug}
-                  helpText="Use lowercase letters, numbers, and hyphens"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <TextAreaField
-                  label="Short Description"
-                  required
-                  helpText="Max 150 words"
-                  placeholder="Enter product description for quick view"
-                  value={shortDescription}
-                  onChange={setShortDescription}
-                  error={errors.shortDescription}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <InputField
-                  label="Tags"
-                  required
-                  placeholder="apple, flagship"
-                  value={tags}
-                  onChange={setTags}
-                  error={errors.tags}
-                  helpText="Separate tags with commas"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <InputField
-                  label="Warranty"
-                  required
-                  placeholder="1 Year / No Warranty"
-                  value={warranty}
-                  onChange={setWarranty}
-                  error={errors.warranty}
-                  helpText="Specify warranty duration or terms"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Column 2: Specifications and Properties */}
-              <div className="space-y-6">
-                <InputField
-                  label="Brand"
-                  placeholder="Apple"
-                  value={brand}
-                  onChange={setBrand}
-                  helpText="Enter the brand name (optional)"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value);
-                      setSubCategory("");
-                    }}
-                    className={`block w-full px-4 py-3 border ${
-                      errors.category ? "border-red-300" : "border-gray-300"
-                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 bg-white`}
-                    aria-invalid={!!errors.category}
-                    aria-describedby={
-                      errors.category ? "category-error" : undefined
-                    }
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.name} value={cat.name}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.category && (
-                    <p
-                      className="mt-1 text-sm text-red-600"
-                      id="category-error"
-                    >
-                      {errors.category}
-                    </p>
-                  )}
-                </div>
-                {category && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Subcategory
-                    </label>
-                    <select
-                      value={subCategory}
-                      onChange={(e) => setSubCategory(e.target.value)}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 bg-white"
-                    >
-                      <option value="">Select a subcategory (optional)</option>
-                      {categories
-                        .find((cat) => cat.name === category)
-                        ?.subCategories.map((sub) => (
-                          <option key={sub} value={sub}>
-                            {sub}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                )}
-                <RichTextEditor
-                  label="Detailed Description"
-                  required
-                  value={detailedDescription}
-                  onChange={setDetailedDescription}
-                  placeholder="Enter detailed product description"
-                  error={errors.detailedDescription}
-                  helpText="Use formatting, images (resize/align), and media to highlight features"
-                  className="transition-all duration-200"
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Colors
-                  </label>
-                  <ColorPicker colors={colors} onChange={setColors} />
-                </div>
-                <CustomSpecifications
-                  specifications={specs}
-                  onChange={setSpecs}
-                />
-                <CustomProperties
-                  properties={properties}
-                  onChange={setProperties}
-                />
-
-                <div className="flex items-center space-x-3 gap-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Cash on Delivery
-                  </label>
-                  <input
-                    type="checkbox"
-                    checked={cashOnDelivery}
-                    onChange={(e) => setCashOnDelivery(e.target.checked)}
-                    className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Column 3: Other Fields */}
-              <div className="space-y-6">
-                <InputField
-                  label="Regular Price"
-                  required
-                  type="number"
-                  placeholder="Enter regular price"
-                  value={regularPrice}
-                  onChange={setRegularPrice}
-                  error={errors.regularPrice}
-                  helpText="Price in USD"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <InputField
-                  label="Sale Price"
-                  type="number"
-                  placeholder="Enter sale price (optional)"
-                  value={salePrice}
-                  onChange={setSalePrice}
-                  error={errors.salePrice}
-                  helpText="Discounted price, if applicable"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <InputField
-                  label="Video URL"
-                  placeholder="Enter YouTube/Vimeo embed URL (optional)"
-                  value={videoUrl}
-                  onChange={setVideoUrl}
-                  error={errors.videoUrl}
-                  helpText="E.g., https://www.youtube.com/watch?v=..."
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-
-                <InputField
-                  label="Stock Quantity"
-                  required
-                  type="number"
-                  placeholder="Enter stock quantity"
-                  value={stock}
-                  onChange={setStock}
-                  error={errors.stock}
-                  helpText="Number of items in stock"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <SizeSelector
-                  sizes={sizes}
-                  onChange={setSizes}
-                  error={errors.sizes}
-                  className="transition-all duration-200"
-                />
-                <InputField
-                  label="Discount Codes"
-                  placeholder="CODE1, CODE2 (optional)"
-                  value={discountCodes}
-                  onChange={setDiscountCodes}
-                  helpText="Comma-separated discount codes"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Mode
-                  </label>
-                  <select
-                    value={mode}
-                    onChange={(e) =>
-                      setMode(e.target.value as "draft" | "edit" | "lock")
-                    }
-                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 bg-white"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="edit">Edit</option>
-                    <option value="lock">Lock</option>
-                  </select>
-                </div>
-              </div>
+              )}
             </div>
-            <div className="flex justify-end space-x-4">
+
+            {/* Pricing Section */}
+            <div className="border rounded-lg">
               <button
                 type="button"
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all duration-200"
+                className="w-full px-4 py-3 flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-t-lg"
+                onClick={() => toggleSection("pricing")}
+              >
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Pricing & Discounts
+                </h2>
+                {expandedSections.pricing ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </button>
+              {expandedSections.pricing && (
+                <div className="p-4 space-y-4">
+                  <InputField
+                    label="Regular Price"
+                    required
+                    type="number"
+                    placeholder="Enter regular price"
+                    value={regularPrice}
+                    onChange={setRegularPrice}
+                    error={errors.regularPrice}
+                    helpText="Price in USD"
+                    disabled={mode === "lock"}
+                  />
+                  <InputField
+                    label="Sale Price"
+                    type="number"
+                    placeholder="Enter sale price"
+                    value={salePrice}
+                    onChange={setSalePrice}
+                    error={errors.salePrice}
+                    helpText="Optional discounted price"
+                    disabled={mode === "lock"}
+                  />
+                  <InputField
+                    label="Discount Codes"
+                    placeholder="CODE1, CODE2"
+                    value={discountCodes}
+                    onChange={setDiscountCodes}
+                    helpText="Comma-separated discount codes"
+                    disabled={mode === "lock"}
+                  />
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={cashOnDelivery}
+                      onChange={(e) => setCashOnDelivery(e.target.checked)}
+                      className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      disabled={mode === "lock"}
+                    />
+                    <label className="text-sm font-medium text-gray-700">
+                      Enable Cash on Delivery
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Inventory Section */}
+            <div className="border rounded-lg">
+              <button
+                type="button"
+                className="w-full px-4 py-3 flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-t-lg"
+                onClick={() => toggleSection("inventory")}
+              >
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Inventory & Variants
+                </h2>
+                {expandedSections.inventory ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </button>
+              {expandedSections.inventory && (
+                <div className="p-4 space-y-4">
+                  <InputField
+                    label="Stock Quantity"
+                    required
+                    type="number"
+                    placeholder="Enter stock quantity"
+                    value={stock}
+                    onChange={setStock}
+                    error={errors.stock}
+                    helpText="Available inventory count"
+                    disabled={mode === "lock"}
+                  />
+                  <SizeSelector
+                    // label="Sizes"
+                    sizes={sizes}
+                    onChange={setSizes}
+                    error={errors.sizes}
+                    // helpText="Select available sizes"
+                    disabled={mode === "lock"}
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category
+                    </label>
+                    <select
+                      value={category}
+                      onChange={(e) => {
+                        setCategory(e.target.value);
+                        setSubCategory("");
+                      }}
+                      className={`w-full px-4 py-3 border rounded-lg ${
+                        errors.category ? "border-red-300" : "border-gray-300"
+                      } focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                      disabled={mode === "lock"}
+                    >
+                      <option value="">Select category</option>
+                      {categories.map((cat) => (
+                        <option key={cat.name} value={cat.name}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.category && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.category}
+                      </p>
+                    )}
+                  </div>
+                  {category && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Subcategory
+                      </label>
+                      <select
+                        value={subCategory}
+                        onChange={(e) => setSubCategory(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={mode === "lock"}
+                      >
+                        <option value="">Select subcategory (optional)</option>
+                        {categories
+                          .find((cat) => cat.name === category)
+                          ?.subCategories.map((sub) => (
+                            <option key={sub} value={sub}>
+                              {sub}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Status
+                    </label>
+                    <select
+                      value={mode}
+                      onChange={(e) =>
+                        setMode(e.target.value as "draft" | "edit" | "lock")
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="edit">Published</option>
+                      <option value="lock">Locked</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Specifications Section */}
+            <div className="border rounded-lg">
+              <button
+                type="button"
+                className="w-full px-4 py-3 flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-t-lg"
+                onClick={() => toggleSection("specifications")}
+              >
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Specifications & Properties
+                </h2>
+                {expandedSections.specifications ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </button>
+              {expandedSections.specifications && (
+                <div className="p-4 space-y-4">
+                  <CustomSpecifications
+                    specifications={specs}
+                    onChange={setSpecs}
+                    disabled={mode === "lock"}
+                  />
+                  <CustomProperties
+                    properties={properties}
+                    onChange={setProperties}
+                    disabled={mode === "lock"}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-4 pt-6">
+              <button
+                type="button"
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:ring-2 focus:ring-gray-400 transition-colors"
                 onClick={() => router.push("/seller/products")}
               >
                 Cancel
               </button>
               <button
+                type="button"
+                className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 transition-colors"
+                onClick={handleSaveDraft}
+                disabled={createProductStatus === "pending" || mode === "lock"}
+              >
+                Save as Draft
+              </button>
+              <button
+                type="button"
+                className="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                onClick={openPreview}
+              >
+                <Eye className="inline-block h-5 w-5 mr-2" />
+                Preview
+              </button>
+              <button
                 type="submit"
                 disabled={createProductStatus === "pending" || mode === "lock"}
-                className={`px-6 py-3 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                className={`px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition-colors ${
                   createProductStatus === "pending" || mode === "lock"
-                    ? "opacity-70 cursor-not-allowed"
+                    ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
               >
@@ -559,6 +742,143 @@ export default function CreateProductPage() {
           </form>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {isPreviewOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 relative">
+            <button
+              onClick={closePreview}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
+            >
+              <X className="h-6 w-6 text-gray-600" />
+            </button>
+            <h2 className="text-2xl font-bold mb-6">Product Preview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Product Preview"
+                    className="w-full h-96 object-cover rounded-xl"
+                  />
+                ) : (
+                  <div className="w-full h-96 bg-gray-100 rounded-xl flex items-center justify-center text-gray-500">
+                    No image uploaded
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">
+                  {title || "Untitled Product"}
+                </h3>
+                <p className="text-gray-600">
+                  {shortDescription || "No short description provided"}
+                </p>
+                <div
+                  className="prose"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      detailedDescription ||
+                      "<p>No detailed description provided</p>",
+                  }}
+                />
+                <div>
+                  <h4 className="font-medium">Pricing</h4>
+                  <p>Regular Price: ${regularPrice || "N/A"}</p>
+                  {salePrice && <p>Sale Price: ${salePrice}</p>}
+                </div>
+                <div>
+                  <h4 className="font-medium">Category</h4>
+                  <p>
+                    {category || "N/A"} {subCategory && `> ${subCategory}`}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Brand</h4>
+                  <p>{brand || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Warranty</h4>
+                  <p>{warranty || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Tags</h4>
+                  <p>{tags || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Colors</h4>
+                  <div className="flex gap-2">
+                    {colors.length > 0 ? (
+                      colors.map((color, index) => (
+                        <div
+                          key={index}
+                          className="w-6 h-6 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))
+                    ) : (
+                      <p>N/A</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium">Sizes</h4>
+                  <p>{sizes.join(", ") || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Stock</h4>
+                  <p>{stock || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Discount Codes</h4>
+                  <p>{discountCodes || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Cash on Delivery</h4>
+                  <p>{cashOnDelivery ? "Enabled" : "Disabled"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Video URL</h4>
+                  <p>{videoUrl || "N/A"}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium">Specifications</h4>
+                  {specs.length > 0 ? (
+                    <ul className="list-disc pl-5">
+                      {specs.map((spec, index) => (
+                        <li key={index}>
+                          {spec.name}: {spec.value}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>N/A</p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-medium">Properties</h4>
+                  {properties.length > 0 ? (
+                    <ul className="list-disc pl-5">
+                      {properties.map((prop, index) => (
+                        <li key={index}>
+                          {prop.key}: {prop.values.join(", ")}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>N/A</p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-medium">Status</h4>
+                  <p>{mode.charAt(0).toUpperCase() + mode.slice(1)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

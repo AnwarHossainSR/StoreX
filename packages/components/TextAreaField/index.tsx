@@ -8,6 +8,8 @@ export interface TextAreaFieldProps {
   helpText?: string;
   error?: string;
   className?: string;
+  rows?: number;
+  disabled?: boolean;
 }
 
 export const TextAreaField: React.FC<TextAreaFieldProps> = ({
@@ -19,6 +21,8 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
   helpText,
   error,
   className = "",
+  rows = 4,
+  disabled = false,
 }) => {
   const textareaId = `${label.replace(/\s+/g, "-").toLowerCase()}-textarea`;
 
@@ -43,6 +47,8 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
         aria-invalid={!!error}
         aria-describedby={error ? `${textareaId}-error` : undefined}
         aria-label={label}
+        rows={rows}
+        disabled={disabled}
       />
       {error && (
         <p className="mt-1 text-sm text-red-600" id={`${textareaId}-error`}>

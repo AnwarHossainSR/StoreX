@@ -4,11 +4,13 @@ import React from "react";
 export interface ColorPickerProps {
   colors: string[];
   onChange: (colors: string[]) => void;
+  disabled?: boolean;
 }
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({
   colors,
   onChange,
+  disabled = false,
 }) => {
   const addColor = (newColor: string) => {
     onChange([...colors, newColor]);
@@ -40,6 +42,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           type="color"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           onChange={(e) => addColor(e.target.value)}
+          disabled={disabled}
         />
       </button>
     </div>
