@@ -53,7 +53,7 @@ export default function CreateProductPage() {
     if (createProductStatus === "success") {
       setSuccess("Product created successfully!", { autoDismiss: 3000 });
       setTimeout(() => {
-        window.location.href = "/seller/products";
+        window.location.href = "/products";
       }, 3000);
     } else if (createProductError) {
       setError(createProductError, {

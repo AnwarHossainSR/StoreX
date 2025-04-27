@@ -121,11 +121,12 @@ apiClient.interceptors.response.use(
           `Attempting to refresh token (attempt ${refreshAttemptCount})`
         );
         await delay(1000);
-        const refreshUrl = `${
-          process.env.NEXT_PUBLIC_AUTH_SERVICE_URL ||
-          "http://localhost:3001/api"
-        }/refresh-token`;
-        await axios.post(refreshUrl, {}, { withCredentials: true });
+        // Use Gateway's auth route for refresh token
+        await axios.post(
+          `${API_BASE_URL}/auth/refresh-token`,
+          {},
+          { withCredentials: true }
+        );
 
         console.log("Token refreshed successfully");
         processQueue(null);
@@ -135,7 +136,7 @@ apiClient.interceptors.response.use(
         console.error("Token refresh failed", refreshError);
         processQueue(refreshError);
         if (typeof window !== "undefined") {
-          window.location.href = "/login";
+          window.location.href = "/seller-login";
         }
         return Promise.reject(refreshError);
       } finally {

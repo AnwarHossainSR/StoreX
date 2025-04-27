@@ -1,8 +1,7 @@
 // services/authService.ts
 import apiClient from "@/lib/apiClient";
 
-const AUTH_BASE_URL =
-  `${process.env.NEXT_PUBLIC_SERVER_URL}/api` || "http://localhost:8080/api";
+const AUTH_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth`;
 
 export interface Seller {
   id: string;

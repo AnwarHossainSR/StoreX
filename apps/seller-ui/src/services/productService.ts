@@ -1,9 +1,7 @@
 // services/productService.ts
 import apiClient from "@/lib/apiClient";
 
-const PRODUCT_BASE_URL =
-  `${process.env.NEXT_PUBLIC_SERVER_URL}/product/api` ||
-  "http://localhost:8080/product/api";
+const PRODUCT_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/products`;
 
 export interface Category {
   name: string;
