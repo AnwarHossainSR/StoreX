@@ -14,12 +14,26 @@ import { InputField } from "@/packages/components/InputField";
 import RichTextEditor from "@/packages/components/RichTextEditor";
 import { SizeSelector } from "@/packages/components/SizeSelector";
 import { TextAreaField } from "@/packages/components/TextAreaField";
-import { ChevronDown, ChevronUp, Edit2, Eye, Upload, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, Trash2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
+interface UploadedImage {
+  file_name: string;
+  file_url: string;
+}
+
+interface DiscountCode {
+  id: string;
+  public_name: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  discountCode: string;
+  createdAt: string;
+}
+
 const DiscountCodeSelector: React.FC<{
-  discountCodes: any;
+  discountCodes: DiscountCode[];
   selectedCodes: string[];
   onChange: (selected: string[]) => void;
   disabled?: boolean;
@@ -40,18 +54,18 @@ const DiscountCodeSelector: React.FC<{
       </label>
       <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2">
         {discountCodes.length === 0 ? (
-          <p className="text-sm text-gray-500">No discount codes available</p>
+          <span className="inline-block px-3 py-1 text-sm text-gray-500 bg-gray-100 rounded-full">
+            No discount codes available
+          </span>
         ) : (
-          discountCodes.map((code: any) => (
-            <div
+          discountCodes.map((code) => (
+            <span
               key={code.id}
-              className={`cursor-pointer transition-colors ${
+              className={`inline-block px-3 py-1 text-sm font-medium rounded-full cursor-pointer transition-colors ${
                 selectedCodes.includes(code.id)
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-800 hover:bg-blue-100"
-              } ${
-                disabled ? "opacity-50 cursor-not-allowed" : ""
-              } py-1 px-3 rounded-full text-sm`}
+                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
               onClick={() => handleToggle(code.id)}
             >
               {code.public_name} (
@@ -59,7 +73,7 @@ const DiscountCodeSelector: React.FC<{
                 ? `${code.discountValue}%`
                 : `$${code.discountValue}`}
               )
-            </div>
+            </span>
           ))
         )}
       </div>
@@ -84,10 +98,10 @@ export default function CreateProductPage() {
   const [cashOnDelivery, setCashOnDelivery] = useState(false);
   const [stock, setStock] = useState("");
   const [sizes, setSizes] = useState<string[]>([]);
-  const [discountCodes, setDiscountCodes] = useState<string[]>([]); // Changed to array of IDs
+  const [discountCodes, setDiscountCodes] = useState<string[]>([]);
   const [mode, setMode] = useState<"draft" | "edit" | "lock">("edit");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<UploadedImage[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [specs, setSpecs] = useState<Specification[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -112,6 +126,7 @@ export default function CreateProductPage() {
     videoUrl?: string;
     stock?: string;
     sizes?: string;
+    images?: string;
   }>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -189,18 +204,32 @@ export default function CreateProductPage() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImageFile(file);
-    const fileBase64 = await makeBase64(file);
-    setPreviewUrl(fileBase64);
 
     try {
+      const base64Url = await makeBase64(file);
+      // Upload the image to the backend
       const response = await apiClient.post("/products/upload-product-image", {
-        file: fileBase64,
+        file: base64Url,
       });
       console.log("Image uploaded successfully:", response.data);
+      const uploadedImage = {
+        file_name: response.data.file_name,
+        file_url: response.data.file_url,
+      };
+      setImageFiles((prev) => [...prev, uploadedImage]);
     } catch (error: any) {
-      console.log("Error uploading image:", error);
+      console.error("Error uploading image:", error);
+      setError("Failed to upload image", {
+        isBackendError: true,
+        details: error.message,
+      });
     }
+  };
+
+  const handleRemoveImage = (image: UploadedImage, index: number) => {
+    if (mode === "lock") return;
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const validateForm = (isDraft: boolean = false) => {
@@ -278,6 +307,10 @@ export default function CreateProductPage() {
         newErrors.sizes = "At least one size is required";
         isValid = false;
       }
+      if (imageFiles.length === 0) {
+        newErrors.images = "At least one image is required";
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -306,7 +339,7 @@ export default function CreateProductPage() {
         slug,
         brand,
         colors,
-        image: imageFile || undefined,
+        images: imageFiles.length > 0 ? imageFiles : undefined,
         specifications: specs,
         properties,
         category,
@@ -338,7 +371,7 @@ export default function CreateProductPage() {
       slug,
       brand,
       colors,
-      image: imageFile || undefined,
+      images: imageFiles.length > 0 ? imageFiles : undefined,
       specifications: specs,
       properties,
       category,
@@ -518,40 +551,61 @@ export default function CreateProductPage() {
               </button>
               {expandedSections.media && (
                 <div className="p-4 space-y-4">
-                  <div className="relative group">
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 hover:border-blue-400 transition-colors">
-                      {previewUrl ? (
-                        <img
-                          src={previewUrl}
-                          alt="Product Preview"
-                          className="object-cover h-full w-full rounded-xl"
-                        />
-                      ) : (
-                        <div className="text-center text-gray-500">
-                          <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                          <p className="mt-2">Recommended: 765 x 850</p>
-                          <p>Upload product image</p>
-                          <p className="text-xs">Optimal ratio: 3:4</p>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-blue-50 transition-colors"
-                        disabled={mode === "lock"}
-                      >
-                        <Edit2 className="h-5 w-5 text-blue-600" />
-                      </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Images
+                    </label>
+                    <div
+                      className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 hover:border-blue-400 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-gray-500">
+                        Recommended: 765 x 850
+                      </p>
+                      <p className="text-gray-500">
+                        Upload product images (multiple allowed)
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Optimal ratio: 3:4
+                      </p>
                       <input
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
+                        multiple
                         className="hidden"
                         onChange={handleImageChange}
                         disabled={mode === "lock"}
                       />
                     </div>
+                    {errors.images && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.images}
+                      </p>
+                    )}
                   </div>
+                  {imageFiles?.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {imageFiles.map((image: UploadedImage, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={image.file_url}
+                            alt={`Product Image ${index + 1}`}
+                            className="h-32 w-full object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemoveImage(image, index)}
+                            disabled={mode === "lock"}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <InputField
                     label="Video URL"
                     placeholder="YouTube/Vimeo URL"
@@ -833,15 +887,20 @@ export default function CreateProductPage() {
             <h2 className="text-2xl font-bold mb-6">Product Preview</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Product Preview"
-                    className="w-full h-96 object-cover rounded-xl"
-                  />
+                {previewUrls.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    {previewUrls.map((url, index) => (
+                      <img
+                        key={index}
+                        src={url}
+                        alt={`Product Image ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-xl"
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <div className="w-full h-96 bg-gray-100 rounded-xl flex items-center justify-center text-gray-500">
-                    No image uploaded
+                    No images uploaded
                   </div>
                 )}
               </div>
@@ -849,6 +908,7 @@ export default function CreateProductPage() {
                 <h3 className="text-xl font-semibold">
                   {title || "Untitled Product"}
                 </h3>
+                specificities:
                 <p className="text-gray-600">
                   {shortDescription || "No short description provided"}
                 </p>
@@ -911,9 +971,9 @@ export default function CreateProductPage() {
                   <h4 className="font-medium">Discount Codes</h4>
                   {discountCodes.length > 0 ? (
                     <ul className="list-disc pl-5">
-                      {discountCodes.map((codeId) => {
-                        const code: any = discountCodes.find(
-                          (c: any) => c.id === codeId
+                      {discountCodes.map((codeId: any) => {
+                        const code: any = discountCodesData?.find(
+                          (c: DiscountCode) => c.id === codeId
                         );
                         return code ? (
                           <li key={codeId}>
