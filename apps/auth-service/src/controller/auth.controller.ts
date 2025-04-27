@@ -240,6 +240,7 @@ export const refreshAccessToken = async (
       id: string;
       email: string;
       name: string;
+      role: string;
     };
     const accessToken = jwt.sign(
       {

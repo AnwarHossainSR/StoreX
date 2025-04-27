@@ -11,8 +11,8 @@ import {
 const router = express.Router();
 
 router.get("/get-categories", getCategories);
-router.get("/discount-codes", isAuthenticated, isSeller, getDiscountCodes);
-router.post("/discount-codes", isAuthenticated, isSeller, createDiscountCode);
+router.get("/discount-codes", isAuthenticated, getDiscountCodes);
+router.post("/discount-codes", isAuthenticated, createDiscountCode);
 router.delete(
   "/discount-codes/:id",
   isAuthenticated,
