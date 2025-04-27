@@ -15,11 +15,13 @@ export interface Specification {
 export interface CustomSpecificationsProps {
   specifications: Specification[];
   onChange: (specs: Specification[]) => void;
+  disabled?: boolean;
 }
 
 export const CustomSpecifications: React.FC<CustomSpecificationsProps> = ({
   specifications,
   onChange,
+  disabled = false,
 }) => {
   const updateSpec = (
     index: number,
@@ -43,6 +45,7 @@ export const CustomSpecifications: React.FC<CustomSpecificationsProps> = ({
           type="button"
           onClick={addSpec}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-white border border-blue-600 rounded hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-400 transition"
+          disabled={disabled}
         >
           <Plus size={12} className="mr-1" /> Add Spec
         </button>
@@ -61,6 +64,7 @@ export const CustomSpecifications: React.FC<CustomSpecificationsProps> = ({
                 value={spec.name}
                 onChange={(v) => updateSpec(idx, "name", v)}
                 required
+                disabled={disabled}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -70,6 +74,7 @@ export const CustomSpecifications: React.FC<CustomSpecificationsProps> = ({
                 value={spec.value}
                 onChange={(v) => updateSpec(idx, "value", v)}
                 required
+                disabled={disabled}
               />
             </div>
             <button
@@ -77,6 +82,7 @@ export const CustomSpecifications: React.FC<CustomSpecificationsProps> = ({
               onClick={() => removeSpec(idx)}
               className="p-1 text-red-600 bg-white border border-red-400 rounded-full hover:bg-red-50 transition"
               title="Remove"
+              disabled={disabled}
             >
               <X size={16} />
             </button>
@@ -98,11 +104,13 @@ export interface Property {
 export interface CustomPropertiesProps {
   properties: Property[];
   onChange: (props: Property[]) => void;
+  disabled?: boolean;
 }
 
 export const CustomProperties: React.FC<CustomPropertiesProps> = ({
   properties,
   onChange,
+  disabled = false,
 }) => {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -144,6 +152,7 @@ export const CustomProperties: React.FC<CustomPropertiesProps> = ({
           type="button"
           onClick={addProp}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-600 bg-white border border-green-600 rounded hover:bg-green-50 focus:outline-none focus:ring-1 focus:ring-green-400 transition"
+          disabled={disabled}
         >
           <Plus size={12} className="mr-1" /> Add Prop
         </button>
@@ -162,12 +171,14 @@ export const CustomProperties: React.FC<CustomPropertiesProps> = ({
                 value={prop.key}
                 onChange={(v) => updatePropKey(idx, v)}
                 required
+                disabled={disabled}
               />
               <button
                 type="button"
                 onClick={() => removeProp(idx)}
                 className="p-1 text-red-600 bg-white border border-red-400 rounded-full hover:bg-red-50 transition"
                 title="Remove"
+                disabled={disabled}
               >
                 <X size={16} />
               </button>
@@ -206,12 +217,14 @@ export const CustomProperties: React.FC<CustomPropertiesProps> = ({
                     addValue(idx);
                   }
                 }}
+                disabled={disabled}
               />
               <button
                 type="button"
                 onClick={() => addValue(idx)}
                 className="p-1 text-green-600 bg-white border border-green-600 rounded hover:bg-green-50 transition"
                 title="Add value"
+                disabled={disabled}
               >
                 <Plus size={16} />
               </button>

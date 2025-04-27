@@ -101,6 +101,7 @@ export const useProduct = () => {
     createProductErrorDetails: (
       createProductMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
+    saveDraft: createProductMutation.mutate,
 
     categories: categoriesQuery.data?.data || [],
     categoriesStatus: categoriesQuery.status,

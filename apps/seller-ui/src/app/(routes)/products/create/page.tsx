@@ -17,6 +17,55 @@ import { ChevronDown, ChevronUp, Edit2, Eye, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
+const DiscountCodeSelector: React.FC<{
+  discountCodes: any;
+  selectedCodes: string[];
+  onChange: (selected: string[]) => void;
+  disabled?: boolean;
+}> = ({ discountCodes, selectedCodes, onChange, disabled = false }) => {
+  const handleToggle = (codeId: string) => {
+    if (disabled) return;
+    if (selectedCodes.includes(codeId)) {
+      onChange(selectedCodes.filter((id) => id !== codeId));
+    } else {
+      onChange([...selectedCodes, codeId]);
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Discount Codes
+      </label>
+      <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2">
+        {discountCodes.length === 0 ? (
+          <p className="text-sm text-gray-500">No discount codes available</p>
+        ) : (
+          discountCodes.map((code: any) => (
+            <div
+              key={code.id}
+              className={`cursor-pointer transition-colors ${
+                selectedCodes.includes(code.id)
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-800 hover:bg-blue-100"
+              } ${
+                disabled ? "opacity-50 cursor-not-allowed" : ""
+              } py-1 px-3 rounded-full text-sm`}
+              onClick={() => handleToggle(code.id)}
+            >
+              {code.public_name} (
+              {code.discountType === "percentage"
+                ? `${code.discountValue}%`
+                : `$${code.discountValue}`}
+              )
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function CreateProductPage() {
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
@@ -34,7 +83,7 @@ export default function CreateProductPage() {
   const [cashOnDelivery, setCashOnDelivery] = useState(false);
   const [stock, setStock] = useState("");
   const [sizes, setSizes] = useState<string[]>([]);
-  const [discountCodes, setDiscountCodes] = useState("");
+  const [discountCodes, setDiscountCodes] = useState<string[]>([]); // Changed to array of IDs
   const [mode, setMode] = useState<"draft" | "edit" | "lock">("edit");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -75,6 +124,10 @@ export default function CreateProductPage() {
     categories,
     categoriesError,
     categoriesErrorDetails,
+    discountCodes: discountCodesData,
+    discountCodesStatus,
+    discountCodesError,
+    discountCodesErrorDetails,
   } = useProduct();
   const { alert, setSuccess, setError, clearAlert } = useAlert();
 
@@ -96,6 +149,11 @@ export default function CreateProductPage() {
         isBackendError: true,
         details: categoriesErrorDetails,
       });
+    } else if (discountCodesError) {
+      setError(discountCodesError, {
+        isBackendError: true,
+        details: discountCodesErrorDetails,
+      });
     }
   }, [
     createProductStatus,
@@ -103,6 +161,8 @@ export default function CreateProductPage() {
     createProductErrorDetails,
     categoriesError,
     categoriesErrorDetails,
+    discountCodesError,
+    discountCodesErrorDetails,
     setSuccess,
     setError,
     router,
@@ -230,11 +290,7 @@ export default function CreateProductPage() {
         cashOnDelivery,
         stock: Number(stock),
         sizes,
-        discountCodes:
-          discountCodes
-            .split(",")
-            .map((code) => code.trim())
-            .filter((code) => code) || undefined,
+        discountCodes: discountCodes.length > 0 ? discountCodes : undefined,
         mode,
       });
     }
@@ -266,11 +322,7 @@ export default function CreateProductPage() {
       cashOnDelivery,
       stock: stock ? Number(stock) : undefined,
       sizes,
-      discountCodes:
-        discountCodes
-          .split(",")
-          .map((code) => code.trim())
-          .filter((code) => code) || undefined,
+      discountCodes: discountCodes.length > 0 ? discountCodes : undefined,
       mode: "draft",
     });
     setSuccess("Draft saved successfully!", { autoDismiss: 3000 });
@@ -535,13 +587,13 @@ export default function CreateProductPage() {
                     helpText="Optional discounted price"
                     disabled={mode === "lock"}
                   />
-                  <InputField
-                    label="Discount Codes"
-                    placeholder="CODE1, CODE2"
-                    value={discountCodes}
+                  <DiscountCodeSelector
+                    discountCodes={discountCodesData || []}
+                    selectedCodes={discountCodes}
                     onChange={setDiscountCodes}
-                    helpText="Comma-separated discount codes"
-                    disabled={mode === "lock"}
+                    disabled={
+                      mode === "lock" || discountCodesStatus === "pending"
+                    }
                   />
                   <div className="flex items-center gap-3">
                     <input
@@ -589,11 +641,9 @@ export default function CreateProductPage() {
                     disabled={mode === "lock"}
                   />
                   <SizeSelector
-                    // label="Sizes"
                     sizes={sizes}
                     onChange={setSizes}
                     error={errors.sizes}
-                    // helpText="Select available sizes"
                     disabled={mode === "lock"}
                   />
                   <div>
@@ -832,7 +882,26 @@ export default function CreateProductPage() {
                 </div>
                 <div>
                   <h4 className="font-medium">Discount Codes</h4>
-                  <p>{discountCodes || "N/A"}</p>
+                  {discountCodes.length > 0 ? (
+                    <ul className="list-disc pl-5">
+                      {discountCodes.map((codeId) => {
+                        const code: any = discountCodes.find(
+                          (c: any) => c.id === codeId
+                        );
+                        return code ? (
+                          <li key={codeId}>
+                            {code.public_name} (
+                            {code.discountType === "percentage"
+                              ? `${code.discountValue}%`
+                              : `$${code.discountValue}`}
+                            )
+                          </li>
+                        ) : null;
+                      })}
+                    </ul>
+                  ) : (
+                    <p>N/A</p>
+                  )}
                 </div>
                 <div>
                   <h4 className="font-medium">Cash on Delivery</h4>
