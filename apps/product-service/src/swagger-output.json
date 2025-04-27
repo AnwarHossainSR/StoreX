@@ -1,0 +1,31 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Product Service API",
+    "description": "Product Management Service",
+    "version": "1.0.0"
+  },
+  "host": "localhost:6002",
+  "basePath": "/api",
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/get-categories": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}
