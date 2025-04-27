@@ -2,8 +2,10 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
+import { ConfirmDeleteModal } from "@/packages/components/ConfirmDeleteModal";
 import { InputField } from "@/packages/components/InputField";
 import { SelectField } from "@/packages/components/SelectField";
+import { useQueryClient } from "@tanstack/react-query"; // Import React Query's queryClient
 import {
   ChevronDown,
   ChevronUp,
@@ -28,7 +30,12 @@ export default function DiscountCodesPage() {
   const [sortField, setSortField] = useState<keyof DiscountCode>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedType, setSelectedType] = useState("all");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteItem, setDeleteItem] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [publicName, setPublicName] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">(
     "percentage"
@@ -42,6 +49,7 @@ export default function DiscountCodesPage() {
     discountType?: string;
   }>({});
 
+  const queryClient = useQueryClient();
   const {
     discountCodes,
     discountCodesStatus,
@@ -119,8 +127,17 @@ export default function DiscountCodesPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    deleteDiscountCode(id);
+  const handleInitiateDelete = (id: string, name: string) => {
+    setDeleteItem({ id, name });
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteItem) {
+      deleteDiscountCode(deleteItem.id);
+      setIsDeleteModalOpen(false);
+      setDeleteItem(null);
+    }
   };
 
   useEffect(() => {
@@ -130,7 +147,9 @@ export default function DiscountCodesPage() {
       setDiscountType("percentage");
       setDiscountValue("");
       setDiscountCode("");
-      setIsModalOpen(false);
+      setIsCreateModalOpen(false);
+      // Invalidate discount codes query to refetch after creation
+      queryClient.invalidateQueries({ queryKey: ["discountCodes"] });
     } else if (createDiscountCodeError) {
       setError(createDiscountCodeError, {
         isBackendError: true,
@@ -143,11 +162,14 @@ export default function DiscountCodesPage() {
     createDiscountCodeErrorDetails,
     setSuccess,
     setError,
+    queryClient,
   ]);
 
   useEffect(() => {
     if (deleteDiscountCodeStatus === "success") {
       setSuccess("Discount code deleted successfully!", { autoDismiss: 3000 });
+      // Invalidate discount codes query to refetch after deletion
+      queryClient.invalidateQueries({ queryKey: ["discountCodes"] });
     } else if (deleteDiscountCodeError) {
       setError(deleteDiscountCodeError, {
         isBackendError: true,
@@ -160,6 +182,7 @@ export default function DiscountCodesPage() {
     deleteDiscountCodeErrorDetails,
     setSuccess,
     setError,
+    queryClient,
   ]);
 
   useEffect(() => {
@@ -172,13 +195,13 @@ export default function DiscountCodesPage() {
   }, [discountCodesError, discountCodesErrorDetails, setError]);
 
   const filteredCodes = discountCodes
-    ?.filter(
-      (code: any) =>
+    .filter(
+      (code) =>
         (selectedType === "all" || code.discountType === selectedType) &&
         (code.public_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           code.discountCode.toLowerCase().includes(searchTerm.toLowerCase()))
     )
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
 
@@ -211,7 +234,7 @@ export default function DiscountCodesPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Discount Codes</h1>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
           <Plus size={20} className="mr-2" />
@@ -409,7 +432,7 @@ export default function DiscountCodesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCodes?.map((code: any) => (
+              {filteredCodes.map((code: any) => (
                 <tr key={code.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                     {code.public_name}
@@ -439,7 +462,9 @@ export default function DiscountCodesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button
-                      onClick={() => handleDelete(code.id)}
+                      onClick={() =>
+                        handleInitiateDelete(code.id, code.public_name)
+                      }
                       className="text-red-600 hover:text-red-800 transition-colors duration-200"
                       disabled={isLoading}
                     >
@@ -451,10 +476,34 @@ export default function DiscountCodesPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Placeholder */}
+        <div className="px-6 py-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              Showing 1 to {filteredCodes.length} of {filteredCodes.length}{" "}
+              entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                disabled
+              >
+                Previous
+              </button>
+              <button
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                disabled
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Modal for Creating Discount Code */}
-      {isModalOpen && (
+      {/* Create Discount Code Modal */}
+      {isCreateModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
             <div className="flex justify-between items-center mb-4">
@@ -462,7 +511,7 @@ export default function DiscountCodesPage() {
                 Create New Discount Code
               </h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => setIsCreateModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <svg
@@ -533,7 +582,7 @@ export default function DiscountCodesPage() {
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => setIsCreateModalOpen(false)}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
@@ -553,6 +602,16 @@ export default function DiscountCodesPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        itemName={deleteItem?.name || ""}
+        itemType="Discount Code"
+        isLoading={isLoading}
+      />
     </div>
   );
 }
