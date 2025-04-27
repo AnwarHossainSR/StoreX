@@ -44,7 +44,7 @@ app.get("/docs-json", (req, res) => {
 });
 
 // Auth routes
-app.use("/api", AuthRouter);
+app.use("/", AuthRouter);
 
 // Error handling
 app.use(errorMiddleware);
