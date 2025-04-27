@@ -77,4 +77,12 @@ model sellers {
   shop         shops?
 }
 
+// siteCOnfig
+
+model siteConfig {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  categories    String[]
+  subCategories Json
+}
+
 // products

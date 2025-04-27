@@ -1,10 +1,15 @@
 "use client";
+import {
+  CustomProperties,
+  CustomSpecifications,
+  Property,
+  Specification,
+} from "@/packages/components/CustomFields";
 import { InputField } from "@/packages/components/InputField";
 import { TextAreaField } from "@/packages/components/TextAreaField";
 import { ColorPicker } from "@/packages/components/colorPicker";
 import { Edit2 } from "lucide-react";
 import React, { useRef, useState } from "react";
-
 export default function CreateProductPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -14,6 +19,9 @@ export default function CreateProductPage() {
   const [brand, setBrand] = useState("");
   const [colors, setColors] = useState<string[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [specs, setSpecs] = useState<Specification[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,6 +135,8 @@ export default function CreateProductPage() {
             </label>
             <ColorPicker colors={colors} onChange={setColors} />
           </div>
+          <CustomSpecifications specifications={specs} onChange={setSpecs} />
+          <CustomProperties properties={properties} onChange={setProperties} />
         </div>
       </div>
 

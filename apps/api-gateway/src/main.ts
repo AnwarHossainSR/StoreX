@@ -4,6 +4,7 @@ import express from "express";
 import proxy from "express-http-proxy";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
+import initializeSiteConfig from "./lib/initializeSiteConfig";
 
 const app = express();
 
@@ -43,6 +44,12 @@ const port = process.env.PORT ? Number(process.env.PORT) : 8080;
 const host = process.env.HOST ?? "localhost";
 const server = app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
+  try {
+    initializeSiteConfig();
+    console.log("[ ready ] Site config initialized");
+  } catch (error) {
+    console.error("Error initializing site config:", error);
+  }
 });
 server.on("error", console.error);
 
