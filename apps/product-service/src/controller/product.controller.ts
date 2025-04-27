@@ -169,10 +169,6 @@ export const validateDiscountCode = async (
       throw new ValidationError("Invalid discount code");
     }
 
-    if (discountCode.sellerId !== req.seller.id) {
-      throw new ValidationError("Discount code does not belong to this seller");
-    }
-
     res.status(200).json(discountCode);
   } catch (error) {
     return next(error);

@@ -1,22 +1,13 @@
 "use client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
+import { useProduct } from "@/hooks/useProduct";
 import { InputField } from "@/packages/components/InputField";
 import { SelectField } from "@/packages/components/SelectField";
 import { Plus, Search, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
-interface DiscountCode {
-  id: string;
-  public_name: string;
-  discountType: string;
-  discountValue: number;
-  discountCode: string;
-  createdAt: string;
-}
-
 export default function DiscountCodesPage() {
-  const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [publicName, setPublicName] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">(
     "percentage"
@@ -30,61 +21,69 @@ export default function DiscountCodesPage() {
     discountCode?: string;
     discountType?: string;
   }>({});
-  const [isLoading, setIsLoading] = useState(false);
 
+  const {
+    discountCodes,
+    discountCodesStatus,
+    discountCodesError,
+    discountCodesErrorDetails,
+    createDiscountCode,
+    createDiscountCodeStatus,
+    createDiscountCodeError,
+    createDiscountCodeErrorDetails,
+    deleteDiscountCode,
+    deleteDiscountCodeStatus,
+    deleteDiscountCodeError,
+    deleteDiscountCodeErrorDetails,
+  } = useProduct();
   const { alert, setSuccess, setError, clearAlert } = useAlert();
 
-  const fetchDiscountCodes = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/discount-codes");
-      const data = await response.json();
-      setDiscountCodes(data);
-    } catch (error: any) {
-      setError("Failed to fetch discount codes", {
+  useEffect(() => {
+    if (createDiscountCodeStatus === "success") {
+      setSuccess("Discount code created successfully!", { autoDismiss: 3000 });
+      setPublicName("");
+      setDiscountType("percentage");
+      setDiscountValue("");
+      setDiscountCode("");
+    } else if (createDiscountCodeError) {
+      setError(createDiscountCodeError, {
         isBackendError: true,
-        details: error.message,
+        details: createDiscountCodeErrorDetails,
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  const createDiscountCode = async () => {
-    try {
-      const response = await fetch("/api/discount-codes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          public_name: publicName,
-          discountType,
-          discountValue: Number(discountValue),
-          discountCode,
-          sellerId: "SELLER_ID",
-        }),
-      });
-      if (!response.ok) throw new Error("Failed to create discount code");
-      return await response.json();
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const deleteDiscountCode = async (id: string) => {
-    try {
-      const response = await fetch(`/api/discount-codes/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete discount code");
-      return true;
-    } catch (error) {
-      throw error;
-    }
-  };
+  }, [
+    createDiscountCodeStatus,
+    createDiscountCodeError,
+    createDiscountCodeErrorDetails,
+    setSuccess,
+    setError,
+  ]);
 
   useEffect(() => {
-    fetchDiscountCodes();
-  }, []);
+    if (deleteDiscountCodeStatus === "success") {
+      setSuccess("Discount code deleted successfully!", { autoDismiss: 3000 });
+    } else if (deleteDiscountCodeError) {
+      setError(deleteDiscountCodeError, {
+        isBackendError: true,
+        details: deleteDiscountCodeErrorDetails,
+      });
+    }
+  }, [
+    deleteDiscountCodeStatus,
+    deleteDiscountCodeError,
+    deleteDiscountCodeErrorDetails,
+    setSuccess,
+    setError,
+  ]);
+
+  useEffect(() => {
+    if (discountCodesError) {
+      setError(discountCodesError, {
+        isBackendError: true,
+        details: discountCodesErrorDetails,
+      });
+    }
+  }, [discountCodesError, discountCodesErrorDetails, setError]);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -129,42 +128,17 @@ export default function DiscountCodesPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      setIsLoading(true);
-      try {
-        const newCode = await createDiscountCode();
-        setDiscountCodes([...discountCodes, newCode]);
-        setSuccess("Discount code created successfully!", {
-          autoDismiss: 3000,
-        });
-        setPublicName("");
-        setDiscountType("percentage");
-        setDiscountValue("");
-        setDiscountCode("");
-      } catch (error: any) {
-        setError("Failed to create discount code", {
-          isBackendError: true,
-          details: error.message,
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      createDiscountCode({
+        public_name: publicName,
+        discountType,
+        discountValue: Number(discountValue),
+        discountCode,
+      });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    setIsLoading(true);
-    try {
-      await deleteDiscountCode(id);
-      setDiscountCodes(discountCodes.filter((code) => code.id !== id));
-      setSuccess("Discount code deleted successfully!", { autoDismiss: 3000 });
-    } catch (error: any) {
-      setError("Failed to delete discount code", {
-        isBackendError: true,
-        details: error.message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleDelete = (id: string) => {
+    deleteDiscountCode(id);
   };
 
   const filteredCodes = discountCodes.filter(
@@ -172,6 +146,11 @@ export default function DiscountCodesPage() {
       code.public_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       code.discountCode.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const isLoading =
+    discountCodesStatus === "pending" ||
+    createDiscountCodeStatus === "pending" ||
+    deleteDiscountCodeStatus === "pending";
 
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -264,9 +243,10 @@ export default function DiscountCodesPage() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center ${
-                      isLoading ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                    className={`px-4 py-2 bg-indigo-R
+                      focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center ${
+                        isLoading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Discount Code

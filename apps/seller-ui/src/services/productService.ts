@@ -1,4 +1,3 @@
-// services/productService.ts
 import apiClient from "@/lib/apiClient";
 
 const PRODUCT_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/products`;
@@ -34,6 +33,16 @@ export interface Property {
   value: string;
 }
 
+export interface DiscountCode {
+  id: string;
+  public_name: string;
+  discountType: string;
+  discountValue: number;
+  discountCode: string;
+  createdAt: string;
+  sellerId?: string;
+}
+
 export interface ApiResponse<T> {
   message: string;
   data?: T;
@@ -45,7 +54,6 @@ export interface BackendErrorResponse {
   details?: any;
 }
 
-// Define the raw response type from the backend
 interface RawCategoriesResponse {
   id: string;
   categories: string[];
@@ -109,7 +117,6 @@ export const productService = {
       const response = await apiClient.get<RawCategoriesResponse>(
         `${PRODUCT_BASE_URL}/get-categories`
       );
-      // Transform the raw response into ApiResponse<Category[]>
       const transformedData: ApiResponse<Category[]> = {
         message: "Categories fetched successfully",
         data: response.data.categories.map((name) => ({
@@ -121,6 +128,54 @@ export const productService = {
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Failed to fetch categories", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async getDiscountCodes() {
+    try {
+      const response = await apiClient.get<ApiResponse<DiscountCode[]>>(
+        `${PRODUCT_BASE_URL}/discount-codes`
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to fetch discount codes", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async createDiscountCode(data: {
+    public_name: string;
+    discountType: string;
+    discountValue: number;
+    discountCode: string;
+  }) {
+    try {
+      const response = await apiClient.post<ApiResponse<DiscountCode>>(
+        `${PRODUCT_BASE_URL}/discount-codes`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to create discount code", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async deleteDiscountCode(id: string) {
+    try {
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `${PRODUCT_BASE_URL}/discount-codes/${id}`
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to delete discount code", {
         cause: errorData,
       });
     }
