@@ -2,6 +2,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
+import { ColorPicker } from "@/packages/components/colorPicker";
 import {
   CustomProperties,
   CustomSpecifications,
@@ -10,9 +11,10 @@ import {
 } from "@/packages/components/CustomFields";
 import { InputField } from "@/packages/components/InputField";
 import RichTextEditor from "@/packages/components/RichTextEditor";
+import { SizeSelector } from "@/packages/components/SizeSelector";
 import { TextAreaField } from "@/packages/components/TextAreaField";
-import { ColorPicker } from "@/packages/components/colorPicker";
 import { Edit2, Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
 export default function CreateProductPage() {
@@ -26,6 +28,14 @@ export default function CreateProductPage() {
   const [colors, setColors] = useState<string[]>([]);
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
+  const [regularPrice, setRegularPrice] = useState("");
+  const [salePrice, setSalePrice] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [cashOnDelivery, setCashOnDelivery] = useState(false);
+  const [stock, setStock] = useState("");
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [discountCodes, setDiscountCodes] = useState("");
+  const [mode, setMode] = useState<"draft" | "edit" | "lock">("edit");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [specs, setSpecs] = useState<Specification[]>([]);
@@ -38,9 +48,15 @@ export default function CreateProductPage() {
     warranty?: string;
     slug?: string;
     category?: string;
+    regularPrice?: string;
+    salePrice?: string;
+    videoUrl?: string;
+    stock?: string;
+    sizes?: string;
   }>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const {
     createProduct,
     createProductStatus,
@@ -58,7 +74,7 @@ export default function CreateProductPage() {
         autoDismiss: 3000,
       });
       setTimeout(() => {
-        window.location.href = "/products";
+        router.push("/seller/products");
       }, 3000);
     } else if (createProductError) {
       setError(createProductError, {
@@ -79,6 +95,7 @@ export default function CreateProductPage() {
     categoriesErrorDetails,
     setSuccess,
     setError,
+    router,
   ]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +115,11 @@ export default function CreateProductPage() {
       warranty?: string;
       slug?: string;
       category?: string;
+      regularPrice?: string;
+      salePrice?: string;
+      videoUrl?: string;
+      stock?: string;
+      sizes?: string;
     } = {};
     let isValid = true;
 
@@ -135,6 +157,43 @@ export default function CreateProductPage() {
       newErrors.category = "Please select a category";
       isValid = false;
     }
+    if (!regularPrice) {
+      newErrors.regularPrice = "Please enter the regular price";
+      isValid = false;
+    } else if (isNaN(Number(regularPrice)) || Number(regularPrice) <= 0) {
+      newErrors.regularPrice = "Regular price must be a positive number";
+      isValid = false;
+    }
+    if (salePrice && (isNaN(Number(salePrice)) || Number(salePrice) <= 0)) {
+      newErrors.salePrice = "Sale price must be a positive number";
+      isValid = false;
+    } else if (salePrice && Number(salePrice) >= Number(regularPrice)) {
+      newErrors.salePrice = "Sale price must be less than regular price";
+      isValid = false;
+    }
+    if (videoUrl) {
+      const youtubeRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+      const vimeoRegex = /^https?:\/\/(www\.)?vimeo\.com\/.+$/;
+      if (!youtubeRegex.test(videoUrl) && !vimeoRegex.test(videoUrl)) {
+        newErrors.videoUrl = "Please enter a valid YouTube or Vimeo embed URL";
+        isValid = false;
+      }
+    }
+    if (!stock) {
+      newErrors.stock = "Please enter the stock quantity";
+      isValid = false;
+    } else if (
+      isNaN(Number(stock)) ||
+      Number(stock) < 0 ||
+      !Number.isInteger(Number(stock))
+    ) {
+      newErrors.stock = "Stock must be a non-negative integer";
+      isValid = false;
+    }
+    if (sizes.length === 0) {
+      newErrors.sizes = "Please select at least one size";
+      isValid = false;
+    }
 
     setErrors(newErrors);
     if (!isValid) {
@@ -153,7 +212,7 @@ export default function CreateProductPage() {
         sellerId,
         title,
         description: shortDescription,
-        detailedDescription, // New field for rich text
+        detailedDescription,
         tags: tags
           .split(",")
           .map((tag) => tag.trim())
@@ -167,17 +226,29 @@ export default function CreateProductPage() {
         properties,
         category,
         subCategory: subCategory || undefined,
+        regularPrice: Number(regularPrice),
+        salePrice: salePrice ? Number(salePrice) : undefined,
+        videoUrl: videoUrl || undefined,
+        cashOnDelivery,
+        stock: Number(stock),
+        sizes,
+        discountCodes:
+          discountCodes
+            .split(",")
+            .map((code) => code.trim())
+            .filter((code) => code) || undefined,
+        mode,
       });
     }
   };
 
   return (
-    <div className="min-h-screen p-6 bg-white rounded-lg shadow-sm">
-      <div className=" mx-auto">
-        <div className="bg-white rounded-2xl overflow-hidden">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            Create Product
-          </h1>
+    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="overflow-hidden">
+          <div className=" px-8 py-6">
+            <h1 className="text-3xl font-bold">Create New Product</h1>
+          </div>
 
           {alert && (
             <div className="px-8 pt-6">
@@ -195,7 +266,8 @@ export default function CreateProductPage() {
           )}
 
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Column 1: Image */}
               <div className="space-y-6">
                 <div className="relative group">
                   <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 transition-colors group-hover:border-blue-400">
@@ -229,9 +301,6 @@ export default function CreateProductPage() {
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="col-span-2 space-y-6">
                 <InputField
                   label="Product Title"
                   required
@@ -239,6 +308,17 @@ export default function CreateProductPage() {
                   value={title}
                   onChange={setTitle}
                   error={errors.title}
+                  helpText="Enter a concise product name"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <InputField
+                  label="Slug"
+                  required
+                  placeholder="product-slug"
+                  value={slug}
+                  onChange={setSlug}
+                  error={errors.slug}
+                  helpText="Use lowercase letters, numbers, and hyphens"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                 />
                 <TextAreaField
@@ -249,15 +329,7 @@ export default function CreateProductPage() {
                   value={shortDescription}
                   onChange={setShortDescription}
                   error={errors.shortDescription}
-                  className="transition-all duration-200"
-                />
-                <RichTextEditor
-                  label="Detailed Description"
-                  required
-                  value={detailedDescription}
-                  onChange={setDetailedDescription}
-                  placeholder="Enter detailed product description"
-                  error={errors.detailedDescription}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                 />
                 <InputField
                   label="Tags"
@@ -266,6 +338,7 @@ export default function CreateProductPage() {
                   value={tags}
                   onChange={setTags}
                   error={errors.tags}
+                  helpText="Separate tags with commas"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                 />
                 <InputField
@@ -275,22 +348,19 @@ export default function CreateProductPage() {
                   value={warranty}
                   onChange={setWarranty}
                   error={errors.warranty}
+                  helpText="Specify warranty duration or terms"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                 />
-                <InputField
-                  label="Slug"
-                  required
-                  placeholder="product-slug"
-                  value={slug}
-                  onChange={setSlug}
-                  error={errors.slug}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
-                />
+              </div>
+
+              {/* Column 2: Specifications and Properties */}
+              <div className="space-y-6">
                 <InputField
                   label="Brand"
                   placeholder="Apple"
                   value={brand}
                   onChange={setBrand}
+                  helpText="Enter the brand name (optional)"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                 />
                 <div>
@@ -348,6 +418,16 @@ export default function CreateProductPage() {
                     </select>
                   </div>
                 )}
+                <RichTextEditor
+                  label="Detailed Description"
+                  required
+                  value={detailedDescription}
+                  onChange={setDetailedDescription}
+                  placeholder="Enter detailed product description"
+                  error={errors.detailedDescription}
+                  helpText="Use formatting, images (resize/align), and media to highlight features"
+                  className="transition-all duration-200"
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Colors
@@ -362,27 +442,117 @@ export default function CreateProductPage() {
                   properties={properties}
                   onChange={setProperties}
                 />
+
+                <div className="flex items-center space-x-3 gap-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Cash on Delivery
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={cashOnDelivery}
+                    onChange={(e) => setCashOnDelivery(e.target.checked)}
+                    className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Column 3: Other Fields */}
+              <div className="space-y-6">
+                <InputField
+                  label="Regular Price"
+                  required
+                  type="number"
+                  placeholder="Enter regular price"
+                  value={regularPrice}
+                  onChange={setRegularPrice}
+                  error={errors.regularPrice}
+                  helpText="Price in USD"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <InputField
+                  label="Sale Price"
+                  type="number"
+                  placeholder="Enter sale price (optional)"
+                  value={salePrice}
+                  onChange={setSalePrice}
+                  error={errors.salePrice}
+                  helpText="Discounted price, if applicable"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <InputField
+                  label="Video URL"
+                  placeholder="Enter YouTube/Vimeo embed URL (optional)"
+                  value={videoUrl}
+                  onChange={setVideoUrl}
+                  error={errors.videoUrl}
+                  helpText="E.g., https://www.youtube.com/watch?v=..."
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+
+                <InputField
+                  label="Stock Quantity"
+                  required
+                  type="number"
+                  placeholder="Enter stock quantity"
+                  value={stock}
+                  onChange={setStock}
+                  error={errors.stock}
+                  helpText="Number of items in stock"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <SizeSelector
+                  sizes={sizes}
+                  onChange={setSizes}
+                  error={errors.sizes}
+                  className="transition-all duration-200"
+                />
+                <InputField
+                  label="Discount Codes"
+                  placeholder="CODE1, CODE2 (optional)"
+                  value={discountCodes}
+                  onChange={setDiscountCodes}
+                  helpText="Comma-separated discount codes"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product Mode
+                  </label>
+                  <select
+                    value={mode}
+                    onChange={(e) =>
+                      setMode(e.target.value as "draft" | "edit" | "lock")
+                    }
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 bg-white"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="edit">Edit</option>
+                    <option value="lock">Lock</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div className="flex justify-end space-x-4">
               <button
                 type="button"
                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all duration-200"
-                onClick={() => window.history.back()}
+                onClick={() => router.push("/seller/products")}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={createProductStatus === "pending"}
+                disabled={createProductStatus === "pending" || mode === "lock"}
                 className={`px-6 py-3 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                  createProductStatus === "pending"
+                  createProductStatus === "pending" || mode === "lock"
                     ? "opacity-70 cursor-not-allowed"
                     : ""
                 }`}
               >
                 {createProductStatus === "pending"
                   ? "Saving..."
+                  : mode === "lock"
+                  ? "Locked"
                   : "Create Product"}
               </button>
             </div>
