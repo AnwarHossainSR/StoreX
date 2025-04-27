@@ -35,6 +35,7 @@ app.use(
 );
 
 app.use("/", proxy("http://localhost:6001"));
+app.use("/product", proxy("http://localhost:6002"));
 
 app.use("/gateway-health", (req, res) => {
   res.send({ status: "ok", message: "API Gateway is healthy" });

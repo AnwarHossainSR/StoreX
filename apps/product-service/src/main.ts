@@ -23,7 +23,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.get("/", (req, res) => {
-  res.send({ message: "Auth Service is healthy" });
+  res.send({ message: "Product Service is healthy" });
 });
 
 app.use(errorMiddleware);
