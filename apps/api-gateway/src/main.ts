@@ -35,7 +35,15 @@ app.use(
 );
 
 // Route-specific proxying
-app.use("/api/auth", proxy("http://localhost:6001/api")); // Proxy auth requests to Auth Service
+app.use(
+  "/api/auth",
+  proxy("http://localhost:6001/api", {
+    proxyReqPathResolver: (req) => {
+      console.log(`Proxying to: /api${req.url}`);
+      return `/api${req.url}`;
+    },
+  })
+);
 app.use("/api/products", proxy("http://localhost:6002/api")); // Proxy product requests to Product Service
 app.use("/api/auth/api-docs", proxy("http://localhost:6001/api-docs"));
 app.use("/api/auth/docs-json", proxy("http://localhost:6001/docs-json"));

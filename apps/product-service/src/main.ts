@@ -32,11 +32,6 @@ app.get("/", (req, res) => {
   res.send({ message: "Product Service is healthy" });
 });
 
-// Optional: Add a base /api route for debugging
-app.get("/api", (req, res) => {
-  res.send({ message: "Product Service API" });
-});
-
 // Swagger documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.get("/docs-json", (req, res) => {
@@ -44,7 +39,7 @@ app.get("/docs-json", (req, res) => {
 });
 
 // Product routes
-app.use("/api", productRoutes);
+app.use("/", productRoutes);
 
 // Error handling
 app.use(errorMiddleware);
@@ -55,10 +50,3 @@ const server = app.listen(port, host, () => {
 });
 
 server.on("error", console.error);
-
-// process.on("SIGTERM", () => {
-//   console.log("SIGTERM signal received: closing HTTP server");
-//   server.close(() => {
-//     console.log("HTTP server closed");
-//   });
-// });

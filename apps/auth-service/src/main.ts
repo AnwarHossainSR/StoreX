@@ -55,10 +55,3 @@ const server = app.listen(port, host, () => {
 });
 
 server.on("error", console.error);
-
-// process.on("SIGTERM", () => {
-//   console.log("SIGTERM signal received: closing HTTP server");
-//   server.close(() => {
-//     console.log("HTTP server closed");
-//   });
-// });

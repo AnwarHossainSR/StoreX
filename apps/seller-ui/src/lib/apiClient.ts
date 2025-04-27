@@ -14,7 +14,6 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api`;
 
 const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
