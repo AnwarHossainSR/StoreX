@@ -4,17 +4,37 @@ import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
 import { InputField } from "@/packages/components/InputField";
 import { SelectField } from "@/packages/components/SelectField";
-import { Plus, Search, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Percent,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import React, { useEffect, useState } from "react";
 
+interface DiscountCode {
+  id: string;
+  public_name: string;
+  discountType: string;
+  discountValue: number;
+  discountCode: string;
+  createdAt: string;
+}
+
 export default function DiscountCodesPage() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<keyof DiscountCode>("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [selectedType, setSelectedType] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [publicName, setPublicName] = useState("");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">(
     "percentage"
   );
   const [discountValue, setDiscountValue] = useState("");
   const [discountCode, setDiscountCode] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
   const [errors, setErrors] = useState<{
     publicName?: string;
     discountValue?: string;
@@ -38,52 +58,14 @@ export default function DiscountCodesPage() {
   } = useProduct();
   const { alert, setSuccess, setError, clearAlert } = useAlert();
 
-  useEffect(() => {
-    if (createDiscountCodeStatus === "success") {
-      setSuccess("Discount code created successfully!", { autoDismiss: 3000 });
-      setPublicName("");
-      setDiscountType("percentage");
-      setDiscountValue("");
-      setDiscountCode("");
-    } else if (createDiscountCodeError) {
-      setError(createDiscountCodeError, {
-        isBackendError: true,
-        details: createDiscountCodeErrorDetails,
-      });
+  const handleSort = (field: keyof DiscountCode) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
     }
-  }, [
-    createDiscountCodeStatus,
-    createDiscountCodeError,
-    createDiscountCodeErrorDetails,
-    setSuccess,
-    setError,
-  ]);
-
-  useEffect(() => {
-    if (deleteDiscountCodeStatus === "success") {
-      setSuccess("Discount code deleted successfully!", { autoDismiss: 3000 });
-    } else if (deleteDiscountCodeError) {
-      setError(deleteDiscountCodeError, {
-        isBackendError: true,
-        details: deleteDiscountCodeErrorDetails,
-      });
-    }
-  }, [
-    deleteDiscountCodeStatus,
-    deleteDiscountCodeError,
-    deleteDiscountCodeErrorDetails,
-    setSuccess,
-    setError,
-  ]);
-
-  useEffect(() => {
-    if (discountCodesError) {
-      setError(discountCodesError, {
-        isBackendError: true,
-        details: discountCodesErrorDetails,
-      });
-    }
-  }, [discountCodesError, discountCodesErrorDetails, setError]);
+  };
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -141,11 +123,83 @@ export default function DiscountCodesPage() {
     deleteDiscountCode(id);
   };
 
-  const filteredCodes = discountCodes.filter(
-    (code) =>
-      code.public_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      code.discountCode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    if (createDiscountCodeStatus === "success") {
+      setSuccess("Discount code created successfully!", { autoDismiss: 3000 });
+      setPublicName("");
+      setDiscountType("percentage");
+      setDiscountValue("");
+      setDiscountCode("");
+      setIsModalOpen(false);
+    } else if (createDiscountCodeError) {
+      setError(createDiscountCodeError, {
+        isBackendError: true,
+        details: createDiscountCodeErrorDetails,
+      });
+    }
+  }, [
+    createDiscountCodeStatus,
+    createDiscountCodeError,
+    createDiscountCodeErrorDetails,
+    setSuccess,
+    setError,
+  ]);
+
+  useEffect(() => {
+    if (deleteDiscountCodeStatus === "success") {
+      setSuccess("Discount code deleted successfully!", { autoDismiss: 3000 });
+    } else if (deleteDiscountCodeError) {
+      setError(deleteDiscountCodeError, {
+        isBackendError: true,
+        details: deleteDiscountCodeErrorDetails,
+      });
+    }
+  }, [
+    deleteDiscountCodeStatus,
+    deleteDiscountCodeError,
+    deleteDiscountCodeErrorDetails,
+    setSuccess,
+    setError,
+  ]);
+
+  useEffect(() => {
+    if (discountCodesError) {
+      setError(discountCodesError, {
+        isBackendError: true,
+        details: discountCodesErrorDetails,
+      });
+    }
+  }, [discountCodesError, discountCodesErrorDetails, setError]);
+
+  const filteredCodes = discountCodes
+    ?.filter(
+      (code: any) =>
+        (selectedType === "all" || code.discountType === selectedType) &&
+        (code.public_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          code.discountCode.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    .sort((a: any, b: any) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortDirection === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return sortDirection === "asc"
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
+    });
+
+  const totalCodes = filteredCodes.length;
+  const percentageCodes = filteredCodes.filter(
+    (code: any) => code.discountType === "percentage"
+  ).length;
+  const fixedCodes = filteredCodes.filter(
+    (code: any) => code.discountType === "fixed"
+  ).length;
 
   const isLoading =
     discountCodesStatus === "pending" ||
@@ -153,199 +207,352 @@ export default function DiscountCodesPage() {
     deleteDiscountCodeStatus === "pending";
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-6 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Manage Discount Codes
-            </h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Create and manage discount codes for your products
-            </p>
-          </div>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Discount Codes</h1>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+        >
+          <Plus size={20} className="mr-2" />
+          Create Discount Code
+        </button>
+      </div>
 
-          {alert && (
-            <div className="px-6 py-4">
-              <Alert
-                variant={alert.variant}
-                className="rounded-lg"
-                autoDismiss={alert.autoDismiss}
-                onDismiss={clearAlert}
-                details={alert.details}
-              >
-                <AlertTitle>{alert.title}</AlertTitle>
-                <AlertDescription>{alert.message}</AlertDescription>
-              </Alert>
-            </div>
-          )}
+      {alert && (
+        <div className="mb-6">
+          <Alert
+            variant={alert.variant}
+            className="rounded-lg"
+            autoDismiss={alert.autoDismiss}
+            onDismiss={clearAlert}
+            details={alert.details}
+          >
+            <AlertTitle>{alert.title}</AlertTitle>
+            <AlertDescription>{alert.message}</AlertDescription>
+          </Alert>
+        </div>
+      )}
 
-          <div className="p-6 space-y-8">
-            {/* Create Discount Code Form */}
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                Create New Discount Code
-              </h2>
-              <form
-                onSubmit={handleCreate}
-                className="grid grid-cols-1 md:grid-cols-4 gap-4"
-              >
-                <InputField
-                  label="Public Name"
-                  required
-                  placeholder="e.g., Summer Sale"
-                  value={publicName}
-                  onChange={setPublicName}
-                  error={errors.publicName}
-                  helpText="Name visible to customers"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500"
-                />
-                <SelectField
-                  label="Discount Type"
-                  required
-                  value={discountType}
-                  onChange={setDiscountType}
-                  error={errors.discountType}
-                  helpText="Choose discount calculation method"
-                  className="transition-all duration-200"
-                >
-                  <option value="percentage">Percentage</option>
-                  <option value="fixed">Fixed Amount</option>
-                </SelectField>
-                <InputField
-                  label="Discount Value"
-                  required
-                  type="number"
-                  placeholder={
-                    discountType === "percentage" ? "e.g., 20" : "e.g., 10"
-                  }
-                  value={discountValue}
-                  onChange={setDiscountValue}
-                  error={errors.discountValue}
-                  helpText={
-                    discountType === "percentage"
-                      ? "Percentage (0-100)"
-                      : "Fixed amount in USD"
-                  }
-                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500"
-                />
-                <InputField
-                  label="Discount Code"
-                  required
-                  placeholder="e.g., SUMMER2025"
-                  value={discountCode}
-                  onChange={setDiscountCode}
-                  error={errors.discountCode}
-                  helpText="Unique code, e.g., SUMMER2025"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500"
-                />
-                <div className="md:col-span-4 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className={`px-4 py-2 bg-indigo-R
-                      focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center ${
-                        isLoading ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Discount Code
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Discount Codes Table */}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
             <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Discount Codes
-                </h2>
-                <div className="relative w-full max-w-xs">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search discount codes..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all duration-200"
-                  />
-                </div>
-              </div>
-              {isLoading ? (
-                <div className="text-center py-6 text-gray-500">Loading...</div>
-              ) : filteredCodes.length === 0 ? (
-                <div className="text-center py-6 text-gray-500">
-                  No discount codes found
-                </div>
-              ) : (
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Public Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Type
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Value
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Code
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Created
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredCodes.map((code) => (
-                        <tr
-                          key={code.id}
-                          className="hover:bg-gray-50 transition-colors duration-150"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {code.public_name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {code.discountType.charAt(0).toUpperCase() +
-                              code.discountType.slice(1)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {code.discountType === "percentage"
-                              ? `${code.discountValue}%`
-                              : `$${code.discountValue}`}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {code.discountCode}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(code.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
-                              onClick={() => handleDelete(code.id)}
-                              className="text-red-600 hover:text-red-800 transition-colors duration-200"
-                              disabled={isLoading}
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <p className="text-sm font-medium text-gray-500">
+                Total Discount Codes
+              </p>
+              <p className="text-2xl font-bold text-gray-800">{totalCodes}</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-full">
+              <Percent size={24} className="text-blue-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Percentage Discounts
+              </p>
+              <p className="text-2xl font-bold text-green-600">
+                {percentageCodes}
+              </p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <Percent size={24} className="text-green-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Fixed Discounts
+              </p>
+              <p className="text-2xl font-bold text-yellow-600">{fixedCodes}</p>
+            </div>
+            <div className="p-3 bg-yellow-100 rounded-full">
+              <Percent size={24} className="text-yellow-600" />
             </div>
           </div>
         </div>
       </div>
+
+      <div className="bg-white rounded-lg shadow-sm">
+        {/* Search and Filter Bar */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-4">
+            <div className="relative flex-grow max-w-md">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search discount codes..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Search
+                className="absolute left-3 top-2.5 text-gray-400"
+                size={20}
+              />
+            </div>
+            <div className="flex space-x-2">
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Types</option>
+                <option value="percentage">Percentage</option>
+                <option value="fixed">Fixed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Discount Codes Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort("public_name")}
+                >
+                  <div className="flex items-center">
+                    Public Name
+                    <span className="ml-2">
+                      {sortField === "public_name" &&
+                        (sortDirection === "asc" ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        ))}
+                    </span>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort("discountType")}
+                >
+                  <div className="flex items-center">
+                    Type
+                    <span className="ml-2">
+                      {sortField === "discountType" &&
+                        (sortDirection === "asc" ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        ))}
+                    </span>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort("discountValue")}
+                >
+                  <div className="flex items-center">
+                    Value
+                    <span className="ml-2">
+                      {sortField === "discountValue" &&
+                        (sortDirection === "asc" ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        ))}
+                    </span>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort("discountCode")}
+                >
+                  <div className="flex items-center">
+                    Code
+                    <span className="ml-2">
+                      {sortField === "discountCode" &&
+                        (sortDirection === "asc" ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        ))}
+                    </span>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  <div className="flex items-center">
+                    Created
+                    <span className="ml-2">
+                      {sortField === "createdAt" &&
+                        (sortDirection === "asc" ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        ))}
+                    </span>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredCodes?.map((code: any) => (
+                <tr key={code.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                    {code.public_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        code.discountType === "percentage"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {code.discountType.charAt(0).toUpperCase() +
+                        code.discountType.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {code.discountType === "percentage"
+                      ? `${code.discountValue}%`
+                      : `$${code.discountValue}`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {code.discountCode}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(code.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => handleDelete(code.id)}
+                      className="text-red-600 hover:text-red-800 transition-colors duration-200"
+                      disabled={isLoading}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal for Creating Discount Code */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium text-gray-900">
+                Create New Discount Code
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <InputField
+                label="Public Name"
+                required
+                placeholder="e.g., Summer Sale"
+                value={publicName}
+                onChange={setPublicName}
+                error={errors.publicName}
+                helpText="Name visible to customers"
+                className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500"
+              />
+              <SelectField
+                label="Discount Type"
+                required
+                value={discountType}
+                onChange={setDiscountType}
+                error={errors.discountType}
+                helpText="Choose discount calculation method"
+                className="transition-all duration-200"
+              >
+                <option value="percentage">Percentage</option>
+                <option value="fixed">Fixed Amount</option>
+              </SelectField>
+              <InputField
+                label="Discount Value"
+                required
+                type="number"
+                placeholder={
+                  discountType === "percentage" ? "e.g., 20" : "e.g., 10"
+                }
+                value={discountValue}
+                onChange={setDiscountValue}
+                error={errors.discountValue}
+                helpText={
+                  discountType === "percentage"
+                    ? "Percentage (0-100)"
+                    : "Fixed amount in USD"
+                }
+                className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500"
+              />
+              <InputField
+                label="Discount Code"
+                required
+                placeholder="e.g., SUMMER2025"
+                value={discountCode}
+                onChange={setDiscountCode}
+                error={errors.discountCode}
+                helpText="Unique code, e.g., SUMMER2025"
+                className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500"
+              />
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 flex items-center ${
+                    isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

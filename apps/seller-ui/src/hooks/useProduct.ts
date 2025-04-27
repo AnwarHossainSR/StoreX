@@ -109,7 +109,7 @@ export const useProduct = () => {
       categoriesQuery.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    discountCodes: discountCodesQuery.data?.data || [],
+    discountCodes: discountCodesQuery.data || [],
     discountCodesStatus: discountCodesQuery.status,
     discountCodesError: discountCodesQuery.error?.message,
     discountCodesErrorDetails: (
