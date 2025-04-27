@@ -1,6 +1,4 @@
 // components/TextAreaField.tsx
-import React from "react";
-
 export interface TextAreaFieldProps {
   label: string;
   value: string;
@@ -8,8 +6,8 @@ export interface TextAreaFieldProps {
   placeholder?: string;
   required?: boolean;
   helpText?: string;
-  rows?: number;
-  error?: string; // Add error prop
+  error?: string;
+  className?: string;
 }
 
 export const TextAreaField: React.FC<TextAreaFieldProps> = ({
@@ -19,30 +17,38 @@ export const TextAreaField: React.FC<TextAreaFieldProps> = ({
   placeholder,
   required = false,
   helpText,
-  rows = 4,
   error,
-}) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-      {label}
-      {required && <span className="text-red-500"> *</span>}
-    </label>
-    <textarea
-      rows={rows}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={`block w-full px-3 py-2 border ${
-        error ? "border-red-300" : "border-gray-300"
-      } rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
-      aria-invalid={!!error}
-      aria-describedby={error ? `${label}-error` : undefined}
-    />
-    {helpText && <p className="mt-1 text-xs text-gray-500">{helpText}</p>}
-    {error && (
-      <p className="mt-1 text-sm text-red-600" id={`${label}-error`}>
-        {error}
-      </p>
-    )}
-  </div>
-);
+  className = "",
+}) => {
+  const textareaId = `${label.replace(/\s+/g, "-").toLowerCase()}-textarea`;
+
+  return (
+    <div className={`space-y-1 ${className}`}>
+      <label
+        htmlFor={textareaId}
+        className="block text-sm font-medium text-gray-700"
+      >
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      {helpText && <p className="text-xs text-gray-500 mb-1">{helpText}</p>}
+      <textarea
+        id={textareaId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`block w-full px-4 py-3 border ${
+          error ? "border-red-300" : "border-gray-300"
+        } rounded-lg shadow-sm bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-400 min-h-[120px]`}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${textareaId}-error` : undefined}
+        aria-label={label}
+      />
+      {error && (
+        <p className="mt-1 text-sm text-red-600" id={`${textareaId}-error`}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+};

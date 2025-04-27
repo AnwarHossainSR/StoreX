@@ -1,4 +1,3 @@
-// pages/CreateProductPage.tsx
 "use client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
@@ -10,14 +9,16 @@ import {
   Specification,
 } from "@/packages/components/CustomFields";
 import { InputField } from "@/packages/components/InputField";
+import RichTextEditor from "@/packages/components/RichTextEditor";
 import { TextAreaField } from "@/packages/components/TextAreaField";
 import { ColorPicker } from "@/packages/components/colorPicker";
-import { Edit2 } from "lucide-react";
+import { Edit2, Upload } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
 export default function CreateProductPage() {
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [detailedDescription, setDetailedDescription] = useState("");
   const [tags, setTags] = useState("");
   const [warranty, setWarranty] = useState("");
   const [slug, setSlug] = useState("");
@@ -31,7 +32,8 @@ export default function CreateProductPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [errors, setErrors] = useState<{
     title?: string;
-    description?: string;
+    shortDescription?: string;
+    detailedDescription?: string;
     tags?: string;
     warranty?: string;
     slug?: string;
@@ -90,7 +92,8 @@ export default function CreateProductPage() {
   const validateForm = () => {
     const newErrors: {
       title?: string;
-      description?: string;
+      shortDescription?: string;
+      detailedDescription?: string;
       tags?: string;
       warranty?: string;
       slug?: string;
@@ -102,8 +105,12 @@ export default function CreateProductPage() {
       newErrors.title = "Please enter the product title";
       isValid = false;
     }
-    if (!description) {
-      newErrors.description = "Please enter the product description";
+    if (!shortDescription) {
+      newErrors.shortDescription = "Please enter the short description";
+      isValid = false;
+    }
+    if (!detailedDescription || detailedDescription === "<p><br></p>") {
+      newErrors.detailedDescription = "Please enter the detailed description";
       isValid = false;
     }
     if (!tags) {
@@ -145,7 +152,8 @@ export default function CreateProductPage() {
       createProduct({
         sellerId,
         title,
-        description,
+        description: shortDescription,
+        detailedDescription, // New field for rich text
         tags: tags
           .split(",")
           .map((tag) => tag.trim())
@@ -164,188 +172,223 @@ export default function CreateProductPage() {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-sm">
-      <h1 className="text-2xl font-bold text-gray-800 mb-2">Create Product</h1>
-      <nav className="text-sm text-gray-500 mb-6">
-        Dashboard &gt; Create Product
-      </nav>
+    <div className="min-h-screen p-6 bg-white rounded-lg shadow-sm">
+      <div className=" mx-auto">
+        <div className="bg-white rounded-2xl overflow-hidden">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            Create Product
+          </h1>
 
-      {alert && (
-        <Alert
-          variant={alert.variant}
-          className="mb-4"
-          autoDismiss={alert.autoDismiss}
-          onDismiss={clearAlert}
-          details={alert.details}
-        >
-          <AlertTitle>{alert.title}</AlertTitle>
-          <AlertDescription>{alert.message}</AlertDescription>
-        </Alert>
-      )}
+          {alert && (
+            <div className="px-8 pt-6">
+              <Alert
+                variant={alert.variant}
+                className="mb-4 rounded-lg"
+                autoDismiss={alert.autoDismiss}
+                onDismiss={clearAlert}
+                details={alert.details}
+              >
+                <AlertTitle>{alert.title}</AlertTitle>
+                <AlertDescription>{alert.message}</AlertDescription>
+              </Alert>
+            </div>
+          )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <div className="border-dashed border-2 border-gray-300 rounded-lg h-80 flex items-center justify-center relative">
-              {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="object-cover h-full w-full rounded-lg"
-                />
-              ) : (
-                <div className="text-center text-gray-400">
-                  765 x 850
-                  <br />
-                  Please choose an image
-                  <br />
-                  according to the expected ratio
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-6">
+                <div className="relative group">
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 transition-colors group-hover:border-blue-400">
+                    {previewUrl ? (
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="object-cover h-full w-full rounded-xl"
+                      />
+                    ) : (
+                      <div className="text-center text-gray-500">
+                        <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                        <p className="mt-2">765 x 850</p>
+                        <p>Upload product image</p>
+                        <p className="text-xs">Optimal ratio: 3:4</p>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:bg-blue-50 transition-colors"
+                    >
+                      <Edit2 className="h-5 w-5 text-blue-600" />
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </div>
                 </div>
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute top-2 right-2 p-2 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                <Edit2 size={20} />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-              />
-            </div>
-          </div>
+              </div>
 
-          <div className="col-span-2 space-y-4">
-            <InputField
-              label="Product Title"
-              required
-              placeholder="Enter product title"
-              value={title}
-              onChange={setTitle}
-              error={errors.title}
-            />
-            <TextAreaField
-              label="Short Description"
-              required
-              helpText="Max 150 words"
-              placeholder="Enter product description for quick view"
-              value={description}
-              onChange={setDescription}
-              error={errors.description}
-            />
-            <InputField
-              label="Tags"
-              required
-              placeholder="apple, flagship"
-              value={tags}
-              onChange={setTags}
-              error={errors.tags}
-            />
-            <InputField
-              label="Warranty"
-              required
-              placeholder="1 Year / No Warranty"
-              value={warranty}
-              onChange={setWarranty}
-              error={errors.warranty}
-            />
-            <InputField
-              label="Slug"
-              required
-              placeholder="product_slug"
-              value={slug}
-              onChange={setSlug}
-              error={errors.slug}
-            />
-            <InputField
-              label="Brand"
-              placeholder="Apple"
-              value={brand}
-              onChange={setBrand}
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={category}
-                onChange={(e) => {
-                  setCategory(e.target.value);
-                  setSubCategory("");
-                }}
-                className={`block w-full px-3 py-2 border ${
-                  errors.category ? "border-red-300" : "border-gray-300"
-                } rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                aria-invalid={!!errors.category}
-                aria-describedby={
-                  errors.category ? "category-error" : undefined
-                }
-              >
-                <option value="">Select a category</option>
-                {categories.map((cat) => (
-                  <option key={cat.name} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-              {errors.category && (
-                <p className="mt-1 text-sm text-red-600" id="category-error">
-                  {errors.category}
-                </p>
-              )}
-            </div>
-            {category && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Subcategory
-                </label>
-                <select
-                  value={subCategory}
-                  onChange={(e) => setSubCategory(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="">Select a subcategory (optional)</option>
-                  {categories
-                    .find((cat) => cat.name === category)
-                    ?.subCategories.map((sub) => (
-                      <option key={sub} value={sub}>
-                        {sub}
+              <div className="col-span-2 space-y-6">
+                <InputField
+                  label="Product Title"
+                  required
+                  placeholder="Enter product title"
+                  value={title}
+                  onChange={setTitle}
+                  error={errors.title}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <TextAreaField
+                  label="Short Description"
+                  required
+                  helpText="Max 150 words"
+                  placeholder="Enter product description for quick view"
+                  value={shortDescription}
+                  onChange={setShortDescription}
+                  error={errors.shortDescription}
+                  className="transition-all duration-200"
+                />
+                <RichTextEditor
+                  label="Detailed Description"
+                  required
+                  value={detailedDescription}
+                  onChange={setDetailedDescription}
+                  placeholder="Enter detailed product description"
+                  error={errors.detailedDescription}
+                />
+                <InputField
+                  label="Tags"
+                  required
+                  placeholder="apple, flagship"
+                  value={tags}
+                  onChange={setTags}
+                  error={errors.tags}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <InputField
+                  label="Warranty"
+                  required
+                  placeholder="1 Year / No Warranty"
+                  value={warranty}
+                  onChange={setWarranty}
+                  error={errors.warranty}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <InputField
+                  label="Slug"
+                  required
+                  placeholder="product-slug"
+                  value={slug}
+                  onChange={setSlug}
+                  error={errors.slug}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <InputField
+                  label="Brand"
+                  placeholder="Apple"
+                  value={brand}
+                  onChange={setBrand}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      setSubCategory("");
+                    }}
+                    className={`block w-full px-4 py-3 border ${
+                      errors.category ? "border-red-300" : "border-gray-300"
+                    } rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 bg-white`}
+                    aria-invalid={!!errors.category}
+                    aria-describedby={
+                      errors.category ? "category-error" : undefined
+                    }
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.name} value={cat.name}>
+                        {cat.name}
                       </option>
                     ))}
-                </select>
+                  </select>
+                  {errors.category && (
+                    <p
+                      className="mt-1 text-sm text-red-600"
+                      id="category-error"
+                    >
+                      {errors.category}
+                    </p>
+                  )}
+                </div>
+                {category && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Subcategory
+                    </label>
+                    <select
+                      value={subCategory}
+                      onChange={(e) => setSubCategory(e.target.value)}
+                      className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 bg-white"
+                    >
+                      <option value="">Select a subcategory (optional)</option>
+                      {categories
+                        .find((cat) => cat.name === category)
+                        ?.subCategories.map((sub) => (
+                          <option key={sub} value={sub}>
+                            {sub}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Colors
+                  </label>
+                  <ColorPicker colors={colors} onChange={setColors} />
+                </div>
+                <CustomSpecifications
+                  specifications={specs}
+                  onChange={setSpecs}
+                />
+                <CustomProperties
+                  properties={properties}
+                  onChange={setProperties}
+                />
               </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Colors
-              </label>
-              <ColorPicker colors={colors} onChange={setColors} />
             </div>
-            <CustomSpecifications specifications={specs} onChange={setSpecs} />
-            <CustomProperties
-              properties={properties}
-              onChange={setProperties}
-            />
-          </div>
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all duration-200"
+                onClick={() => window.history.back()}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createProductStatus === "pending"}
+                className={`px-6 py-3 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                  createProductStatus === "pending"
+                    ? "opacity-70 cursor-not-allowed"
+                    : ""
+                }`}
+              >
+                {createProductStatus === "pending"
+                  ? "Saving..."
+                  : "Create Product"}
+              </button>
+            </div>
+          </form>
         </div>
-        <div className="mt-6 flex justify-end">
-          <button
-            type="submit"
-            disabled={createProductStatus === "pending"}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              createProductStatus === "pending"
-                ? "opacity-70 cursor-not-allowed"
-                : ""
-            }`}
-          >
-            {createProductStatus === "pending" ? "Saving..." : "Save Product"}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }
