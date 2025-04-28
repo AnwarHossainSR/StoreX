@@ -1,16 +1,18 @@
 "use client";
 
 import { useProduct } from "@/hooks/useProduct";
+import ConfirmationModal from "@/packages/components/ConfirmationModal";
 import { Pagination } from "@/packages/components/Pagination";
+import { Table } from "@/packages/components/Table";
 import {
-  ChevronDown,
-  ChevronUp,
   Download,
   Edit,
+  Eye,
   Filter,
   Package,
   Plus,
   Search,
+  Trash,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -22,14 +24,21 @@ export default function ProductsPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const entriesPerPage = 10;
 
   const router = useRouter();
-  const { getProducts, categories } = useProduct();
+  const { getProducts, categories, deleteProduct } = useProduct();
   const { data: productsData, status: productsStatus } = getProducts(
     currentPage,
     entriesPerPage
   );
+
+  console.log("productsData", productsData);
 
   const handleSort = (field: string) => {
     if (field === sortField) {
@@ -39,7 +48,6 @@ export default function ProductsPage() {
       setSortDirection("asc");
     }
   };
-  console.log("productsData", productsData);
 
   const filteredProducts = (productsData?.data || [])
     .filter(
@@ -64,7 +72,7 @@ export default function ProductsPage() {
         ? (aValue as number) - (bValue as number)
         : (bValue as number) - (aValue as number);
     });
-
+  console.log("filteredProducts", filteredProducts);
   const totalProducts = productsData?.total || filteredProducts.length;
   const activeProducts = filteredProducts.filter(
     (product) => product.status === "Active"
@@ -72,6 +80,98 @@ export default function ProductsPage() {
   const outOfStockProducts = filteredProducts.filter(
     (product) => product.stock === 0
   ).length;
+
+  const columns = [
+    {
+      key: "image",
+      header: "Image",
+      sortable: false,
+      render: (product: any) => (
+        <img
+          src={
+            product?.images?.length > 0
+              ? product.images[0].url
+              : "/images/fallback-product.svg"
+          }
+          alt={product.title}
+          className="h-12 w-12 object-cover rounded-md"
+          onError={(e) => {
+            console.log("Image not found", e.currentTarget.src);
+            e.currentTarget.src = "/images/fallback-product.svg";
+          }}
+        />
+      ),
+    },
+    {
+      key: "title",
+      header: "Title",
+      sortable: true,
+    },
+    {
+      key: "sale_price",
+      header: "Price",
+      sortable: true,
+      render: (product: any) => `$${product.sale_price.toFixed(2)}`,
+    },
+    {
+      key: "stock",
+      header: "Stock",
+      sortable: true,
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      render: (product: any) => (
+        <span
+          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+            product.status === "Active"
+              ? "bg-green-100 text-green-800"
+              : product.status === "Pending"
+              ? "bg-yellow-100 text-yellow-800"
+              : product.status === "Deleted"
+              ? "bg-destructive text-white"
+              : "bg-gray-100 text-gray-800"
+          }`}
+        >
+          {product.status}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      sortable: false,
+      render: (product: any) => (
+        <div className="flex space-x-2">
+          <button
+            className="text-blue-600 hover:text-blue-800"
+            onClick={() => router.push(`/seller/products/view/${product.id}`)}
+            title="View"
+          >
+            <Eye size={16} />
+          </button>
+          <button
+            className="text-blue-600 hover:text-blue-800"
+            onClick={() => router.push(`/seller/products/edit/${product.id}`)}
+            title="Edit"
+          >
+            <Edit size={16} />
+          </button>
+          <button
+            className="text-red-600 hover:text-red-800"
+            onClick={() => {
+              setProductToDelete({ id: product.id, title: product.title });
+              setIsModalOpen(true);
+            }}
+            title="Delete"
+          >
+            <Trash size={16} />
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="p-6">
@@ -192,246 +292,16 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Products Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("id")}
-                >
-                  <div className="flex items-center">
-                    #
-                    <span className="ml-2">
-                      {sortField === "id" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Image
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("title")}
-                >
-                  <div className="flex items-center">
-                    Title
-                    <span className="ml-2">
-                      {sortField === "title" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("category")}
-                >
-                  <div className="flex items-center">
-                    Category
-                    <span className="ml-2">
-                      {sortField === "category" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("subCategory")}
-                >
-                  <div className="flex items-center">
-                    Subcategory
-                    <span className="ml-2">
-                      {sortField === "subCategory" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("sale_price")}
-                >
-                  <div className="flex items-center">
-                    Price
-                    <span className="ml-2">
-                      {sortField === "sale_price" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("stock")}
-                >
-                  <div className="flex items-center">
-                    Stock
-                    <span className="ml-2">
-                      {sortField === "stock" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("status")}
-                >
-                  <div className="flex items-center">
-                    Status
-                    <span className="ml-2">
-                      {sortField === "status" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("createdAt")}
-                >
-                  <div className="flex items-center">
-                    Created At
-                    <span className="ml-2">
-                      {sortField === "createdAt" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {productsStatus === "pending" ? (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    Loading products...
-                  </td>
-                </tr>
-              ) : filteredProducts.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    No products found
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((product, index) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                      {index + 1}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {product?.images?.length > 0 ? (
-                        <img
-                          src={product.images[0].url}
-                          alt={product.title}
-                          className="h-12 w-12 object-cover rounded-md"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 bg-gray-100 rounded-md flex items-center justify-center text-gray-400">
-                          No Image
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.title}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.category}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.subCategory}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${product.sale_price.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {product.stock}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          product.status === "Active"
-                            ? "bg-green-100 text-green-800"
-                            : product.status === "Pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {product.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(product.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <button
-                        className="text-blue-600 hover:text-blue-800"
-                        onClick={() =>
-                          router.push(`/seller/products/edit/${product.id}`)
-                        }
-                      >
-                        <Edit size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {/* Table */}
+        <Table
+          columns={columns}
+          data={filteredProducts}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          isLoading={productsStatus === "pending"}
+          emptyMessage="No products found"
+        />
 
         {/* Pagination */}
         <Pagination
@@ -441,6 +311,19 @@ export default function ProductsPage() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={() => productToDelete && deleteProduct(productToDelete.id)}
+        title="Delete Product"
+        message={
+          productToDelete
+            ? `Are you sure you want to delete "${productToDelete.title}"?`
+            : undefined
+        }
+      />
     </div>
   );
 }

@@ -4,10 +4,12 @@ import {
   createDiscountCode,
   createProduct,
   deleteDiscountCode,
+  deleteProduct,
   deleteProductImage,
   getCategories,
   getDiscountCodes,
   getSellerProducts,
+  restoreProduct,
   uploadProductImage,
   validateDiscountCode,
 } from "../controller/product.controller";
@@ -22,4 +24,7 @@ router.post("/upload-product-image", uploadProductImage);
 router.post("/delete-product-image", deleteProductImage);
 router.post("/create-product", isAuthenticated, createProduct);
 router.get("/seller", isAuthenticated, getSellerProducts);
+router.delete("/seller/:id", isAuthenticated, deleteProduct);
+router.put("/seller/restore/:id", isAuthenticated, restoreProduct);
+
 export default router;

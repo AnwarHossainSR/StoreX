@@ -106,6 +106,7 @@ enum ProductStatus {
   Active
   Pending
   Draft
+  Deleted
 }
 
 model Product {

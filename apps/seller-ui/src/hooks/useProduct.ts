@@ -8,11 +8,12 @@ import {
   productService,
   UploadedImage,
 } from "@/services/productService";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 export const useProduct = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Fetch products query with pagination
   const getProductsQuery = (page: number, limit: number) =>
@@ -54,6 +55,21 @@ export const useProduct = () => {
     mutationFn: productService.createProduct,
     onSuccess: () => {
       router.push("/seller/products");
+    },
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      return {
+        message: error.message,
+        details: errorData?.details,
+      };
+    },
+  });
+
+  // Delete product mutation
+  const deleteProductMutation = useMutation<ApiResponse<void>, Error, string>({
+    mutationFn: productService.deleteProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
@@ -124,6 +140,12 @@ export const useProduct = () => {
     saveDraft: (data: Parameters<typeof createProductMutation.mutate>[0]) => {
       createProductMutation.mutate({ ...data, status: "Draft" });
     },
+    deleteProduct: deleteProductMutation.mutate,
+    deleteProductStatus: deleteProductMutation.status,
+    deleteProductError: deleteProductMutation.error?.message,
+    deleteProductErrorDetails: (
+      deleteProductMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
 
     categories: categoriesQuery.data?.data || [],
     categoriesStatus: categoriesQuery.status,

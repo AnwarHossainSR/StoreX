@@ -380,3 +380,96 @@ export const getSellerProducts = async (
     return next(error);
   }
 };
+
+export const deleteProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new ValidationError("Product ID is required");
+    }
+
+    const product = await prisma.product.findUnique({
+      where: {
+        id,
+        isDeleted: false,
+      },
+    });
+
+    if (!product) {
+      throw new ValidationError("Product not found");
+    }
+
+    if (product.sellerId !== req.seller.id) {
+      throw new ValidationError("Unauthorized to delete this product");
+    }
+
+    const deletedProduct = await prisma.product.update({
+      where: {
+        id,
+      },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        status: "Deleted",
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Product is scheduled for deletion in 24 hours. you can restore it within that time period",
+      deletedAt: deletedProduct.deletedAt,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const restoreProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new ValidationError("Product ID is required");
+    }
+
+    const product = await prisma.product.findUnique({
+      where: {
+        id,
+        isDeleted: true,
+      },
+    });
+
+    if (!product) {
+      throw new ValidationError("Product not found");
+    }
+
+    if (product.sellerId !== req.seller.id) {
+      throw new ValidationError("Unauthorized to restore this product");
+    }
+
+    const restoredProduct = await prisma.product.update({
+      where: {
+        id,
+      },
+      data: {
+        isDeleted: false,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Product restored successfully",
+      isDeleted: restoredProduct.isDeleted,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};

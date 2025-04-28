@@ -2,7 +2,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
-import { ConfirmDeleteModal } from "@/packages/components/ConfirmDeleteModal";
+import ConfirmationModal from "@/packages/components/ConfirmationModal";
 import { InputField } from "@/packages/components/InputField";
 import { SelectField } from "@/packages/components/SelectField";
 import { useQueryClient } from "@tanstack/react-query"; // Import React Query's queryClient
@@ -604,13 +604,12 @@ export default function DiscountCodesPage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      <ConfirmDeleteModal
+      <ConfirmationModal
+        title="Delete Discount Code"
+        message={`Are you sure you want to delete the discount code "${deleteItem?.name}"? This action cannot be undone.`}
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        itemName={deleteItem?.name || ""}
-        itemType="Discount Code"
-        isLoading={isLoading}
       />
     </div>
   );

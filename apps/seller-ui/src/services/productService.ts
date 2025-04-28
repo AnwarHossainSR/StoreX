@@ -37,7 +37,7 @@ export interface Product {
   discount_codes: string[];
   shopId: string;
   sellerId: string;
-  status: "Active" | "Pending" | "Draft";
+  status: "Active" | "Pending" | "Draft" | "Deleted";
   createdAt: string;
   updatedAt: string;
 }
@@ -160,6 +160,20 @@ export const productService = {
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Product creation failed", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async deleteProduct(id: string) {
+    try {
+      const response = await apiClient.delete<ApiResponse<void>>(
+        `${PRODUCT_BASE_URL}/seller/${id}`
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to delete product", {
         cause: errorData,
       });
     }
