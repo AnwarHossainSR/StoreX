@@ -217,3 +217,109 @@ export const deleteProductImage = async (
     return next(error);
   }
 };
+
+export const createProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const {
+      title,
+      short_description,
+      detailed_description,
+      warranty,
+      custom_specifications,
+      slug,
+      tags,
+      cashOnDelivery,
+      brand,
+      video_url,
+      category,
+      colors = [],
+      sizes = [],
+      discount_codes,
+      stock,
+      sale_price,
+      regular_price,
+      subCategory,
+      custom_properties = {},
+      images = [],
+      shopId,
+    } = req.body;
+
+    if (
+      !title ||
+      !slug ||
+      !short_description ||
+      !detailed_description ||
+      !category ||
+      !subCategory ||
+      !sale_price ||
+      !images ||
+      !tags ||
+      !stock ||
+      !regular_price ||
+      !stock ||
+      !shopId
+    ) {
+      throw new ValidationError("Missing required fields");
+    }
+
+    if (!req.seller.id) {
+      throw new ValidationError("Seller ID is required");
+    }
+
+    const productExist = await prisma.product.findUnique({
+      where: {
+        slug,
+      },
+    });
+
+    if (productExist) {
+      throw new ValidationError("Product already exists");
+    }
+
+    const newProduct = await prisma.product.create({
+      data: {
+        title,
+        short_description,
+        detailed_description,
+        warranty,
+        custom_specifications,
+        slug,
+        tags,
+        cashOnDelivery,
+        brand,
+        video_url,
+        category,
+        colors,
+        sizes,
+        discount_codes,
+        stock,
+        sale_price,
+        regular_price,
+        subCategory,
+        custom_properties,
+        images: {
+          create: images.map((image: any) => ({
+            file_id: image.file_name,
+            url: image.file_url,
+          })),
+        },
+        sellerId: req.seller.id,
+        shopId: shopId,
+      },
+      include: {
+        images: true,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      product: newProduct,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
