@@ -37,7 +37,7 @@ const DiscountCodeSelector: React.FC<{
   selectedCodes: string[];
   onChange: (selected: string[]) => void;
   disabled?: boolean;
-}> = ({ discountCodes, selectedCodes, onChange, disabled = false }) => {
+}> = ({ discountCodes = [], selectedCodes, onChange, disabled = false }) => {
   const handleToggle = (codeId: string) => {
     if (disabled) return;
     if (selectedCodes.includes(codeId)) {
@@ -212,7 +212,7 @@ export default function CreateProductPage() {
         file: base64Url,
       });
       console.log("Image uploaded successfully:", response.data);
-      const uploadedImage = {
+      const uploadedImage: UploadedImage = {
         file_name: response.data.file_name,
         file_url: response.data.file_url,
       };
@@ -226,8 +226,12 @@ export default function CreateProductPage() {
     }
   };
 
-  const handleRemoveImage = (image: UploadedImage, index: number) => {
+  const handleRemoveImage = async (image: UploadedImage, index: number) => {
     if (mode === "lock") return;
+    const response = await apiClient.post("/products/delete-product-image", {
+      fileId: image.file_name,
+    });
+    console.log("Image deleted successfully:", response.data);
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
     setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };

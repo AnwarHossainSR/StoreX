@@ -5,6 +5,7 @@ import proxy from "express-http-proxy";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
 import initializeSiteConfig from "./lib/initializeSiteConfig";
+import bodyParser from "body-parser";
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ limit: "100mb", extended: true }));
+app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cookieParser());
 app.set("trust proxy", 1);
 

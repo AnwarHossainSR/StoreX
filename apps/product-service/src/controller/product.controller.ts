@@ -193,9 +193,26 @@ export const uploadProductImage = async (
     });
 
     res.status(200).json({
-      file_name: uplaodImageToIK.id,
+      file_name: uplaodImageToIK.fileId,
       file_url: uplaodImageToIK.url,
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const deleteProductImage = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { fileId } = req.body;
+    if (!fileId) {
+      throw new ValidationError("fileId is required");
+    }
+    const deleteImageFromIK: any = await imageKit.deleteFile(fileId);
+    res.status(200).json(deleteImageFromIK);
   } catch (error) {
     return next(error);
   }

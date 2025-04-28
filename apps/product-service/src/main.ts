@@ -10,6 +10,7 @@ dotenv.config();
 
 // @ts-ignore
 import swaggerDocument from "./swagger-output.json";
+import bodyParser from "body-parser";
 
 const host = process.env.HOST ?? "localhost";
 const port = process.env.PORT ? Number(process.env.PORT) : 6002;
@@ -24,7 +25,9 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ limit: "100mb", extended: true }));
+app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cookieParser());
 
 // Health check
