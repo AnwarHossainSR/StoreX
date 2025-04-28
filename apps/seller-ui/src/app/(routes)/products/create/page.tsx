@@ -1,4 +1,5 @@
 "use client";
+import ImageEnhancementModal from "@/components/modal/EnhancementModal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
@@ -77,70 +78,6 @@ const DiscountCodeSelector: React.FC<{
             </span>
           ))
         )}
-      </div>
-    </div>
-  );
-};
-
-// AI Enhancement Modal component
-const ImageEnhancementModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  image: UploadedImage | null;
-  previewUrl: string | null;
-}> = ({ isOpen, onClose, image, previewUrl }) => {
-  if (!isOpen || !image || !previewUrl) return null;
-
-  const handleEnhancement = (type: string) => {
-    console.log(`Enhancing image ${image.file_name} with ${type}`);
-    // TODO: Implement API call to enhancement endpoint
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
-        >
-          <X className="h-6 w-6 text-gray-600" />
-        </button>
-        <h2 className="text-xl font-bold mb-4">Image Enhancement</h2>
-        <img
-          src={previewUrl}
-          alt={image.file_name}
-          className="w-full h-96 object-contain rounded-lg mb-4"
-        />
-        <div className="flex gap-4 justify-center">
-          <button
-            type="button"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => handleEnhancement("Remove BG")}
-          >
-            Remove BG
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => handleEnhancement("Drop Shadow")}
-          >
-            Drop Shadow
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => handleEnhancement("Retouch")}
-          >
-            Retouch
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={() => handleEnhancement("UpScale")}
-          >
-            UpScale
-          </button>
-        </div>
       </div>
     </div>
   );
