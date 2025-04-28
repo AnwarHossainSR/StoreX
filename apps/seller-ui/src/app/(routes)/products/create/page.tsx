@@ -3,7 +3,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
 import apiClient from "@/lib/apiClient";
-import { ColorPicker } from "@/packages/components/colorPicker";
+import { ColorPicker } from "@/packages/components/ColorPicker";
 import {
   CustomProperties,
   CustomSpecifications,
