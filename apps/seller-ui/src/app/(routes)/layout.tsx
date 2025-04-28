@@ -191,8 +191,13 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
                 alt="Logo"
               />
               <div>
-                <div className="text-2xl font-bold text-white">Becodemy</div>
-                <div className="text-sm text-gray-400">653 Banani, Dhaka</div>
+                <div className="text-2xl font-bold text-white">
+                  {user?.shop?.name}
+                </div>
+                <div className="text-sm text-gray-400">
+                  {" "}
+                  {user?.shop?.address}
+                </div>
               </div>
             </div>
             <nav className="mt-8 px-2 space-y-1">
@@ -250,8 +255,12 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
                   alt="Logo"
                 />
                 <div>
-                  <div className="text-2xl font-bold text-white">Becodemy</div>
-                  <div className="text-sm text-gray-400">653 Banani, Dhaka</div>
+                  <div className="text-2xl font-bold text-white">
+                    {user?.shop?.name}
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    {user?.shop?.address}
+                  </div>
                 </div>
               </div>
             )}
