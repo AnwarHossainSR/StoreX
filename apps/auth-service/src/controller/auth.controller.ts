@@ -122,7 +122,7 @@ export const loginUser = async (
       },
       process.env.JWT_SECRET_KEY!,
       {
-        expiresIn: "15m",
+        expiresIn: "1h",
       }
     );
 
@@ -250,7 +250,7 @@ export const refreshAccessToken = async (
         role: type,
       },
       process.env.JWT_SECRET_KEY!,
-      { expiresIn: "1m" }
+      { expiresIn: "1h" }
     );
     setCookie(
       res,
@@ -427,7 +427,7 @@ export const sellerLogin = async (
       },
       process.env.JWT_SECRET_KEY!,
       {
-        expiresIn: "1m",
+        expiresIn: "1h",
       }
     );
 
