@@ -607,7 +607,7 @@ export default function CreateProductPage() {
                             key={index}
                             image={image}
                             index={index}
-                            previewUrl={previewUrls[index] || image.file_url}
+                            previewUrl={image.file_url}
                             onRemove={handleRemoveImage}
                             onEnhance={handleEnhanceImage}
                             disabled={mode === "lock"}

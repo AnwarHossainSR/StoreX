@@ -16,6 +16,30 @@ interface UploadedImage {
   file_url: string;
 }
 
+// Enhancements array
+export const enhancements = [
+  {
+    label: "Remove BG",
+    effect: "removedotbg",
+    icon: <ImageIcon className="h-3.5 w-3.5" />,
+  },
+  {
+    label: "Drop Shadow",
+    effect: "e-dropshadow",
+    icon: <Maximize2 className="h-3.5 w-3.5" />,
+  },
+  {
+    label: "Retouch",
+    effect: "e-retouch",
+    icon: <Sparkles className="h-3.5 w-3.5" />,
+  },
+  {
+    label: "Upscale",
+    effect: "e-upscale",
+    icon: <ZoomIn className="h-3.5 w-3.5" />,
+  },
+];
+
 const ImageEnhancementModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -28,20 +52,26 @@ const ImageEnhancementModal: React.FC<{
 
   if (!isOpen || !image || !previewUrl) return null;
 
-  const handleEnhancement = (type: string) => {
-    setProcessing(true);
-    setEnhancementType(type);
+  const handleEnhancement = async (type: string, effect: string) => {
+    try {
+      setProcessing(true);
+      setEnhancementType(type);
 
-    console.log(`Enhancing image ${image.file_name} with ${type}`);
-    // Simulate API call with timeout
-    setTimeout(() => {
+      console.log(`Enhancing image ${image.file_name} with ${type}`);
+      const enhancedImage = `${image.file_url}?tr=${effect}`;
+      setTimeout(() => {
+        setProcessing(false);
+        setEnhancedUrl(enhancedImage);
+      }, 2000);
+    } catch (error) {
+      console.error("Error enhancing image:", error);
       setProcessing(false);
-      setEnhancedUrl(previewUrl); // In real implementation, this would be the response URL
-    }, 2000);
+      setEnhancementType(null);
+      setEnhancedUrl(null);
+    }
   };
 
   const handleDownload = () => {
-    // Download logic here
     console.log(`Downloading enhanced image ${image.file_name}`);
   };
 
@@ -127,38 +157,19 @@ const ImageEnhancementModal: React.FC<{
               ENHANCEMENT OPTIONS
             </h3>
 
-            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              <EnhancementButton
-                label="Remove BG"
-                icon={<ImageIcon className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("Remove BG")}
-                active={enhancementType === "Remove BG"}
-                disabled={processing}
-              />
-
-              <EnhancementButton
-                label="Drop Shadow"
-                icon={<Maximize2 className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("Drop Shadow")}
-                active={enhancementType === "Drop Shadow"}
-                disabled={processing}
-              />
-
-              <EnhancementButton
-                label="Retouch"
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("Retouch")}
-                active={enhancementType === "Retouch"}
-                disabled={processing}
-              />
-
-              <EnhancementButton
-                label="Upscale"
-                icon={<ZoomIn className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("UpScale")}
-                active={enhancementType === "UpScale"}
-                disabled={processing}
-              />
+            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent justify-center">
+              {enhancements.map((enhancement) => (
+                <EnhancementButton
+                  key={enhancement.effect}
+                  label={enhancement.label}
+                  icon={enhancement.icon}
+                  onClick={() =>
+                    handleEnhancement(enhancement.label, enhancement.effect)
+                  }
+                  active={enhancementType === enhancement.label}
+                  disabled={processing}
+                />
+              ))}
             </div>
 
             {enhancedUrl && (
