@@ -188,7 +188,7 @@ export const uploadProductImage = async (
     }
     const uplaodImageToIK: any = await imageKit.upload({
       file: file,
-      fileName: `product-image-${Date.now()}.png`,
+      fileName: `product-image-${Date.now()}.jpg`,
       folder: "product-images",
     });
 
@@ -213,6 +213,262 @@ export const deleteProductImage = async (
     }
     const deleteImageFromIK: any = await imageKit.deleteFile(fileId);
     res.status(200).json(deleteImageFromIK);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const createProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const {
+      title,
+      short_description,
+      detailed_description,
+      warranty,
+      custom_specifications,
+      slug,
+      tags,
+      cashOnDelivery,
+      brand,
+      video_url,
+      category,
+      colors = [],
+      sizes = [],
+      discount_codes,
+      stock,
+      sale_price,
+      regular_price,
+      subCategory,
+      custom_properties = {},
+      images = [],
+      shopId,
+    } = req.body;
+
+    if (
+      !title ||
+      !slug ||
+      !short_description ||
+      !detailed_description ||
+      !category ||
+      !subCategory ||
+      !sale_price ||
+      !images ||
+      !tags ||
+      !stock ||
+      !regular_price ||
+      !stock ||
+      !shopId
+    ) {
+      throw new ValidationError("Missing required fields");
+    }
+
+    if (!req.seller.id) {
+      throw new ValidationError("Seller ID is required");
+    }
+
+    const productExist = await prisma.product.findUnique({
+      where: {
+        slug,
+      },
+    });
+
+    if (productExist) {
+      throw new ValidationError("Product already exists");
+    }
+
+    const newProduct = await prisma.product.create({
+      data: {
+        title,
+        short_description,
+        detailed_description,
+        warranty,
+        custom_specifications,
+        slug,
+        tags,
+        cashOnDelivery,
+        brand,
+        video_url,
+        category,
+        colors,
+        sizes,
+        discount_codes,
+        stock,
+        sale_price,
+        regular_price,
+        subCategory,
+        custom_properties,
+        images: {
+          create: images.map((image: any) => ({
+            file_id: image.file_name,
+            url: image.file_url,
+          })),
+        },
+        sellerId: req.seller.id,
+        shopId: req.seller.shop.id,
+      },
+      include: {
+        images: true,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      product: newProduct,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getSellerProducts = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { page = 1, limit = 10, search = "", category = "" } = req.query;
+
+    const skip = (page - 1) * limit;
+
+    // Build dynamic filters based on search and category
+    const whereConditions: any = {
+      sellerId: req.seller.id,
+    };
+
+    if (search) {
+      whereConditions.title = {
+        contains: search, // Searching for products by title
+        mode: "insensitive", // Case-insensitive search
+      };
+    }
+
+    if (category) {
+      whereConditions.category = category; // Filter by category
+    }
+
+    // Fetching products with the necessary filters and pagination
+    const [products, totalProducts] = await Promise.all([
+      prisma.product.findMany({
+        where: whereConditions,
+        include: {
+          images: true,
+        },
+        skip,
+        take: Number(limit),
+      }),
+      prisma.product.count({
+        where: whereConditions,
+      }),
+    ]);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // Returning the response with paginated data
+    return res.status(200).json({
+      data: products,
+      total: totalProducts,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const deleteProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new ValidationError("Product ID is required");
+    }
+
+    const product = await prisma.product.findUnique({
+      where: {
+        id,
+        isDeleted: false,
+      },
+    });
+
+    if (!product) {
+      throw new ValidationError("Product not found");
+    }
+
+    if (product.sellerId !== req.seller.id) {
+      throw new ValidationError("Unauthorized to delete this product");
+    }
+
+    const deletedProduct = await prisma.product.update({
+      where: {
+        id,
+      },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        status: "Deleted",
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Product is scheduled for deletion in 24 hours. you can restore it within that time period",
+      deletedAt: deletedProduct.deletedAt,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const restoreProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new ValidationError("Product ID is required");
+    }
+
+    const product = await prisma.product.findUnique({
+      where: {
+        id,
+        isDeleted: true,
+      },
+    });
+
+    if (!product) {
+      throw new ValidationError("Product not found");
+    }
+
+    if (product.sellerId !== req.seller.id) {
+      throw new ValidationError("Unauthorized to restore this product");
+    }
+
+    const restoredProduct = await prisma.product.update({
+      where: {
+        id,
+      },
+      data: {
+        isDeleted: false,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Product restored successfully",
+      isDeleted: restoredProduct.isDeleted,
+    });
   } catch (error) {
     return next(error);
   }

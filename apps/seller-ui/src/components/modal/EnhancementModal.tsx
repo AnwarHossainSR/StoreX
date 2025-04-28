@@ -16,33 +16,72 @@ interface UploadedImage {
   file_url: string;
 }
 
+export const enhancements = [
+  {
+    label: "Remove BG",
+    effect: "removedotbg",
+    icon: <ImageIcon className="h-3.5 w-3.5" />,
+  },
+  {
+    label: "Drop Shadow",
+    effect: "e-dropshadow",
+    icon: <Maximize2 className="h-3.5 w-3.5" />,
+  },
+  {
+    label: "Retouch",
+    effect: "e-retouch",
+    icon: <Sparkles className="h-3.5 w-3.5" />,
+  },
+  {
+    label: "Upscale",
+    effect: "e-upscale",
+    icon: <ZoomIn className="h-3.5 w-3.5" />,
+  },
+];
+
 const ImageEnhancementModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   image: UploadedImage | null;
-  previewUrl: string | null;
-}> = ({ isOpen, onClose, image, previewUrl }) => {
+  onEnhance: (image: UploadedImage, enhancedUrl: string) => void; // New callback
+}> = ({ isOpen, onClose, image, onEnhance }) => {
   const [enhancementType, setEnhancementType] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [enhancedUrl, setEnhancedUrl] = useState<string | null>(null);
 
-  if (!isOpen || !image || !previewUrl) return null;
+  if (!isOpen || !image) return null;
 
-  const handleEnhancement = (type: string) => {
-    setProcessing(true);
-    setEnhancementType(type);
+  const handleEnhancement = async (type: string, effect: string) => {
+    try {
+      setProcessing(true);
+      setEnhancementType(type);
 
-    console.log(`Enhancing image ${image.file_name} with ${type}`);
-    // Simulate API call with timeout
-    setTimeout(() => {
+      console.log(`Enhancing image ${image.file_name} with ${type}`);
+      const enhancedImage = `${image.file_url}?tr=${effect}`;
+      setTimeout(() => {
+        setProcessing(false);
+        setEnhancedUrl(enhancedImage);
+        onEnhance(image, enhancedImage); // Notify parent of the enhanced URL
+      }, 2000);
+    } catch (error) {
+      console.error("Error enhancing image:", error);
       setProcessing(false);
-      setEnhancedUrl(previewUrl); // In real implementation, this would be the response URL
-    }, 2000);
+      setEnhancementType(null);
+      setEnhancedUrl(null);
+    }
   };
 
   const handleDownload = () => {
-    // Download logic here
-    console.log(`Downloading enhanced image ${image.file_name}`);
+    if (enhancedUrl) {
+      console.log(
+        `Downloading enhanced image ${image.file_name} from ${enhancedUrl}`
+      );
+      // Simulate download (replace with actual download logic)
+      const link = document.createElement("a");
+      link.href = enhancedUrl;
+      link.download = image.file_name;
+      link.click();
+    }
   };
 
   const handleReset = () => {
@@ -76,7 +115,7 @@ const ImageEnhancementModal: React.FC<{
           <div className="flex-1 p-4 flex flex-col overflow-hidden">
             <div className="bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 relative overflow-hidden h-[40vh]">
               <img
-                src={enhancedUrl || previewUrl}
+                src={enhancedUrl || image.file_url}
                 alt={image.file_name}
                 className="max-w-full max-h-full object-contain"
               />
@@ -127,38 +166,19 @@ const ImageEnhancementModal: React.FC<{
               ENHANCEMENT OPTIONS
             </h3>
 
-            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              <EnhancementButton
-                label="Remove BG"
-                icon={<ImageIcon className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("Remove BG")}
-                active={enhancementType === "Remove BG"}
-                disabled={processing}
-              />
-
-              <EnhancementButton
-                label="Drop Shadow"
-                icon={<Maximize2 className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("Drop Shadow")}
-                active={enhancementType === "Drop Shadow"}
-                disabled={processing}
-              />
-
-              <EnhancementButton
-                label="Retouch"
-                icon={<Sparkles className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("Retouch")}
-                active={enhancementType === "Retouch"}
-                disabled={processing}
-              />
-
-              <EnhancementButton
-                label="Upscale"
-                icon={<ZoomIn className="h-3.5 w-3.5" />}
-                onClick={() => handleEnhancement("UpScale")}
-                active={enhancementType === "UpScale"}
-                disabled={processing}
-              />
+            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent justify-center">
+              {enhancements.map((enhancement) => (
+                <EnhancementButton
+                  key={enhancement.effect}
+                  label={enhancement.label}
+                  icon={enhancement.icon}
+                  onClick={() =>
+                    handleEnhancement(enhancement.label, enhancement.effect)
+                  }
+                  active={enhancementType === enhancement.label}
+                  disabled={processing}
+                />
+              ))}
             </div>
 
             {enhancedUrl && (
@@ -180,7 +200,6 @@ const ImageEnhancementModal: React.FC<{
   );
 };
 
-// Enhancement option button component - Horizontal version
 const EnhancementButton: React.FC<{
   label: string;
   icon: React.ReactNode;

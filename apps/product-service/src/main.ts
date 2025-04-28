@@ -4,13 +4,14 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
+import "./jobs/productCron.job.ts";
 import productRoutes from "./routes/product.routes";
 
 dotenv.config();
 
 // @ts-ignore
-import swaggerDocument from "./swagger-output.json";
 import bodyParser from "body-parser";
+import swaggerDocument from "./swagger-output.json";
 
 const host = process.env.HOST ?? "localhost";
 const port = process.env.PORT ? Number(process.env.PORT) : 6002;

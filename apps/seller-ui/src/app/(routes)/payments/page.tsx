@@ -1,13 +1,8 @@
 "use client";
 
-import {
-  ChevronDown,
-  ChevronUp,
-  CreditCard,
-  Download,
-  Filter,
-  Search,
-} from "lucide-react";
+import { Pagination } from "@/packages/components/Pagination";
+import { Table } from "@/packages/components/Table";
+import { CreditCard, Download, Filter, Search } from "lucide-react";
 import { useState } from "react";
 
 // Mock payments data
@@ -41,6 +36,8 @@ export default function PaymentsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedMethod, setSelectedMethod] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
 
   const handleSort = (field: string) => {
     if (field === sortField) {
@@ -75,6 +72,11 @@ export default function PaymentsPage() {
         : (bValue as number) - (aValue as number);
     });
 
+  const paginatedPayments = filteredPayments.slice(
+    (currentPage - 1) * entriesPerPage,
+    currentPage * entriesPerPage
+  );
+
   const totalAmount = filteredPayments.reduce(
     (sum, payment) => sum + payment.amount,
     0
@@ -85,6 +87,65 @@ export default function PaymentsPage() {
   const pendingAmount = filteredPayments
     .filter((payment) => payment.status === "Pending")
     .reduce((sum, payment) => sum + payment.amount, 0);
+
+  const columns = [
+    {
+      key: "orderId",
+      header: "Order ID",
+      sortable: true,
+    },
+    {
+      key: "customer",
+      header: "Customer",
+      sortable: true,
+    },
+    {
+      key: "amount",
+      header: "Amount",
+      sortable: true,
+      render: (payment: any) => `$${payment.amount.toFixed(2)}`,
+    },
+    {
+      key: "method",
+      header: "Method",
+      sortable: true,
+      render: (payment: any) => (
+        <div className="flex items-center">
+          <CreditCard size={16} className="mr-2 text-gray-400" />
+          {payment.method}
+          {payment.cardLast4 && (
+            <span className="ml-1 text-gray-500">
+              (**** {payment.cardLast4})
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      render: (payment: any) => (
+        <span
+          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+            payment.status === "Completed"
+              ? "bg-green-100 text-green-800"
+              : payment.status === "Pending"
+              ? "bg-yellow-100 text-yellow-800"
+              : "bg-red-100 text-red-800"
+          }`}
+        >
+          {payment.status}
+        </span>
+      ),
+    },
+    {
+      key: "date",
+      header: "Date",
+      sortable: true,
+      render: (payment: any) => new Date(payment.date).toLocaleDateString(),
+    },
+  ];
 
   return (
     <div className="p-6">
@@ -198,197 +259,23 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        {/* Payments Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("id")}
-                >
-                  <div className="flex items-center">
-                    Payment ID
-                    <span className="ml-2">
-                      {sortField === "id" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("orderId")}
-                >
-                  <div className="flex items-center">
-                    Order ID
-                    <span className="ml-2">
-                      {sortField === "orderId" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("customer")}
-                >
-                  <div className="flex items-center">
-                    Customer
-                    <span className="ml-2">
-                      {sortField === "customer" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("amount")}
-                >
-                  <div className="flex items-center">
-                    Amount
-                    <span className="ml-2">
-                      {sortField === "amount" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("method")}
-                >
-                  <div className="flex items-center">
-                    Method
-                    <span className="ml-2">
-                      {sortField === "method" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("status")}
-                >
-                  <div className="flex items-center">
-                    Status
-                    <span className="ml-2">
-                      {sortField === "status" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("date")}
-                >
-                  <div className="flex items-center">
-                    Date
-                    <span className="ml-2">
-                      {sortField === "date" &&
-                        (sortDirection === "asc" ? (
-                          <ChevronUp size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        ))}
-                    </span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPayments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                    {payment.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.orderId}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.customer}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${payment.amount.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex items-center">
-                      <CreditCard size={16} className="mr-2 text-gray-400" />
-                      {payment.method}
-                      {payment.cardLast4 && (
-                        <span className="ml-1 text-gray-500">
-                          (**** {payment.cardLast4})
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        payment.status === "Completed"
-                          ? "bg-green-100 text-green-800"
-                          : payment.status === "Pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {payment.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(payment.date).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Table */}
+        <Table
+          columns={columns}
+          data={paginatedPayments}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          emptyMessage="No payments found"
+        />
 
         {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing 1 to {filteredPayments.length} of{" "}
-              {filteredPayments.length} entries
-            </div>
-            <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Previous
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
+        <Pagination
+          totalEntries={filteredPayments.length}
+          currentPage={currentPage}
+          entriesPerPage={entriesPerPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );
