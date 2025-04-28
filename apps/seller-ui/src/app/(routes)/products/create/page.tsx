@@ -10,11 +10,12 @@ import {
   Property,
   Specification,
 } from "@/packages/components/CustomFields";
+import { ImagePlaceholder } from "@/packages/components/ImagePlaceHolder";
 import { InputField } from "@/packages/components/InputField";
 import RichTextEditor from "@/packages/components/RichTextEditor";
 import { SizeSelector } from "@/packages/components/SizeSelector";
 import { TextAreaField } from "@/packages/components/TextAreaField";
-import { ChevronDown, ChevronUp, Eye, Trash2, Upload, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -81,6 +82,70 @@ const DiscountCodeSelector: React.FC<{
   );
 };
 
+// AI Enhancement Modal component
+const ImageEnhancementModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  image: UploadedImage | null;
+  previewUrl: string | null;
+}> = ({ isOpen, onClose, image, previewUrl }) => {
+  if (!isOpen || !image || !previewUrl) return null;
+
+  const handleEnhancement = (type: string) => {
+    console.log(`Enhancing image ${image.file_name} with ${type}`);
+    // TODO: Implement API call to enhancement endpoint
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl max-w-2xl w-full p-6 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
+        >
+          <X className="h-6 w-6 text-gray-600" />
+        </button>
+        <h2 className="text-xl font-bold mb-4">Image Enhancement</h2>
+        <img
+          src={previewUrl}
+          alt={image.file_name}
+          className="w-full h-96 object-contain rounded-lg mb-4"
+        />
+        <div className="flex gap-4 justify-center">
+          <button
+            type="button"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => handleEnhancement("Remove BG")}
+          >
+            Remove BG
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => handleEnhancement("Drop Shadow")}
+          >
+            Drop Shadow
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => handleEnhancement("Retouch")}
+          >
+            Retouch
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => handleEnhancement("UpScale")}
+          >
+            UpScale
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function CreateProductPage() {
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
@@ -105,6 +170,13 @@ export default function CreateProductPage() {
   const [specs, setSpecs] = useState<Specification[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isEnhancementModalOpen, setIsEnhancementModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<UploadedImage | null>(
+    null
+  );
+  const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(
+    null
+  );
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     media: true,
@@ -207,7 +279,6 @@ export default function CreateProductPage() {
 
     try {
       const base64Url = await makeBase64(file);
-      // Upload the image to the backend
       const response = await apiClient.post("/products/upload-product-image", {
         file: base64Url,
       });
@@ -216,7 +287,20 @@ export default function CreateProductPage() {
         file_name: response.data.file_name,
         file_url: response.data.file_url,
       };
-      setImageFiles((prev) => [...prev, uploadedImage]);
+      setImageFiles((prev) => {
+        let newFiles = [...prev, uploadedImage];
+        if (newFiles.length > 8) {
+          newFiles = newFiles.slice(1); // Remove oldest image
+        }
+        return newFiles;
+      });
+      setPreviewUrls((prev) => {
+        let newUrls = [...prev, base64Url];
+        if (newUrls.length > 8) {
+          newUrls = newUrls.slice(1); // Remove oldest URL
+        }
+        return newUrls;
+      });
     } catch (error: any) {
       console.error("Error uploading image:", error);
       setError("Failed to upload image", {
@@ -228,12 +312,32 @@ export default function CreateProductPage() {
 
   const handleRemoveImage = async (image: UploadedImage, index: number) => {
     if (mode === "lock") return;
-    const response = await apiClient.post("/products/delete-product-image", {
-      fileId: image.file_name,
-    });
-    console.log("Image deleted successfully:", response.data);
-    setImageFiles((prev) => prev.filter((_, i) => i !== index));
-    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+    try {
+      const response = await apiClient.post("/products/delete-product-image", {
+        fileId: image.file_name,
+      });
+      console.log("Image deleted successfully:", response.data);
+      setImageFiles((prev) => prev.filter((_, i) => i !== index));
+      setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+    } catch (error: any) {
+      console.error("Error deleting image:", error);
+      setError("Failed to delete image", {
+        isBackendError: true,
+        details: error.message,
+      });
+    }
+  };
+
+  const handleEnhanceImage = (image: UploadedImage, previewUrl: string) => {
+    setSelectedImage(image);
+    setSelectedPreviewUrl(previewUrl);
+    setIsEnhancementModalOpen(true);
+  };
+
+  const closeEnhancementModal = () => {
+    setIsEnhancementModalOpen(false);
+    setSelectedImage(null);
+    setSelectedPreviewUrl(null);
   };
 
   const validateForm = (isDraft: boolean = false) => {
@@ -540,13 +644,13 @@ export default function CreateProductPage() {
             </div>
 
             {/* Media Section */}
-            <div className="border rounded-lg">
+            <div className="border rounded-xl bg-white shadow-lg">
               <button
                 type="button"
-                className="w-full px-4 py-3 flex justify-between items-center bg-gray-50 hover:bg-gray-100 rounded-t-lg"
+                className="w-full px-6 py-4 flex justify-between items-center bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-t-xl hover:from-blue-600 hover:to-blue-800 transition-colors"
                 onClick={() => toggleSection("media")}
               >
-                <h2 className="text-lg font-semibold text-gray-900">Media</h2>
+                <h2 className="text-lg font-semibold">Media</h2>
                 {expandedSections.media ? (
                   <ChevronUp className="h-5 w-5" />
                 ) : (
@@ -554,62 +658,62 @@ export default function CreateProductPage() {
                 )}
               </button>
               {expandedSections.media && (
-                <div className="p-4 space-y-4">
+                <div className="p-6 space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
                       Product Images
                     </label>
+                    {imageFiles.length > 0 ? (
+                      <div className="flex overflow-x-auto gap-3 pb-2">
+                        {imageFiles.map((image, index) => (
+                          <ImagePlaceholder
+                            key={index}
+                            image={image}
+                            index={index}
+                            previewUrl={previewUrls[index] || image.file_url}
+                            onRemove={handleRemoveImage}
+                            onEnhance={handleEnhanceImage}
+                            disabled={mode === "lock"}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        No images uploaded yet
+                      </div>
+                    )}
                     <div
-                      className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 hover:border-blue-400 transition-colors"
+                      className="mt-4 border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 text-center hover:border-blue-500 hover:shadow-md transition-all duration-300 cursor-pointer"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                      <p className="mt-2 text-gray-500">
+                      <Upload
+                        className="mx-auto h-12 w-12 text-blue-500 animate-pulse"
+                        style={{ animationDuration: "1.5s" }}
+                      />
+                      <p className="mt-2 text-sm font-medium text-gray-800">
+                        Upload Product Image
+                      </p>
+                      <p className="text-xs text-gray-500">
                         Recommended: 765 x 850
                       </p>
-                      <p className="text-gray-500">
-                        Upload product images (multiple allowed)
-                      </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 mt-1">
                         Optimal ratio: 3:4
                       </p>
                       <input
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
-                        multiple
                         className="hidden"
                         onChange={handleImageChange}
                         disabled={mode === "lock"}
                       />
                     </div>
                     {errors.images && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-2 text-sm text-red-600">
                         {errors.images}
                       </p>
                     )}
                   </div>
-                  {imageFiles?.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {imageFiles.map((image: UploadedImage, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={image.file_url}
-                            alt={`Product Image ${index + 1}`}
-                            className="h-32 w-full object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleRemoveImage(image, index)}
-                            disabled={mode === "lock"}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   <InputField
                     label="Video URL"
                     placeholder="YouTube/Vimeo URL"
@@ -618,9 +722,10 @@ export default function CreateProductPage() {
                     error={errors.videoUrl}
                     helpText="Optional promotional video URL"
                     disabled={mode === "lock"}
+                    className="border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
                       Colors
                     </label>
                     <ColorPicker
@@ -891,12 +996,12 @@ export default function CreateProductPage() {
             <h2 className="text-2xl font-bold mb-6">Product Preview</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                {previewUrls.length > 0 ? (
+                {imageFiles.length > 0 ? (
                   <div className="grid grid-cols-2 gap-4">
-                    {previewUrls.map((url, index) => (
+                    {imageFiles.map((image, index) => (
                       <img
                         key={index}
-                        src={url}
+                        src={previewUrls[index] || image.file_url}
                         alt={`Product Image ${index + 1}`}
                         className="w-full h-48 object-cover rounded-xl"
                       />
@@ -912,7 +1017,6 @@ export default function CreateProductPage() {
                 <h3 className="text-xl font-semibold">
                   {title || "Untitled Product"}
                 </h3>
-                specificities:
                 <p className="text-gray-600">
                   {shortDescription || "No short description provided"}
                 </p>
@@ -975,8 +1079,8 @@ export default function CreateProductPage() {
                   <h4 className="font-medium">Discount Codes</h4>
                   {discountCodes.length > 0 ? (
                     <ul className="list-disc pl-5">
-                      {discountCodes.map((codeId: any) => {
-                        const code: any = discountCodesData?.find(
+                      {discountCodes.map((codeId) => {
+                        const code = discountCodesData?.find(
                           (c: DiscountCode) => c.id === codeId
                         );
                         return code ? (
@@ -1039,6 +1143,14 @@ export default function CreateProductPage() {
           </div>
         </div>
       )}
+
+      {/* AI Enhancement Modal */}
+      <ImageEnhancementModal
+        isOpen={isEnhancementModalOpen}
+        onClose={closeEnhancementModal}
+        image={selectedImage}
+        previewUrl={selectedPreviewUrl}
+      />
     </div>
   );
 }
