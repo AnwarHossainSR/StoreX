@@ -7,36 +7,52 @@ export interface Category {
   subCategories: string[];
 }
 
+export interface UploadedImage {
+  file_name: string;
+  file_url: string;
+}
+
 export interface Product {
   id: string;
   title: string;
-  description: string;
+  short_description: string;
+  detailed_description: string;
   tags: string[];
   warranty: string;
   slug: string;
   brand: string;
   colors: string[];
-  image?: string;
-  specifications: Specification[];
-  properties: Property[];
+  images: UploadedImage[];
+  custom_specifications: Record<string, string>;
+  custom_properties: Record<string, string[]>;
   category: string;
-  subCategory?: string;
+  subCategory: string;
+  sale_price: number;
+  regular_price: number;
+  stock: number;
+  video_url?: string;
+  cashOnDelivery?: boolean;
+  sizes: string[];
+  discount_codes: string[];
+  shopId: string;
+  sellerId: string;
+  status: "Active" | "Pending" | "Draft";
 }
 
 export interface Specification {
-  key: string;
+  name: string;
   value: string;
 }
 
 export interface Property {
   key: string;
-  value: string;
+  values: string[];
 }
 
 export interface DiscountCode {
   id: string;
   public_name: string;
-  discountType: string;
+  discountType: "percentage" | "fixed";
   discountValue: number;
   discountCode: string;
   createdAt: string;
@@ -64,43 +80,55 @@ export const productService = {
   async createProduct(data: {
     sellerId: string;
     title: string;
-    description: string;
+    short_description: string;
+    detailed_description: string;
     tags: string[];
-    warranty: string;
+    warranty?: string;
     slug: string;
-    brand: string;
+    brand?: string;
     colors: string[];
-    image?: File;
-    specifications: Specification[];
-    properties: Property[];
+    images: UploadedImage[];
+    custom_specifications: Record<string, string>;
+    custom_properties: Record<string, string[]>;
     category: string;
-    subCategory?: string;
+    subCategory: string;
+    sale_price: number;
+    regular_price: number;
+    stock: number;
+    video_url?: string;
+    cashOnDelivery?: boolean;
+    sizes: string[];
+    discount_codes: string[];
+    status: "Active" | "Pending" | "Draft";
   }) {
     try {
-      const formData = new FormData();
-      formData.append("sellerId", data.sellerId);
-      formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("tags", JSON.stringify(data.tags));
-      formData.append("warranty", data.warranty);
-      formData.append("slug", data.slug);
-      formData.append("brand", data.brand);
-      formData.append("colors", JSON.stringify(data.colors));
-      formData.append("specifications", JSON.stringify(data.specifications));
-      formData.append("properties", JSON.stringify(data.properties));
-      formData.append("category", data.category);
-      if (data.subCategory) {
-        formData.append("subCategory", data.subCategory);
-      }
-      if (data.image) {
-        formData.append("image", data.image);
-      }
-
       const response = await apiClient.post<ApiResponse<Product>>(
         `${PRODUCT_BASE_URL}/create-product`,
-        formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          sellerId: data.sellerId,
+          title: data.title,
+          short_description: data.short_description,
+          detailed_description: data.detailed_description,
+          tags: data.tags,
+          warranty: data.warranty,
+          slug: data.slug,
+          brand: data.brand,
+          colors: data.colors,
+          images: data.images,
+          custom_specifications: data.custom_specifications,
+          custom_properties: data.custom_properties,
+          category: data.category,
+          subCategory: data.subCategory,
+          sale_price: data.sale_price,
+          regular_price: data.regular_price,
+          stock: data.stock,
+          video_url: data.video_url,
+          cashOnDelivery: data.cashOnDelivery,
+          sizes: data.sizes,
+          discount_codes: data.discount_codes,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
         }
       );
       return response.data;

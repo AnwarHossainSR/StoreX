@@ -118,9 +118,9 @@ model Product {
   detailed_description  String
   images                images[]
   video_url             String?
-  tags                  String?
+  tags                  String[]
   brand                 String?
-  colors                String?
+  colors                String[]
   sizes                 String[]
   starting_date         DateTime?
   ending_date           DateTime?
@@ -132,7 +132,7 @@ model Product {
   custom_specifications Json?
   custom_properties     Json
   isDeleted             Boolean       @default(false)
-  cashOnDelivery        String?
+  cashOnDelivery        Boolean?
   discount_codes        String[]      @db.ObjectId
   status                ProductStatus @default(Pending)
   deletedAt             DateTime?     @updatedAt

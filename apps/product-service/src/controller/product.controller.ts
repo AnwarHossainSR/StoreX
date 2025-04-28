@@ -308,7 +308,7 @@ export const createProduct = async (
           })),
         },
         sellerId: req.seller.id,
-        shopId: shopId,
+        shopId: req.seller.shop.id,
       },
       include: {
         images: true,

@@ -16,7 +16,7 @@ import { InputField } from "@/packages/components/InputField";
 import RichTextEditor from "@/packages/components/RichTextEditor";
 import { SizeSelector } from "@/packages/components/SizeSelector";
 import { TextAreaField } from "@/packages/components/TextAreaField";
-import { ChevronDown, ChevronUp, Eye, Upload, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -105,7 +105,6 @@ export default function CreateProductPage() {
   const [imageFiles, setImageFiles] = useState<UploadedImage[]>([]);
   const [specs, setSpecs] = useState<Specification[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEnhancementModalOpen, setIsEnhancementModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<UploadedImage | null>(
     null
@@ -127,11 +126,12 @@ export default function CreateProductPage() {
     warranty?: string;
     slug?: string;
     category?: string;
+    subCategory?: string;
     regularPrice?: string;
     salePrice?: string;
     videoUrl?: string;
     stock?: string;
-    sizes?: string;
+    shopId?: string;
     images?: string;
   }>({});
 
@@ -159,7 +159,7 @@ export default function CreateProductPage() {
         autoDismiss: 3000,
       });
       setTimeout(() => {
-        router.push("/seller/products");
+        router.push("/products");
       }, 3000);
     } else if (createProductError) {
       setError(createProductError, {
@@ -295,10 +295,6 @@ export default function CreateProductPage() {
         newErrors.tags = "At least one tag is required";
         isValid = false;
       }
-      if (!warranty) {
-        newErrors.warranty = "Warranty information is required";
-        isValid = false;
-      }
       if (!slug) {
         newErrors.slug = "Product slug is required";
         isValid = false;
@@ -310,6 +306,10 @@ export default function CreateProductPage() {
         newErrors.category = "Category selection is required";
         isValid = false;
       }
+      if (!subCategory) {
+        newErrors.subCategory = "Subcategory selection is required";
+        isValid = false;
+      }
       if (!regularPrice) {
         newErrors.regularPrice = "Regular price is required";
         isValid = false;
@@ -317,11 +317,13 @@ export default function CreateProductPage() {
         newErrors.regularPrice = "Regular price must be a positive number";
         isValid = false;
       }
-      if (salePrice && (isNaN(Number(salePrice)) || Number(salePrice) <= 0)) {
+      if (!salePrice) {
+        newErrors.salePrice = "Sale price is required";
+        isValid = false;
+      } else if (isNaN(Number(salePrice)) || Number(salePrice) <= 0) {
         newErrors.salePrice = "Sale price must be a positive number";
         isValid = false;
-      }
-      if (salePrice && Number(salePrice) >= Number(regularPrice)) {
+      } else if (Number(salePrice) >= Number(regularPrice)) {
         newErrors.salePrice = "Sale price must be less than regular price";
         isValid = false;
       }
@@ -345,10 +347,7 @@ export default function CreateProductPage() {
         newErrors.stock = "Stock must be a non-negative integer";
         isValid = false;
       }
-      if (sizes.length === 0) {
-        newErrors.sizes = "At least one size is required";
-        isValid = false;
-      }
+
       if (imageFiles.length === 0) {
         newErrors.images = "At least one image is required";
         isValid = false;
@@ -367,79 +366,87 @@ export default function CreateProductPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      const sellerId = "SELLER_ID";
+      const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
+      const custom_specifications = specs.reduce(
+        (acc, spec) => ({ ...acc, [spec.name]: spec.value }),
+        {}
+      );
+      const custom_properties = properties.reduce(
+        (acc, prop) => ({ ...acc, [prop.key]: prop.values }),
+        {}
+      );
       createProduct({
         sellerId,
         title,
-        description: shortDescription,
-        detailedDescription,
+        short_description: shortDescription,
+        detailed_description: detailedDescription,
         tags: tags
           .split(",")
           .map((tag) => tag.trim())
           .filter((tag) => tag),
-        warranty,
+        warranty: warranty || undefined,
         slug,
-        brand,
+        brand: brand || undefined,
         colors,
-        images: imageFiles.length > 0 ? imageFiles : undefined,
-        specifications: specs,
-        properties,
+        images: imageFiles,
+        custom_specifications,
+        custom_properties,
         category,
-        subCategory: subCategory || undefined,
-        regularPrice: Number(regularPrice),
-        salePrice: salePrice ? Number(salePrice) : undefined,
-        videoUrl: videoUrl || undefined,
-        cashOnDelivery,
+        subCategory,
+        sale_price: Number(salePrice),
+        regular_price: Number(regularPrice),
         stock: Number(stock),
+        video_url: videoUrl || undefined,
+        cashOnDelivery: cashOnDelivery || undefined,
         sizes,
-        discountCodes: discountCodes.length > 0 ? discountCodes : undefined,
-        mode,
+        discount_codes: discountCodes,
+        status: mode === "edit" ? "Active" : "Pending",
       });
     }
   };
 
   const handleSaveDraft = () => {
-    const sellerId = "SELLER_ID";
+    const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
+    const custom_specifications = specs.reduce(
+      (acc, spec) => ({ ...acc, [spec.name]: spec.value }),
+      {}
+    );
+    const custom_properties = properties.reduce(
+      (acc, prop) => ({ ...acc, [prop.key]: prop.values }),
+      {}
+    );
     saveDraft({
       sellerId,
       title,
-      description: shortDescription,
-      detailedDescription,
+      short_description: shortDescription,
+      detailed_description: detailedDescription,
       tags: tags
         .split(",")
         .map((tag) => tag.trim())
         .filter((tag) => tag),
-      warranty,
+      warranty: warranty || undefined,
       slug,
-      brand,
+      brand: brand || undefined,
       colors,
-      images: imageFiles.length > 0 ? imageFiles : undefined,
-      specifications: specs,
-      properties,
+      images: imageFiles,
+      custom_specifications,
+      custom_properties,
       category,
-      subCategory: subCategory || undefined,
-      regularPrice: regularPrice ? Number(regularPrice) : undefined,
-      salePrice: salePrice ? Number(salePrice) : undefined,
-      videoUrl: videoUrl || undefined,
-      cashOnDelivery,
-      stock: stock ? Number(stock) : undefined,
+      subCategory,
+      sale_price: salePrice ? Number(salePrice) : 0,
+      regular_price: regularPrice ? Number(regularPrice) : 0,
+      stock: stock ? Number(stock) : 0,
+      video_url: videoUrl || undefined,
+      cashOnDelivery: cashOnDelivery || undefined,
       sizes,
-      discountCodes: discountCodes.length > 0 ? discountCodes : undefined,
-      mode: "draft",
+      discount_codes: discountCodes,
+      status: "Draft",
     });
     setSuccess("Draft saved successfully!", { autoDismiss: 3000 });
   };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const openPreview = () => {
-    setIsPreviewOpen(true);
-  };
-
-  const closePreview = () => {
-    setIsPreviewOpen(false);
   };
 
   return (
@@ -565,12 +572,11 @@ export default function CreateProductPage() {
                   />
                   <InputField
                     label="Warranty"
-                    required
                     placeholder="1 Year Warranty"
                     value={warranty}
                     onChange={setWarranty}
                     error={errors.warranty}
-                    helpText="Specify warranty terms"
+                    helpText="Optional warranty terms"
                     disabled={mode === "lock"}
                   />
                 </div>
@@ -604,7 +610,7 @@ export default function CreateProductPage() {
                             key={index}
                             image={image}
                             index={index}
-                            previewUrl={image.file_url} // Use file_url directly
+                            previewUrl={image.file_url}
                             onRemove={handleRemoveImage}
                             onEnhance={handleEnhanceImage}
                             disabled={mode === "lock"}
@@ -617,22 +623,19 @@ export default function CreateProductPage() {
                       </div>
                     )}
                     <div
-                      className="mt-4 border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 text-center hover:border-blue-500 hover:shadow-md transition-all duration-300 cursor-pointer"
+                      className="mt-4 border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 text-center hover:border-blue-500 hover:shadow-md transition-all duration-300 cursor-pointer w-[150px] h-[150px] flex flex-col items-center justify-center"
+                      style={{ width: "150px", height: "150px" }}
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload
                         className="mx-auto h-12 w-12 text-blue-500 animate-pulse"
                         style={{ animationDuration: "1.5s" }}
                       />
-                      <p className="mt-2 text-sm font-medium text-gray-800">
-                        Upload Product Image
+                      <p className="mt-2 text-xs font-medium text-gray-800">
+                        Upload Image
                       </p>
-                      <p className="text-xs text-gray-500">
-                        Recommended: 765 x 850
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Optimal ratio: 3:4
-                      </p>
+                      <p className="text-xs text-gray-500">765 x 850</p>
+                      <p className="text-xs text-gray-400">Ratio: 3:4</p>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -703,12 +706,13 @@ export default function CreateProductPage() {
                   />
                   <InputField
                     label="Sale Price"
+                    required
                     type="number"
                     placeholder="Enter sale price"
                     value={salePrice}
                     onChange={setSalePrice}
                     error={errors.salePrice}
-                    helpText="Optional discounted price"
+                    helpText="Discounted price"
                     disabled={mode === "lock"}
                   />
                   <DiscountCodeSelector
@@ -767,7 +771,6 @@ export default function CreateProductPage() {
                   <SizeSelector
                     sizes={sizes}
                     onChange={setSizes}
-                    error={errors.sizes}
                     disabled={mode === "lock"}
                   />
                   <div>
@@ -806,10 +809,14 @@ export default function CreateProductPage() {
                       <select
                         value={subCategory}
                         onChange={(e) => setSubCategory(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className={`w-full px-4 py-3 border rounded-lg ${
+                          errors.subCategory
+                            ? "border-red-300"
+                            : "border-gray-300"
+                        } focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                         disabled={mode === "lock"}
                       >
-                        <option value="">Select subcategory (optional)</option>
+                        <option value="">Select subcategory</option>
                         {categories
                           .find((cat) => cat.name === category)
                           ?.subCategories.map((sub) => (
@@ -818,6 +825,11 @@ export default function CreateProductPage() {
                             </option>
                           ))}
                       </select>
+                      {errors.subCategory && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.subCategory}
+                        </p>
+                      )}
                     </div>
                   )}
                   <div>
@@ -890,14 +902,6 @@ export default function CreateProductPage() {
                 Save as Draft
               </button>
               <button
-                type="button"
-                className="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                onClick={openPreview}
-              >
-                <Eye className="inline-block h-5 w-5 mr-2" />
-                Preview
-              </button>
-              <button
                 type="submit"
                 disabled={createProductStatus === "pending" || mode === "lock"}
                 className={`px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition-colors ${
@@ -917,173 +921,12 @@ export default function CreateProductPage() {
         </div>
       </div>
 
-      {/* Preview Modal */}
-      {isPreviewOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 relative">
-            <button
-              onClick={closePreview}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
-            >
-              <X className="h-6 w-6 text-gray-600" />
-            </button>
-            <h2 className="text-2xl font-bold mb-6">Product Preview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                {imageFiles.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    {imageFiles.map((image, index) => (
-                      <img
-                        key={index}
-                        src={image.file_url}
-                        alt={`Product Image ${index + 1}`}
-                        className="w-full h-48 object-cover rounded-xl"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="w-full h-96 bg-gray-100 rounded-xl flex items-center justify-center text-gray-500">
-                    No images uploaded
-                  </div>
-                )}
-              </div>
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold">
-                  {title || "Untitled Product"}
-                </h3>
-                <p className="text-gray-600">
-                  {shortDescription || "No short description provided"}
-                </p>
-                <div
-                  className="prose"
-                  dangerouslySetInnerHTML={{
-                    __html:
-                      detailedDescription ||
-                      "<p>No detailed description provided</p>",
-                  }}
-                />
-                <div>
-                  <h4 className="font-medium">Pricing</h4>
-                  <p>Regular Price: ${regularPrice || "N/A"}</p>
-                  {salePrice && <p>Sale Price: ${salePrice}</p>}
-                </div>
-                <div>
-                  <h4 className="font-medium">Category</h4>
-                  <p>
-                    {category || "N/A"} {subCategory && `> ${subCategory}`}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Brand</h4>
-                  <p>{brand || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Warranty</h4>
-                  <p>{warranty || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Tags</h4>
-                  <p>{tags || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Colors</h4>
-                  <div className="flex gap-2">
-                    {colors.length > 0 ? (
-                      colors.map((color, index) => (
-                        <div
-                          key={index}
-                          className="w-6 h-6 rounded-full"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))
-                    ) : (
-                      <p>N/A</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium">Sizes</h4>
-                  <p>{sizes.join(", ") || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Stock</h4>
-                  <p>{stock || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Discount Codes</h4>
-                  {discountCodes.length > 0 ? (
-                    <ul className="list-disc pl-5">
-                      {discountCodes.map((codeId) => {
-                        const code = discountCodesData?.find(
-                          (c: DiscountCode) => c.id === codeId
-                        );
-                        return code ? (
-                          <li key={codeId}>
-                            {code.public_name} (
-                            {code.discountType === "percentage"
-                              ? `${code.discountValue}%`
-                              : `$${code.discountValue}`}
-                            )
-                          </li>
-                        ) : null;
-                      })}
-                    </ul>
-                  ) : (
-                    <p>N/A</p>
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-medium">Cash on Delivery</h4>
-                  <p>{cashOnDelivery ? "Enabled" : "Disabled"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Video URL</h4>
-                  <p>{videoUrl || "N/A"}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Specifications</h4>
-                  {specs.length > 0 ? (
-                    <ul className="list-disc pl-5">
-                      {specs.map((spec, index) => (
-                        <li key={index}>
-                          {spec.name}: {spec.value}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>N/A</p>
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-medium">Properties</h4>
-                  {properties.length > 0 ? (
-                    <ul className="list-disc pl-5">
-                      {properties.map((prop, index) => (
-                        <li key={index}>
-                          {prop.key}: {prop.values.join(", ")}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>N/A</p>
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-medium">Status</h4>
-                  <p>{mode.charAt(0).toUpperCase() + mode.slice(1)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* AI Enhancement Modal */}
       <ImageEnhancementModal
         isOpen={isEnhancementModalOpen}
         onClose={closeEnhancementModal}
         image={selectedImage}
-        onEnhance={handleImageEnhance} // Pass the callback
+        onEnhance={handleImageEnhance}
       />
     </div>
   );
