@@ -18,11 +18,12 @@ import {
   Search,
   Settings,
   Tag,
+  User,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 interface SellerLayoutProps {
   children: ReactNode;
@@ -68,9 +69,48 @@ const sidebarSections = [
   },
 ];
 
+// Define notification type
+interface Notification {
+  id: number;
+  message: string;
+  time: string;
+  isRead: boolean;
+}
+
+// Sample notifications
+const sampleNotifications: Notification[] = [
+  {
+    id: 1,
+    message: "New order received #ORD-5289",
+    time: "2 minutes ago",
+    isRead: false,
+  },
+  {
+    id: 2,
+    message: "Payment confirmed for order #ORD-5288",
+    time: "1 hour ago",
+    isRead: false,
+  },
+  {
+    id: 3,
+    message: "Product inventory low: 'Premium Headphones'",
+    time: "3 hours ago",
+    isRead: false,
+  },
+];
+
 export default function SellerLayout({ children }: SellerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] =
+    useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notifications, setNotifications] =
+    useState<Notification[]>(sampleNotifications);
+
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+
   const pathname = usePathname();
   const { isLoading, user } = useCurrentUser();
   const { logoutSeller } = useAuth();
@@ -79,10 +119,47 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
     logoutSeller();
   };
 
+  const handleReadNotification = (id: number) => {
+    setNotifications(
+      notifications.map((notification) =>
+        notification.id === id
+          ? { ...notification, isRead: true }
+          : notification
+      )
+    );
+  };
+
+  const unreadCount = notifications.filter(
+    (notification) => !notification.isRead
+  ).length;
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
+        setNotificationDropdownOpen(false);
+      }
+      if (
+        userDropdownRef.current &&
+        !userDropdownRef.current.contains(event.target as Node)
+      ) {
+        setUserDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     console.log("layout:", user);
     if (!isLoading && !user) alert("You are not logged in");
-  }, []);
+  }, [isLoading, user]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-900">
@@ -258,17 +335,135 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
               />
             </div>
             <div className="ml-4 flex items-center space-x-4">
-              <button className="relative p-1 text-gray-400 hover:text-gray-500">
-                <Bell className="h-6 w-6" />
-                <span className="absolute top-0 right-0 h-5 w-5 flex items-center justify-center rounded-full text-xs font-medium text-white bg-red-500 -mt-1 -mr-1">
-                  3
-                </span>
-              </button>
-              <img
-                className="h-8 w-8 rounded-full"
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt="User avatar"
-              />
+              {/* Notification Dropdown */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  className="relative p-1 text-gray-400 hover:text-gray-500 focus:outline-none"
+                  onClick={() => {
+                    setNotificationDropdownOpen(!notificationDropdownOpen);
+                    setUserDropdownOpen(false);
+                  }}
+                >
+                  <Bell className="h-6 w-6" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 h-5 w-5 flex items-center justify-center rounded-full text-xs font-medium text-white bg-red-500 -mt-1 -mr-1">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown Menu */}
+                {notificationDropdownOpen && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="py-1">
+                      <div className="px-4 py-2 border-b border-gray-200">
+                        <h3 className="text-sm font-medium text-gray-900">
+                          Notifications
+                        </h3>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length > 0 ? (
+                          notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className={`px-4 py-3 hover:bg-gray-100 ${
+                                !notification.isRead ? "bg-blue-50" : ""
+                              }`}
+                              onClick={() =>
+                                handleReadNotification(notification.id)
+                              }
+                            >
+                              <div className="flex justify-between">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {notification.message}
+                                </p>
+                                {!notification.isRead && (
+                                  <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {notification.time}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-gray-500">
+                            No notifications
+                          </div>
+                        )}
+                      </div>
+                      <div className="border-t border-gray-200">
+                        <Link
+                          href="/notifications"
+                          className="block px-4 py-2 text-sm text-center text-blue-600 hover:text-blue-800"
+                        >
+                          View all notifications
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* User Profile Dropdown */}
+              <div className="relative" ref={userDropdownRef}>
+                <button
+                  onClick={() => {
+                    setUserDropdownOpen(!userDropdownOpen);
+                    setNotificationDropdownOpen(false);
+                  }}
+                  className="flex items-center focus:outline-none"
+                >
+                  <img
+                    className="h-8 w-8 rounded-full"
+                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                    alt="User avatar"
+                  />
+                </button>
+
+                {/* User Dropdown Menu */}
+                {userDropdownOpen && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="py-1">
+                      <div className="px-4 py-3 border-b border-gray-200">
+                        <p className="text-sm font-medium text-gray-900">
+                          John Doe
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          john.doe@example.com
+                        </p>
+                      </div>
+                      <Link
+                        href="/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-2" />
+                          Your Profile
+                        </div>
+                      </Link>
+                      <Link
+                        href="/settings"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <div className="flex items-center">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Settings
+                        </div>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      >
+                        <div className="flex items-center">
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Sign out
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
