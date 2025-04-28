@@ -10,6 +10,7 @@ export interface Category {
 export interface UploadedImage {
   file_name: string;
   file_url: string;
+  url?: string;
 }
 
 export interface Product {
@@ -37,6 +38,8 @@ export interface Product {
   shopId: string;
   sellerId: string;
   status: "Active" | "Pending" | "Draft";
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Specification {
@@ -64,6 +67,13 @@ export interface ApiResponse<T> {
   data?: T;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface BackendErrorResponse {
   status: "error";
   message: string;
@@ -77,8 +87,23 @@ interface RawCategoriesResponse {
 }
 
 export const productService = {
+  async getProducts(page: number = 1, limit: number = 10) {
+    try {
+      const response = await apiClient.get<PaginatedResponse<Product>>(
+        `${PRODUCT_BASE_URL}/seller`,
+        { params: { page, limit } }
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to fetch products", {
+        cause: errorData,
+      });
+    }
+  },
+
   async createProduct(data: {
-    sellerId: string;
+    shopId: string;
     title: string;
     short_description: string;
     detailed_description: string;
@@ -105,7 +130,7 @@ export const productService = {
       const response = await apiClient.post<ApiResponse<Product>>(
         `${PRODUCT_BASE_URL}/create-product`,
         {
-          sellerId: data.sellerId,
+          shopId: data.shopId,
           title: data.title,
           short_description: data.short_description,
           detailed_description: data.detailed_description,

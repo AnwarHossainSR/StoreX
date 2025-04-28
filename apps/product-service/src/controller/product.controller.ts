@@ -323,3 +323,60 @@ export const createProduct = async (
     return next(error);
   }
 };
+
+export const getSellerProducts = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { page = 1, limit = 10, search = "", category = "" } = req.query;
+
+    const skip = (page - 1) * limit;
+
+    // Build dynamic filters based on search and category
+    const whereConditions: any = {
+      sellerId: req.seller.id,
+    };
+
+    if (search) {
+      whereConditions.title = {
+        contains: search, // Searching for products by title
+        mode: "insensitive", // Case-insensitive search
+      };
+    }
+
+    if (category) {
+      whereConditions.category = category; // Filter by category
+    }
+
+    // Fetching products with the necessary filters and pagination
+    const [products, totalProducts] = await Promise.all([
+      prisma.product.findMany({
+        where: whereConditions,
+        include: {
+          images: true,
+        },
+        skip,
+        take: Number(limit),
+      }),
+      prisma.product.count({
+        where: whereConditions,
+      }),
+    ]);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // Returning the response with paginated data
+    return res.status(200).json({
+      data: products,
+      total: totalProducts,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};

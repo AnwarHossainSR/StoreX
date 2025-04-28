@@ -3,6 +3,7 @@ import {
   BackendErrorResponse,
   Category,
   DiscountCode,
+  PaginatedResponse,
   Product,
   productService,
   UploadedImage,
@@ -13,12 +14,20 @@ import { useRouter } from "next/navigation";
 export const useProduct = () => {
   const router = useRouter();
 
+  // Fetch products query with pagination
+  const getProductsQuery = (page: number, limit: number) =>
+    useQuery<PaginatedResponse<Product>, Error>({
+      queryKey: ["products", page, limit],
+      queryFn: () => productService.getProducts(page, limit),
+    });
+
   // Create product mutation
   const createProductMutation = useMutation<
     ApiResponse<Product>,
     Error,
     {
       sellerId: string;
+      shopId: string;
       title: string;
       short_description: string;
       detailed_description: string;
@@ -44,7 +53,7 @@ export const useProduct = () => {
   >({
     mutationFn: productService.createProduct,
     onSuccess: () => {
-      router.push("/products");
+      router.push("/seller/products");
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
@@ -105,6 +114,7 @@ export const useProduct = () => {
   });
 
   return {
+    getProducts: getProductsQuery,
     createProduct: createProductMutation.mutate,
     createProductStatus: createProductMutation.status,
     createProductError: createProductMutation.error?.message,

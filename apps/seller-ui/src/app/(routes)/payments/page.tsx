@@ -1,5 +1,6 @@
 "use client";
 
+import { Pagination } from "@/packages/components/Pagination";
 import {
   ChevronDown,
   ChevronUp,
@@ -41,6 +42,8 @@ export default function PaymentsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedMethod, setSelectedMethod] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
 
   const handleSort = (field: string) => {
     if (field === sortField) {
@@ -74,6 +77,11 @@ export default function PaymentsPage() {
         ? (aValue as number) - (bValue as number)
         : (bValue as number) - (aValue as number);
     });
+
+  const paginatedPayments = filteredPayments.slice(
+    (currentPage - 1) * entriesPerPage,
+    currentPage * entriesPerPage
+  );
 
   const totalAmount = filteredPayments.reduce(
     (sum, payment) => sum + payment.amount,
@@ -325,7 +333,7 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPayments.map((payment) => (
+              {paginatedPayments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                     {payment.id}
@@ -373,22 +381,12 @@ export default function PaymentsPage() {
         </div>
 
         {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing 1 to {filteredPayments.length} of{" "}
-              {filteredPayments.length} entries
-            </div>
-            <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Previous
-              </button>
-              <button className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
+        <Pagination
+          totalEntries={filteredPayments.length}
+          currentPage={currentPage}
+          entriesPerPage={entriesPerPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );

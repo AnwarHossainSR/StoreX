@@ -7,6 +7,7 @@ import {
   deleteProductImage,
   getCategories,
   getDiscountCodes,
+  getSellerProducts,
   uploadProductImage,
   validateDiscountCode,
 } from "../controller/product.controller";
@@ -20,5 +21,5 @@ router.get("/discount-codes/:code", validateDiscountCode);
 router.post("/upload-product-image", uploadProductImage);
 router.post("/delete-product-image", deleteProductImage);
 router.post("/create-product", isAuthenticated, createProduct);
-
+router.get("/seller", isAuthenticated, getSellerProducts);
 export default router;
