@@ -188,7 +188,7 @@ export const uploadProductImage = async (
     }
     const uplaodImageToIK: any = await imageKit.upload({
       file: file,
-      fileName: `product-image-${Date.now()}.png`,
+      fileName: `product-image-${Date.now()}.jpg`,
       folder: "product-images",
     });
 

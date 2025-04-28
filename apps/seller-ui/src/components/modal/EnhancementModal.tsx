@@ -16,7 +16,6 @@ interface UploadedImage {
   file_url: string;
 }
 
-// Enhancements array
 export const enhancements = [
   {
     label: "Remove BG",
@@ -44,13 +43,13 @@ const ImageEnhancementModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   image: UploadedImage | null;
-  previewUrl: string | null;
-}> = ({ isOpen, onClose, image, previewUrl }) => {
+  onEnhance: (image: UploadedImage, enhancedUrl: string) => void; // New callback
+}> = ({ isOpen, onClose, image, onEnhance }) => {
   const [enhancementType, setEnhancementType] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [enhancedUrl, setEnhancedUrl] = useState<string | null>(null);
 
-  if (!isOpen || !image || !previewUrl) return null;
+  if (!isOpen || !image) return null;
 
   const handleEnhancement = async (type: string, effect: string) => {
     try {
@@ -62,6 +61,7 @@ const ImageEnhancementModal: React.FC<{
       setTimeout(() => {
         setProcessing(false);
         setEnhancedUrl(enhancedImage);
+        onEnhance(image, enhancedImage); // Notify parent of the enhanced URL
       }, 2000);
     } catch (error) {
       console.error("Error enhancing image:", error);
@@ -72,7 +72,16 @@ const ImageEnhancementModal: React.FC<{
   };
 
   const handleDownload = () => {
-    console.log(`Downloading enhanced image ${image.file_name}`);
+    if (enhancedUrl) {
+      console.log(
+        `Downloading enhanced image ${image.file_name} from ${enhancedUrl}`
+      );
+      // Simulate download (replace with actual download logic)
+      const link = document.createElement("a");
+      link.href = enhancedUrl;
+      link.download = image.file_name;
+      link.click();
+    }
   };
 
   const handleReset = () => {
@@ -106,7 +115,7 @@ const ImageEnhancementModal: React.FC<{
           <div className="flex-1 p-4 flex flex-col overflow-hidden">
             <div className="bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 relative overflow-hidden h-[40vh]">
               <img
-                src={enhancedUrl || previewUrl}
+                src={enhancedUrl || image.file_url}
                 alt={image.file_name}
                 className="max-w-full max-h-full object-contain"
               />
@@ -191,7 +200,6 @@ const ImageEnhancementModal: React.FC<{
   );
 };
 
-// Enhancement option button component - Horizontal version
 const EnhancementButton: React.FC<{
   label: string;
   icon: React.ReactNode;

@@ -103,7 +103,6 @@ export default function CreateProductPage() {
   const [discountCodes, setDiscountCodes] = useState<string[]>([]);
   const [mode, setMode] = useState<"draft" | "edit" | "lock">("edit");
   const [imageFiles, setImageFiles] = useState<UploadedImage[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [specs, setSpecs] = useState<Specification[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -111,9 +110,7 @@ export default function CreateProductPage() {
   const [selectedImage, setSelectedImage] = useState<UploadedImage | null>(
     null
   );
-  const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(
-    null
-  );
+
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     media: true,
@@ -231,13 +228,6 @@ export default function CreateProductPage() {
         }
         return newFiles;
       });
-      setPreviewUrls((prev) => {
-        let newUrls = [...prev, base64Url];
-        if (newUrls.length > 8) {
-          newUrls = newUrls.slice(1); // Remove oldest URL
-        }
-        return newUrls;
-      });
     } catch (error: any) {
       console.error("Error uploading image:", error);
       setError("Failed to upload image", {
@@ -255,7 +245,6 @@ export default function CreateProductPage() {
       });
       console.log("Image deleted successfully:", response.data);
       setImageFiles((prev) => prev.filter((_, i) => i !== index));
-      setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
     } catch (error: any) {
       console.error("Error deleting image:", error);
       setError("Failed to delete image", {
@@ -265,16 +254,24 @@ export default function CreateProductPage() {
     }
   };
 
-  const handleEnhanceImage = (image: UploadedImage, previewUrl: string) => {
+  const handleEnhanceImage = (image: UploadedImage) => {
     setSelectedImage(image);
-    setSelectedPreviewUrl(previewUrl);
     setIsEnhancementModalOpen(true);
+  };
+
+  const handleImageEnhance = (image: UploadedImage, enhancedUrl: string) => {
+    setImageFiles((prev) =>
+      prev.map((img) =>
+        img.file_name === image.file_name
+          ? { ...img, file_url: enhancedUrl }
+          : img
+      )
+    );
   };
 
   const closeEnhancementModal = () => {
     setIsEnhancementModalOpen(false);
     setSelectedImage(null);
-    setSelectedPreviewUrl(null);
   };
 
   const validateForm = (isDraft: boolean = false) => {
@@ -607,7 +604,7 @@ export default function CreateProductPage() {
                             key={index}
                             image={image}
                             index={index}
-                            previewUrl={image.file_url}
+                            previewUrl={image.file_url} // Use file_url directly
                             onRemove={handleRemoveImage}
                             onEnhance={handleEnhanceImage}
                             disabled={mode === "lock"}
@@ -938,7 +935,7 @@ export default function CreateProductPage() {
                     {imageFiles.map((image, index) => (
                       <img
                         key={index}
-                        src={previewUrls[index] || image.file_url}
+                        src={image.file_url}
                         alt={`Product Image ${index + 1}`}
                         className="w-full h-48 object-cover rounded-xl"
                       />
@@ -1086,7 +1083,7 @@ export default function CreateProductPage() {
         isOpen={isEnhancementModalOpen}
         onClose={closeEnhancementModal}
         image={selectedImage}
-        previewUrl={selectedPreviewUrl}
+        onEnhance={handleImageEnhance} // Pass the callback
       />
     </div>
   );
