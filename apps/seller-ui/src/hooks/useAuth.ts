@@ -56,6 +56,28 @@ export const useAuth = () => {
     },
   });
 
+  // Create Stripe Connect account mutation
+  const createStripeConnectAccountMutation = useMutation<
+    ApiResponse<never>,
+    Error,
+    { sellerId: string; country: string; currency: string }
+  >({
+    mutationFn: ({ sellerId, country, currency }) =>
+      authService.createStripeConnectAccount(sellerId, country, currency),
+    onSuccess: (data) => {
+      if (data.accountLink) {
+        window.location.href = data.accountLink; // Redirect to Stripe
+      }
+    },
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      return {
+        message: error.message,
+        details: errorData?.details,
+      };
+    },
+  });
+
   // Forgot password mutation
   const forgotPasswordMutation = useMutation<
     ApiResponse<never>,
@@ -138,7 +160,7 @@ export const useAuth = () => {
   >({
     mutationFn: authService.sellerLogin,
     onSuccess: () => {
-      router.push("/seller/dashboard");
+      router.push("/");
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
@@ -163,6 +185,24 @@ export const useAuth = () => {
     }
   >({
     mutationFn: authService.verifySellerOtp,
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      return {
+        message: error.message,
+        details: errorData?.details,
+      };
+    },
+    retry: 0,
+  });
+
+  const logoutSeller = useMutation<ApiResponse<never>, Error>({
+    mutationFn: authService.logout,
+    onSuccess: () => {
+      // clear localstorage access-seller-token and refresh-seller-token
+      localStorage.removeItem("access_seller_token");
+      localStorage.removeItem("refresh_seller_token");
+      window.location.href = "/login";
+    },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {
@@ -232,6 +272,18 @@ export const useAuth = () => {
       verifySellerOtpMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
     sellerId: verifySellerOtpMutation.data?.sellerId,
-    seller: verifySellerOtpMutation.data?.seller, // Expose seller object
+    seller: verifySellerOtpMutation.data?.seller,
+
+    createStripeConnectAccount: createStripeConnectAccountMutation.mutate,
+    createStripeConnectAccountStatus: createStripeConnectAccountMutation.status,
+    createStripeConnectAccountError:
+      createStripeConnectAccountMutation.error?.message,
+    createStripeConnectAccountErrorDetails: (
+      createStripeConnectAccountMutation.error?.cause as
+        | BackendErrorResponse
+        | undefined
+    )?.details,
+
+    logoutSeller: logoutSeller.mutate,
   };
 };

@@ -7,10 +7,12 @@ export const useCurrentUser = () => {
 
   // Define public paths where we shouldn't try to fetch the user by default
   const isPublicPath = [
-    "/auth/login",
-    "/auth/register",
-    "/auth/forgot-password",
-    "/auth/reset-password",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/sucess-payment-setup",
+    "/failed-payment-setup",
   ].includes(pathname);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -33,7 +35,7 @@ export const useCurrentUser = () => {
   const user = data?.user;
   const errorMessage = isError
     ? (error?.cause as BackendErrorResponse | undefined)?.message ||
-      "Failed to fetch user"
+      "Failed to fetch seller"
     : null;
   const errorDetails = isError
     ? (error?.cause as BackendErrorResponse | undefined)?.details

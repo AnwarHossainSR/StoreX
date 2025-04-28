@@ -69,11 +69,31 @@ model sellers {
   country      String
   password     String
   stripeId     String?
+  currency     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   shopId       String?  @db.ObjectId
   shopsId      String?  @db.ObjectId
-  shops        shops?
+  shop         shops?
+}
+
+// siteCOnfig
+
+model siteConfig {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  categories    String[]
+  subCategories Json
+}
+
+model DiscountCode {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  public_name   String
+  discountType  String
+  discountValue Float
+  discountCode  String   @unique
+  sellerId      String   @db.ObjectId
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 // products

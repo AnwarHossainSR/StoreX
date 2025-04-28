@@ -118,6 +118,7 @@ export const loginUser = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "user",
       },
       process.env.JWT_SECRET_KEY!,
       {
@@ -130,6 +131,7 @@ export const loginUser = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "user",
       },
       process.env.JWT_REFRESH_SECRET_KEY!,
       {
@@ -221,7 +223,13 @@ export const refreshAccessToken = async (
   next: NextFunction
 ) => {
   try {
-    const refreshToken = req.cookies.refresh_token;
+    const { type } = req.body;
+    let refreshToken;
+    if (type === "user") {
+      refreshToken = req.cookies["refresh_token"];
+    } else if (type === "seller") {
+      refreshToken = req.cookies["refresh_seller_token"];
+    }
     if (!refreshToken) {
       throw new ValidationError("Refresh token not found");
     }
@@ -232,17 +240,23 @@ export const refreshAccessToken = async (
       id: string;
       email: string;
       name: string;
+      role: string;
     };
     const accessToken = jwt.sign(
       {
         id: decoded.id,
         email: decoded.email,
         name: decoded.name,
+        role: type,
       },
       process.env.JWT_SECRET_KEY!,
-      { expiresIn: "1h" }
+      { expiresIn: "1m" }
     );
-    setCookie(res, "access_token", accessToken);
+    setCookie(
+      res,
+      type === "user" ? "access_token" : "access_seller_token",
+      accessToken
+    );
     res.status(200).json({ message: "Access token refreshed successfully" });
   } catch (error: any) {
     return next(error);
@@ -263,7 +277,7 @@ export const getAuthenticatedUser = async (
   }
 };
 
-export const logout = async (
+export const logoutUser = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -271,6 +285,20 @@ export const logout = async (
   try {
     res.clearCookie("refresh_token");
     res.clearCookie("access_token");
+    res.status(200).json({ message: "User logged out successfully" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const logoutSeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    res.clearCookie("refresh_seller_token");
+    res.clearCookie("access_seller_token");
     res.status(200).json({ message: "User logged out successfully" });
   } catch (error: any) {
     return next(error);
@@ -395,10 +423,11 @@ export const sellerLogin = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "seller",
       },
       process.env.JWT_SECRET_KEY!,
       {
-        expiresIn: "15m",
+        expiresIn: "1m",
       }
     );
 
@@ -407,6 +436,7 @@ export const sellerLogin = async (
         id: user.id,
         email: user.email,
         name: user.name,
+        role: "seller",
       },
       process.env.JWT_REFRESH_SECRET_KEY!,
       {
@@ -479,10 +509,26 @@ export const createStripeConnectAccount = async (
   next: NextFunction
 ) => {
   try {
-    const { sellerId } = req.body;
+    const { sellerId, country, currency } = req.body;
 
-    if (!sellerId) {
-      throw next(new ValidationError("Missing sellerId fields"));
+    if (!sellerId || !country || !currency) {
+      throw new ValidationError(
+        "Missing required fields: sellerId, country, or currency"
+      );
+    }
+
+    // Validate country (basic check for ISO 3166-1 alpha-2 code)
+    if (!/^[A-Z]{2}$/.test(country)) {
+      throw new ValidationError(
+        "Invalid country code. Use ISO 3166-1 alpha-2 format (e.g., US, GB)."
+      );
+    }
+
+    // Validate currency (basic check for ISO 4217 code)
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new ValidationError(
+        "Invalid currency code. Use ISO 4217 format (e.g., USD, GBP)."
+      );
     }
 
     const seller = await prisma.sellers.findUnique({
@@ -492,13 +538,14 @@ export const createStripeConnectAccount = async (
     });
 
     if (!seller) {
-      throw next(new ValidationError("Seller not found"));
+      throw new ValidationError("Seller not found");
     }
 
     const account = await stripe.accounts.create({
       type: "express",
-      country: "US",
-      email: seller?.email,
+      country: country.toUpperCase(),
+      default_currency: currency.toLowerCase(),
+      email: seller.email,
       capabilities: {
         card_payments: { requested: true },
         transfers: { requested: true },
@@ -511,6 +558,7 @@ export const createStripeConnectAccount = async (
       },
       data: {
         stripeId: account.id,
+        currency: currency.toUpperCase(),
       },
     });
 
@@ -525,7 +573,30 @@ export const createStripeConnectAccount = async (
       message: "Stripe connect account created successfully",
       accountLink: accountLink.url,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.type === "StripeInvalidRequestError") {
+      return next(
+        new ValidationError(
+          error.message.includes("Connect")
+            ? "Stripe Connect is not enabled for this account. Please complete Connect onboarding in the Stripe Dashboard."
+            : error.message
+        )
+      );
+    }
+    return next(error);
+  }
+};
+
+export const getAuthenticatedSeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const user = req.seller;
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
     return next(error);
   }
 };

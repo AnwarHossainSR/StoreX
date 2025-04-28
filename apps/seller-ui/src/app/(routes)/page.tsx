@@ -1,246 +1,416 @@
 "use client";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useAlert } from "@/hooks/useAlert";
-import { useAuth } from "@/hooks/useAuth";
-import { Eye, EyeOff } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Layout,
+  Package,
+  User,
+} from "lucide-react";
+import { useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-export default function SellerLoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
-  const {
-    sellerLogin,
-    sellerLoginStatus,
-    sellerLoginError,
-    sellerLoginErrorDetails,
-  } = useAuth();
-  const { alert, setSuccess, setError, clearAlert } = useAlert();
+// Sample data for charts
+const revenueData = [
+  { name: "Jan", value: 4000 },
+  { name: "Feb", value: 3000 },
+  { name: "Mar", value: 2000 },
+  { name: "Apr", value: 2780 },
+  { name: "May", value: 1890 },
+  { name: "Jun", value: 2390 },
+  { name: "Jul", value: 3490 },
+];
 
-  useEffect(() => {
-    if (sellerLoginStatus === "success") {
-      setSuccess("Login successful! Redirecting...", { autoDismiss: 3000 });
-      setTimeout(() => {
-        window.location.href = "/seller/dashboard";
-      }, 3000);
-    } else if (sellerLoginError) {
-      setError(sellerLoginError, {
-        details: sellerLoginErrorDetails,
-        isBackendError: true,
-      });
-    }
-  }, [
-    sellerLoginStatus,
-    sellerLoginError,
-    sellerLoginErrorDetails,
-    setSuccess,
-    setError,
-  ]);
+const deviceData = [
+  { name: "Phone", value: 45 },
+  { name: "Tablet", value: 15 },
+  { name: "Computer", value: 40 },
+];
 
-  const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    let isValid = true;
+const colors = ["#34d399", "#fbbf24", "#60a5fa"];
 
-    if (!email) {
-      newErrors.email = "Please enter your email address";
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email address";
-      isValid = false;
-    }
+const recentOrders = [
+  {
+    id: "ORD-001",
+    customer: "John Doe",
+    amount: 250,
+    status: "Paid",
+    date: "2023-05-12",
+  },
+  {
+    id: "ORD-002",
+    customer: "Jane Smith",
+    amount: 180,
+    status: "Pending",
+    date: "2023-05-11",
+  },
+  {
+    id: "ORD-003",
+    customer: "Alice Johnson",
+    amount: 340,
+    status: "Paid",
+    date: "2023-05-10",
+  },
+  {
+    id: "ORD-004",
+    customer: "Bob Wilson",
+    amount: 120,
+    status: "Cancelled",
+    date: "2023-05-09",
+  },
+  {
+    id: "ORD-005",
+    customer: "Emma Davis",
+    amount: 560,
+    status: "Paid",
+    date: "2023-05-08",
+  },
+];
 
-    if (!password) {
-      newErrors.password = "Please enter your password";
-      isValid = false;
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters long";
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    if (!isValid) {
-      setError("Please correct the following errors:", { details: newErrors });
-    } else {
-      clearAlert();
-    }
-    return isValid;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (validateForm()) {
-      sellerLogin({ email, password });
-    }
-  };
+export default function AdminDashboard() {
+  const [timeFrame, setTimeFrame] = useState("month");
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <h2 className="mt-2 text-center text-3xl font-bold tracking-tight text-gray-900">
-            Sign in to your seller account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{" "}
-            <Link
-              href="/register"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              create a new seller account
-            </Link>
-          </p>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+
+        <div className="flex items-center space-x-2">
+          <select
+            value={timeFrame}
+            onChange={(e) => setTimeFrame(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+            <option value="day">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="year">This Year</option>
+          </select>
+
+          <button className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+            Export
+          </button>
         </div>
+      </div>
 
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            {alert && (
-              <Alert
-                variant={alert.variant}
-                className="mb-4"
-                autoDismiss={alert.autoDismiss}
-                onDismiss={clearAlert}
-                details={alert.details}
-              >
-                <AlertTitle>{alert.title}</AlertTitle>
-                <AlertDescription>{alert.message}</AlertDescription>
-              </Alert>
-            )}
-
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`appearance-none block w-full px-3 py-2 border ${
-                      errors.email ? "border-red-300" : "border-gray-300"
-                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                    aria-invalid={!!errors.email}
-                    aria-describedby={errors.email ? "email-error" : undefined}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Password
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={`appearance-none block w-full px-3 py-2 border ${
-                      errors.password ? "border-red-300" : "border-gray-300"
-                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
-                    aria-invalid={!!errors.password}
-                    aria-describedby={
-                      errors.password ? "password-error" : undefined
-                    }
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor="remember-me"
-                    className="ml-2 block text-sm text-gray-900"
-                  >
-                    Remember me
-                  </label>
-                </div>
-
-                <div className="text-sm">
-                  <Link
-                    href="/auth/seller/forgot-password"
-                    className="font-medium text-blue-600 hover:text-blue-500"
-                  >
-                    Forgot your password?
-                  </Link>
-                </div>
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  disabled={sellerLoginStatus === "pending"}
-                  className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                    sellerLoginStatus === "pending"
-                      ? "opacity-70 cursor-not-allowed"
-                      : ""
-                  }`}
-                >
-                  {sellerLoginStatus === "pending"
-                    ? "Signing in..."
-                    : "Sign in"}
-                </button>
-              </div>
-            </form>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">
-                    Need help?
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-6 text-center text-sm">
-                <Link
-                  href="/help"
-                  className="text-blue-600 hover:text-blue-500"
-                >
-                  Contact seller support
-                </Link>
-              </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Orders</p>
+              <p className="text-2xl font-bold mt-1">856</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-full">
+              <Package size={24} className="text-blue-600" />
             </div>
           </div>
+          <div className="mt-4 flex items-center text-sm">
+            <span className="text-green-500 flex items-center">
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              12.5%
+            </span>
+            <span className="text-gray-500 ml-2">from last month</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Revenue</p>
+              <p className="text-2xl font-bold mt-1">$24,780</p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <CreditCard size={24} className="text-green-600" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center text-sm">
+            <span className="text-green-500 flex items-center">
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              8.2%
+            </span>
+            <span className="text-gray-500 ml-2">from last month</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Users</p>
+              <p className="text-2xl font-bold mt-1">3,245</p>
+            </div>
+            <div className="p-3 bg-purple-100 rounded-full">
+              <User size={24} className="text-purple-600" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center text-sm">
+            <span className="text-green-500 flex items-center">
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              4.6%
+            </span>
+            <span className="text-gray-500 ml-2">from last month</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Avg. Order Value
+              </p>
+              <p className="text-2xl font-bold mt-1">$124.32</p>
+            </div>
+            <div className="p-3 bg-orange-100 rounded-full">
+              <Layout size={24} className="text-orange-600" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center text-sm">
+            <span className="text-red-500 flex items-center">
+              <svg
+                className="w-4 h-4 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M12 13a1 1 0 100 2h5a1 1 0 001-1V9a1 1 0 10-2 0v3.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586 3.707 5.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              2.3%
+            </span>
+            <span className="text-gray-500 ml-2">from last month</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Order Status Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-yellow-100 rounded-full">
+              <Clock size={24} className="text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Pending Orders
+              </p>
+              <p className="text-2xl font-bold mt-1">23</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-green-100 rounded-full">
+              <CheckCircle size={24} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Completed Orders
+              </p>
+              <p className="text-2xl font-bold mt-1">784</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-red-100 rounded-full">
+              <AlertCircle size={24} className="text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">
+                Cancelled Orders
+              </p>
+              <p className="text-2xl font-bold mt-1">49</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Revenue Chart */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">Revenue</h2>
+            <div className="text-sm text-gray-500">
+              Last 6 months performance
+            </div>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={revenueData}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#3b82f6"
+                  fill="#93c5fd"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Device Usage */}
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">
+              Device Usage
+            </h2>
+            <div className="text-sm text-gray-500">
+              How users access your platform
+            </div>
+          </div>
+          <div className="h-80 flex items-center justify-center">
+            <div className="w-full max-w-xs">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={deviceData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                  >
+                    {deviceData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={colors[index % colors.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Orders */}
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800">Recent Orders</h2>
+          <p className="text-sm text-gray-500">
+            A quick snapshot of your latest transactions.
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Order ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {recentOrders.map((order) => (
+                <tr key={order.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                    {order.id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {order.customer}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    ${order.amount}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        order.status === "Paid"
+                          ? "bg-green-100 text-green-800"
+                          : order.status === "Pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {order.date}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-200 text-right">
+          <button className="text-sm font-medium text-blue-600 hover:text-blue-500">
+            View all orders →
+          </button>
         </div>
       </div>
     </div>

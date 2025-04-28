@@ -4,6 +4,8 @@ import express from "express";
 import proxy from "express-http-proxy";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
+import initializeSiteConfig from "./lib/initializeSiteConfig";
+import bodyParser from "body-parser";
 
 const app = express();
 
@@ -18,10 +20,11 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ limit: "100mb", extended: true }));
+app.use(bodyParser.json({ limit: "50mb" }));
 app.use(cookieParser());
 app.set("trust proxy", 1);
 
-// apply rate limiting
+// Apply rate limiting
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -33,8 +36,15 @@ app.use(
   })
 );
 
-app.use("/", proxy("http://localhost:6001"));
+// Route-specific proxying
+app.use("/api/auth", proxy("http://localhost:6001/api"));
+app.use("/api/products", proxy("http://localhost:6002/api")); // Proxy product requests to Product Service
+app.use("/api/auth/api-docs", proxy("http://localhost:6001/api-docs"));
+app.use("/api/auth/docs-json", proxy("http://localhost:6001/docs-json"));
+app.use("/api/products/api-docs", proxy("http://localhost:6002/api-docs"));
+app.use("/api/products/docs-json", proxy("http://localhost:6002/docs-json"));
 
+// Health check endpoint
 app.use("/gateway-health", (req, res) => {
   res.send({ status: "ok", message: "API Gateway is healthy" });
 });
@@ -43,6 +53,12 @@ const port = process.env.PORT ? Number(process.env.PORT) : 8080;
 const host = process.env.HOST ?? "localhost";
 const server = app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
+  try {
+    initializeSiteConfig();
+    console.log("[ ready ] Site config initialized");
+  } catch (error) {
+    console.error("Error initializing site config:", error);
+  }
 });
 server.on("error", console.error);
 

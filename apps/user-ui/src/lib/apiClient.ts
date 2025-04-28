@@ -118,7 +118,9 @@ apiClient.interceptors.response.use(
         await delay(1000); // Delay to avoid rate limiting
         await axios.post(
           `${API_BASE_URL}/refresh-token`,
-          {},
+          {
+            type: "user",
+          },
           { withCredentials: true }
         );
 

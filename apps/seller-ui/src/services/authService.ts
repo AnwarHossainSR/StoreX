@@ -1,4 +1,7 @@
-import apiClient, { withOptionalAuth } from "@/lib/apiClient";
+// services/authService.ts
+import apiClient from "@/lib/apiClient";
+
+const AUTH_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth`;
 
 export interface Seller {
   id: string;
@@ -14,6 +17,7 @@ export interface ApiResponse<T> {
   access_token?: string;
   sellerId?: string;
   seller?: Seller;
+  accountLink?: string;
 }
 
 export interface User {
@@ -29,10 +33,11 @@ export interface BackendErrorResponse {
 }
 
 export const authService = {
-  // Log out user
   async logout() {
     try {
-      const response = await apiClient.post<ApiResponse<never>>("/logout");
+      const response = await apiClient.post<ApiResponse<never>>(
+        `${AUTH_BASE_URL}/logout-seller`
+      );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
@@ -42,11 +47,10 @@ export const authService = {
     }
   },
 
-  // Initiate forgot password flow
   async forgotPassword(data: { email: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/forgot-password-user",
+        `${AUTH_BASE_URL}/forgot-password-user`,
         data
       );
       return response.data;
@@ -58,11 +62,10 @@ export const authService = {
     }
   },
 
-  // Verify OTP for forgot password
   async verifyForgotPassword(data: { email: string; otp: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/verify-forgot-password-user",
+        `${AUTH_BASE_URL}/verify-forgot-password-user`,
         data
       );
       return response.data;
@@ -74,11 +77,10 @@ export const authService = {
     }
   },
 
-  // Reset user password
   async resetPassword(data: { email: string; password: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/reset-password-user",
+        `${AUTH_BASE_URL}/reset-password-user`,
         data
       );
       return response.data;
@@ -90,7 +92,6 @@ export const authService = {
     }
   },
 
-  // Resend OTP for registration or forgot password
   async resendOtp(data: {
     email: string;
     type: "register" | "forgot" | "seller-register";
@@ -101,8 +102,8 @@ export const authService = {
   }) {
     const endpoint =
       data.type === "seller-register"
-        ? "/register-seller"
-        : "/forgot-password-user";
+        ? `${AUTH_BASE_URL}/register-seller`
+        : `${AUTH_BASE_URL}/forgot-password-user`;
     const payload =
       data.type === "seller-register"
         ? {
@@ -128,11 +129,16 @@ export const authService = {
     }
   },
 
-  // Refresh access token
   async refreshToken() {
+    const data = {
+      type: "seller",
+    };
     try {
-      const response = await apiClient.post<ApiResponse<never>>(
-        "/refresh-token"
+      console.log("Refreshing token", data);
+      const response = await apiClient.post<ApiResponse<any>>(
+        `${AUTH_BASE_URL}/refresh-token`,
+        data,
+        { withCredentials: true }
       );
       return response.data;
     } catch (error) {
@@ -143,12 +149,10 @@ export const authService = {
     }
   },
 
-  // Get current authenticated user
   async getCurrentUser() {
     try {
-      const response = await apiClient.get<ApiResponse<User>>(
-        "/logged-in-user",
-        withOptionalAuth({})
+      const response = await apiClient.get<ApiResponse<any>>(
+        `${AUTH_BASE_URL}/logged-in-seller`
       );
       return response.data;
     } catch (error) {
@@ -159,7 +163,6 @@ export const authService = {
     }
   },
 
-  // Register a new seller
   async registerSeller(data: {
     name: string;
     email: string;
@@ -169,7 +172,7 @@ export const authService = {
   }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/register-seller",
+        `${AUTH_BASE_URL}/register-seller`,
         data
       );
       return response.data;
@@ -181,7 +184,6 @@ export const authService = {
     }
   },
 
-  // Verify OTP for seller registration
   async verifySellerOtp(data: {
     email: string;
     otp: string;
@@ -192,7 +194,7 @@ export const authService = {
   }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/verify-seller-otp",
+        `${AUTH_BASE_URL}/verify-seller-otp`,
         data
       );
       return response.data;
@@ -204,11 +206,10 @@ export const authService = {
     }
   },
 
-  // Log in a seller
   async sellerLogin(data: { email: string; password: string }) {
     try {
       const response = await apiClient.post<ApiResponse<User>>(
-        "/seller-login",
+        `${AUTH_BASE_URL}/seller-login`,
         data
       );
       return response.data;
@@ -219,6 +220,7 @@ export const authService = {
       });
     }
   },
+
   async createShop(data: {
     sellerId: string;
     name: string;
@@ -230,7 +232,7 @@ export const authService = {
   }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/create-shop",
+        `${AUTH_BASE_URL}/create-shop`,
         data
       );
       return response.data;
@@ -239,6 +241,28 @@ export const authService = {
       throw new Error(errorData?.message || "Shop creation failed", {
         cause: errorData,
       });
+    }
+  },
+
+  async createStripeConnectAccount(
+    sellerId: string,
+    country: string,
+    currency: string
+  ) {
+    try {
+      const response = await apiClient.post<ApiResponse<never>>(
+        `${AUTH_BASE_URL}/create-stripe-connect-account`,
+        { sellerId, country, currency }
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(
+        errorData?.message || "Failed to create Stripe Connect account",
+        {
+          cause: errorData,
+        }
+      );
     }
   },
 };

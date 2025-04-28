@@ -7,62 +7,26 @@ import ShopSetupStep from "@/components/Seller/ShopSetupStep";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useSellerSignupStore } from "@/lib/store";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 export default function SellerSignupPage() {
-  // Use custom localStorage hook
-  const [currentStep, setCurrentStep] = useLocalStorage<number>(
-    "sellerSignup_step",
-    1
-  );
-  const [showOtp, setShowOtp] = useLocalStorage<boolean>(
-    "sellerSignup_showOtp",
-    false
-  );
-  const [sellerId, setSellerId] = useLocalStorage<string | null>(
-    "sellerSignup_sellerId",
-    null
-  );
-  const [formData, setFormData] = useLocalStorage<{
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    phone: string;
-    country: string;
-    name: string;
-    bio: string;
-    address: string;
-    opening_hour: string;
-    website: string;
-    category: string;
-    accountType: string;
-    currency: string;
-  }>("sellerSignup_formData", {
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    phone: "",
-    country: "",
-    name: "",
-    bio: "",
-    address: "",
-    opening_hour: "",
-    website: "",
-    category: "",
-    accountType: "individual",
-    currency: "",
-  });
+  const {
+    currentStep,
+    setCurrentStep,
+    showOtp,
+    setShowOtp,
+    sellerId,
+    setSellerId,
+    formData,
+    setFormData,
+    errors,
+    setErrors,
+    agreeTerms,
+    setAgreeTerms,
+  } = useSellerSignupStore();
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [agreeTerms, setAgreeTerms] = useLocalStorage<boolean>(
-    "sellerSignup_agreeTerms",
-    false
-  );
   const {
     sellerRegister,
     sellerRegisterStatus,
@@ -72,36 +36,30 @@ export default function SellerSignupPage() {
     verifySellerOtpStatus,
     verifySellerOtpError,
     verifySellerOtpErrorDetails,
-    resetSellerRegister,
     createShop,
     createShopStatus,
     createShopError,
     createShopErrorDetails,
     sellerId: authSellerId,
     seller: authSeller,
+    createStripeConnectAccount,
+    createStripeConnectAccountStatus,
+    createStripeConnectAccountError,
+    createStripeConnectAccountErrorDetails,
   } = useAuth();
   const { alert, setSuccess, setError, setInfo, clearAlert } = useAlert();
-  const router = useRouter();
 
-  // Debug localStorage on mount
+  // Debug state on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      console.log("localStorage on mount:", {
-        step: localStorage.getItem("sellerSignup_step"),
-        showOtp: localStorage.getItem("sellerSignup_showOtp"),
-        sellerId: localStorage.getItem("sellerSignup_sellerId"),
-        formData: localStorage.getItem("sellerSignup_formData"),
-        agreeTerms: localStorage.getItem("sellerSignup_agreeTerms"),
-      });
-      console.log("Current state:", {
-        currentStep,
-        showOtp,
-        sellerId,
-        formData,
-        agreeTerms,
-      });
-    }
-  }, []);
+    console.log("Current state:", {
+      currentStep,
+      showOtp,
+      sellerId,
+      formData,
+      agreeTerms,
+      errors,
+    });
+  }, [currentStep, showOtp, sellerId, formData, agreeTerms, errors]);
 
   // Handle seller registration status
   useEffect(() => {
@@ -135,6 +93,7 @@ export default function SellerSignupPage() {
     setSuccess,
     setError,
     setInfo,
+    setShowOtp,
   ]);
 
   // Handle OTP verification status
@@ -158,15 +117,14 @@ export default function SellerSignupPage() {
       }
       // Pre-fill formData with seller details if available
       if (authSeller) {
-        setFormData((prev) => ({
-          ...prev,
-          firstName: authSeller.name.split(" ")[0] || prev.firstName,
+        setFormData({
+          firstName: authSeller.name.split(" ")[0] || formData.firstName,
           lastName:
-            authSeller.name.split(" ").slice(1).join(" ") || prev.lastName,
-          email: authSeller.email || prev.email,
-          phone: authSeller.phone_number || prev.phone,
-          country: authSeller.country || prev.country,
-        }));
+            authSeller.name.split(" ").slice(1).join(" ") || formData.lastName,
+          email: authSeller.email || formData.email,
+          phone: authSeller.phone_number || formData.phone,
+          country: authSeller.country || formData.country,
+        });
       }
       setTimeout(() => {
         console.log("Setting showOtp to false and currentStep to 2");
@@ -185,12 +143,6 @@ export default function SellerSignupPage() {
     verifySellerOtpErrorDetails,
     authSellerId,
     authSeller,
-    setSuccess,
-    setError,
-    setSellerId,
-    setShowOtp,
-    setCurrentStep,
-    setFormData,
   ]);
 
   // Handle shop creation status
@@ -221,10 +173,24 @@ export default function SellerSignupPage() {
     setCurrentStep,
   ]);
 
-  // Clear localStorage only after payment submission
+  // Handle Stripe Connect errors
   useEffect(() => {
-    // Cleanup is handled in handlePaymentSubmit
-  }, []);
+    if (createStripeConnectAccountError) {
+      const errorMessage = createStripeConnectAccountError.includes(
+        "Connect onboarding"
+      )
+        ? "Failed to initiate Stripe Connect. Please contact support to enable Stripe Connect for your account."
+        : createStripeConnectAccountError;
+      setError(errorMessage, {
+        details: createStripeConnectAccountErrorDetails,
+        isBackendError: true,
+      });
+    }
+  }, [
+    createStripeConnectAccountError,
+    createStripeConnectAccountErrorDetails,
+    setError,
+  ]);
 
   const handleChange = useCallback(
     (
@@ -233,10 +199,8 @@ export default function SellerSignupPage() {
       >
     ) => {
       const { name, value } = e.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      console.log(`handleChange: Updating ${name} to ${value}`);
+      setFormData({ [name]: value });
     },
     [setFormData]
   );
@@ -298,7 +262,7 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  }, [formData, agreeTerms, setError, clearAlert]);
+  }, [formData, agreeTerms, setError, clearAlert, setErrors]);
 
   const validateShopForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
@@ -349,30 +313,7 @@ export default function SellerSignupPage() {
       clearAlert();
     }
     return isValid;
-  }, [formData, sellerId, setError, clearAlert]);
-
-  const validatePaymentForm = useCallback(() => {
-    const newErrors: Record<string, string> = {};
-    let isValid = true;
-
-    if (!formData.country) {
-      newErrors.country = "Please select your country";
-      isValid = false;
-    }
-
-    if (!formData.currency) {
-      newErrors.currency = "Please select your currency";
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    if (!isValid) {
-      setError("Please correct the following errors:", { details: newErrors });
-    } else {
-      clearAlert();
-    }
-    return isValid;
-  }, [formData, setError, clearAlert]);
+  }, [formData, sellerId, setError, clearAlert, setErrors]);
 
   const handleAccountSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -424,29 +365,6 @@ export default function SellerSignupPage() {
       }
     },
     [formData, validateShopForm, createShop, sellerId]
-  );
-
-  const handlePaymentSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-
-      if (validatePaymentForm()) {
-        setSuccess("Account setup completed! Redirecting to dashboard...", {
-          autoDismiss: 3000,
-        });
-
-        setTimeout(() => {
-          // Clear all localStorage keys
-          localStorage.removeItem("sellerSignup_step");
-          localStorage.removeItem("sellerSignup_showOtp");
-          localStorage.removeItem("sellerSignup_sellerId");
-          localStorage.removeItem("sellerSignup_formData");
-          localStorage.removeItem("sellerSignup_agreeTerms");
-          router.push("/seller/dashboard");
-        }, 3000);
-      }
-    },
-    [validatePaymentForm, setSuccess, router]
   );
 
   const handleOtpSubmit = useCallback(
@@ -597,7 +515,15 @@ export default function SellerSignupPage() {
                     formData={formData}
                     handleChange={handleChange}
                     errors={errors}
-                    handleSubmit={handlePaymentSubmit}
+                    setErrors={setErrors}
+                    sellerId={sellerId}
+                    createStripeConnectAccount={createStripeConnectAccount}
+                    createStripeConnectAccountStatus={
+                      createStripeConnectAccountStatus
+                    }
+                    createStripeConnectAccountError={
+                      createStripeConnectAccountError
+                    }
                   />
                 )}
               </>
