@@ -1,6 +1,7 @@
 "use client";
 import ImageEnhancementModal from "@/components/modal/EnhancementModal";
 import { DiscountCodeSelector } from "@/components/products/DiscountCodeSelector";
+import { JSONUpload } from "@/components/products/JSONUpload";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
@@ -383,6 +384,76 @@ export default function CreateProductPage() {
     setSuccess("Draft saved successfully!", { autoDismiss: 3000 });
   };
 
+  const handleJsonData = (data: any) => {
+    try {
+      // Set basic information
+      if (data.title) setTitle(data.title);
+      if (data.short_description) setShortDescription(data.short_description);
+      if (data.detailed_description)
+        setDetailedDescription(data.detailed_description);
+      if (data.tags && Array.isArray(data.tags)) setTags(data.tags.join(", "));
+      if (data.warranty) setWarranty(data.warranty);
+      if (data.slug) setSlug(data.slug);
+      if (data.brand) setBrand(data.brand);
+
+      // Set colors
+      if (data.colors && Array.isArray(data.colors)) setColors(data.colors);
+
+      // Set category and subcategory
+      if (data.category) setCategory(data.category);
+      if (data.subCategory) setSubCategory(data.subCategory);
+
+      // Set pricing
+      if (data.regular_price !== undefined)
+        setRegularPrice(String(data.regular_price));
+      if (data.sale_price !== undefined) setSalePrice(String(data.sale_price));
+      if (data.cashOnDelivery !== undefined)
+        setCashOnDelivery(Boolean(data.cashOnDelivery));
+
+      // Set inventory
+      if (data.stock !== undefined) setStock(String(data.stock));
+      if (data.sizes && Array.isArray(data.sizes)) setSizes(data.sizes);
+
+      // Set discount codes
+      if (data.discount_codes && Array.isArray(data.discount_codes))
+        setDiscountCodes(data.discount_codes);
+
+      // Set media
+      if (data.video_url) setVideoUrl(data.video_url);
+
+      // Set specifications and properties
+      if (data.custom_specifications) {
+        const specsArray: Specification[] = [];
+        for (const [name, value] of Object.entries(
+          data.custom_specifications
+        )) {
+          specsArray.push({ name, value: value as string });
+        }
+        setSpecs(specsArray);
+      }
+
+      if (data.custom_properties) {
+        const propsArray: Property[] = [];
+        for (const [key, values] of Object.entries(data.custom_properties)) {
+          propsArray.push({ key, values: values as string[] });
+        }
+        setProperties(propsArray);
+      }
+
+      // Handle images - note that we can't directly set images as they need to be uploaded
+      if (data.images && Array.isArray(data.images)) {
+        setImageFiles(data.images as UploadedImage[]);
+      }
+
+      setSuccess("Product data imported successfully!", { autoDismiss: 3000 });
+    } catch (error: any) {
+      console.error("Error processing JSON data:", error);
+      setError("Failed to process JSON data", {
+        details: error.message,
+      });
+    }
+  };
+
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
@@ -401,17 +472,20 @@ export default function CreateProductPage() {
                   Fill in the details to add a new product to your catalog
                 </p>
               </div>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  mode === "draft"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : mode === "edit"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </span>
+              <div className="flex items-center gap-3">
+                <JSONUpload onJSONData={handleJsonData} />
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    mode === "draft"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : mode === "edit"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -535,6 +609,7 @@ export default function CreateProductPage() {
                   <ChevronDown className="h-5 w-5" />
                 )}
               </button>
+
               {expandedSections.media && (
                 <div className="p-6 space-y-6">
                   <div>
@@ -827,7 +902,7 @@ export default function CreateProductPage() {
               <button
                 type="button"
                 className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:ring-2 focus:ring-gray-400 transition-colors"
-                onClick={() => router.push("/seller/products")}
+                onClick={() => router.push("/products")}
               >
                 Cancel
               </button>

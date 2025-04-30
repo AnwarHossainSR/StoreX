@@ -52,7 +52,7 @@ export const useProduct = () => {
   >({
     mutationFn: productService.createProduct,
     onSuccess: () => {
-      router.push("/seller/products");
+      router.push("/products");
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
