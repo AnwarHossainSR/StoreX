@@ -27,8 +27,6 @@ export const useProduct = () => {
     ApiResponse<Product>,
     Error,
     {
-      sellerId: string;
-      shopId: string;
       title: string;
       short_description: string;
       detailed_description: string;

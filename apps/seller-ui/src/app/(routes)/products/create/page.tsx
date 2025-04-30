@@ -131,7 +131,6 @@ export default function CreateProductPage() {
     salePrice?: string;
     videoUrl?: string;
     stock?: string;
-    shopId?: string;
     images?: string;
   }>({});
 
@@ -366,7 +365,6 @@ export default function CreateProductPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
       const custom_specifications = specs.reduce(
         (acc, spec) => ({ ...acc, [spec.name]: spec.value }),
         {}
@@ -376,7 +374,6 @@ export default function CreateProductPage() {
         {}
       );
       createProduct({
-        sellerId,
         title,
         short_description: shortDescription,
         detailed_description: detailedDescription,
@@ -406,7 +403,6 @@ export default function CreateProductPage() {
   };
 
   const handleSaveDraft = () => {
-    const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
     const custom_specifications = specs.reduce(
       (acc, spec) => ({ ...acc, [spec.name]: spec.value }),
       {}
@@ -416,7 +412,6 @@ export default function CreateProductPage() {
       {}
     );
     saveDraft({
-      sellerId,
       title,
       short_description: shortDescription,
       detailed_description: detailedDescription,

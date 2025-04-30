@@ -103,7 +103,6 @@ export const productService = {
   },
 
   async createProduct(data: {
-    shopId: string;
     title: string;
     short_description: string;
     detailed_description: string;
@@ -130,7 +129,6 @@ export const productService = {
       const response = await apiClient.post<ApiResponse<Product>>(
         `${PRODUCT_BASE_URL}/create-product`,
         {
-          shopId: data.shopId,
           title: data.title,
           short_description: data.short_description,
           detailed_description: data.detailed_description,
