@@ -5,7 +5,7 @@ import { Table } from "@/packages/components/Table";
 import { CreditCard, Download, Filter, Search } from "lucide-react";
 import { useState } from "react";
 
-// Mock payments data
+// Mock payments data (15 entries to trigger pagination)
 const payments = [
   {
     id: "PAY-001",
@@ -27,7 +27,136 @@ const payments = [
     date: "2024-03-14",
     cardLast4: null,
   },
-  // Add more payments as needed
+  {
+    id: "PAY-003",
+    orderId: "ORD-003",
+    customer: "Alice Johnson",
+    amount: 320,
+    method: "Bank Transfer",
+    status: "Completed",
+    date: "2024-03-13",
+    cardLast4: null,
+  },
+  {
+    id: "PAY-004",
+    orderId: "ORD-004",
+    customer: "Bob Brown",
+    amount: 95,
+    method: "Credit Card",
+    status: "Failed",
+    date: "2024-03-12",
+    cardLast4: "5555",
+  },
+  {
+    id: "PAY-005",
+    orderId: "ORD-005",
+    customer: "Emma Wilson",
+    amount: 450,
+    method: "PayPal",
+    status: "Pending",
+    date: "2024-03-11",
+    cardLast4: null,
+  },
+  {
+    id: "PAY-006",
+    orderId: "ORD-006",
+    customer: "Michael Lee",
+    amount: 200,
+    method: "Credit Card",
+    status: "Completed",
+    date: "2024-03-10",
+    cardLast4: "1234",
+  },
+  {
+    id: "PAY-007",
+    orderId: "ORD-007",
+    customer: "Sarah Davis",
+    amount: 175,
+    method: "Bank Transfer",
+    status: "Completed",
+    date: "2024-03-09",
+    cardLast4: null,
+  },
+  {
+    id: "PAY-008",
+    orderId: "ORD-008",
+    customer: "David Clark",
+    amount: 300,
+    method: "PayPal",
+    status: "Pending",
+    date: "2024-03-08",
+    cardLast4: null,
+  },
+  {
+    id: "PAY-009",
+    orderId: "ORD-009",
+    customer: "Laura Martinez",
+    amount: 260,
+    method: "Credit Card",
+    status: "Completed",
+    date: "2024-03-07",
+    cardLast4: "6789",
+  },
+  {
+    id: "PAY-010",
+    orderId: "ORD-010",
+    customer: "James White",
+    amount: 120,
+    method: "Bank Transfer",
+    status: "Failed",
+    date: "2024-03-06",
+    cardLast4: null,
+  },
+  {
+    id: "PAY-011",
+    orderId: "ORD-011",
+    customer: "Olivia Taylor",
+    amount: 380,
+    method: "Credit Card",
+    status: "Completed",
+    date: "2024-03-05",
+    cardLast4: "9876",
+  },
+  {
+    id: "PAY-012",
+    orderId: "ORD-012",
+    customer: "William Harris",
+    amount: 150,
+    method: "PayPal",
+    status: "Pending",
+    date: "2024-03-04",
+    cardLast4: null,
+  },
+  {
+    id: "PAY-013",
+    orderId: "ORD-013",
+    customer: "Sophia Lewis",
+    amount: 270,
+    method: "Credit Card",
+    status: "Completed",
+    date: "2024-03-03",
+    cardLast4: "4321",
+  },
+  {
+    id: "PAY-014",
+    orderId: "ORD-014",
+    customer: "Thomas Walker",
+    amount: 210,
+    method: "Bank Transfer",
+    status: "Completed",
+    date: "2024-03-02",
+    cardLast4: null,
+  },
+  {
+    id: "PAY-015",
+    orderId: "ORD-015",
+    customer: "Mia Young",
+    amount: 290,
+    method: "PayPal",
+    status: "Pending",
+    date: "2024-03-01",
+    cardLast4: null,
+  },
 ];
 
 export default function PaymentsPage() {
@@ -39,6 +168,22 @@ export default function PaymentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
 
+  // Reset to page 1 when filters change
+  const handleFilterChange = (newStatus: string) => {
+    setSelectedStatus(newStatus);
+    setCurrentPage(1);
+  };
+
+  const handleMethodChange = (newMethod: string) => {
+    setSelectedMethod(newMethod);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term);
+    setCurrentPage(1);
+  };
+
   const handleSort = (field: string) => {
     if (field === sortField) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -46,6 +191,25 @@ export default function PaymentsPage() {
       setSortField(field);
       setSortDirection("asc");
     }
+  };
+
+  // Get status badge styling based on payment status
+  const getStatusBadgeClasses = (status: string) => {
+    switch (status) {
+      case "Completed":
+        return "bg-green-100 text-green-800";
+      case "Pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "Failed":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Get payment method icon based on method type
+  const getPaymentMethodIcon = (method: string) => {
+    return <CreditCard size={16} className="mr-2 text-muted-foreground" />;
   };
 
   const filteredPayments = payments
@@ -111,10 +275,10 @@ export default function PaymentsPage() {
       sortable: true,
       render: (payment: any) => (
         <div className="flex items-center">
-          <CreditCard size={16} className="mr-2 text-gray-400" />
+          {getPaymentMethodIcon(payment.method)}
           {payment.method}
           {payment.cardLast4 && (
-            <span className="ml-1 text-gray-500">
+            <span className="ml-1 text-muted-foreground">
               (**** {payment.cardLast4})
             </span>
           )}
@@ -127,13 +291,9 @@ export default function PaymentsPage() {
       sortable: true,
       render: (payment: any) => (
         <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-            payment.status === "Completed"
-              ? "bg-green-100 text-green-800"
-              : payment.status === "Pending"
-              ? "bg-yellow-100 text-yellow-800"
-              : "bg-red-100 text-red-800"
-          }`}
+          className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClasses(
+            payment.status
+          )}`}
         >
           {payment.status}
         </span>
@@ -150,15 +310,15 @@ export default function PaymentsPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Payments</h1>
+        <h2 className="text-2xl font-bold text-foreground">Payments</h2>
 
         <div className="flex items-center space-x-2">
-          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-            <Filter size={20} className="mr-2" />
+          <button className="flex items-center px-4 py-2 border border-border rounded-md hover:bg-secondary/80">
+            <Filter size={20} className="mr-2 text-muted-foreground" />
             Filter
           </button>
-          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-            <Download size={20} className="mr-2" />
+          <button className="flex items-center px-4 py-2 border border-border rounded-md hover:bg-secondary/80">
+            <Download size={20} className="mr-2 text-muted-foreground" />
             Export
           </button>
         </div>
@@ -166,26 +326,26 @@ export default function PaymentsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-card rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-muted-foreground">
                 Total Payments
               </p>
-              <p className="text-2xl font-bold text-gray-800">
+              <p className="text-2xl font-bold text-foreground">
                 ${totalAmount.toFixed(2)}
               </p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <CreditCard size={24} className="text-blue-600" />
+            <div className="p-3 bg-primary/10 rounded-full">
+              <CreditCard size={24} className="text-primary" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-card rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-muted-foreground">
                 Completed Payments
               </p>
               <p className="text-2xl font-bold text-green-600">
@@ -198,10 +358,10 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-card rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-muted-foreground">
                 Pending Payments
               </p>
               <p className="text-2xl font-bold text-yellow-600">
@@ -215,20 +375,20 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm">
+      <div className="bg-card rounded-lg shadow-sm">
         {/* Search and Filter Bar */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-border">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="relative flex-grow max-w-md">
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search payments..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <Search
-                className="absolute left-3 top-2.5 text-gray-400"
+                className="absolute left-3 top-2.5 text-muted-foreground"
                 size={20}
               />
             </div>
@@ -236,8 +396,8 @@ export default function PaymentsPage() {
             <div className="flex space-x-2">
               <select
                 value={selectedMethod}
-                onChange={(e) => setSelectedMethod(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => handleMethodChange(e.target.value)}
+                className="px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="all">All Methods</option>
                 <option value="Credit Card">Credit Card</option>
@@ -247,8 +407,8 @@ export default function PaymentsPage() {
 
               <select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => handleFilterChange(e.target.value)}
+                className="px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="all">All Status</option>
                 <option value="Completed">Completed</option>
@@ -270,12 +430,14 @@ export default function PaymentsPage() {
         />
 
         {/* Pagination */}
-        <Pagination
-          totalEntries={filteredPayments.length}
-          currentPage={currentPage}
-          entriesPerPage={entriesPerPage}
-          onPageChange={setCurrentPage}
-        />
+        {filteredPayments.length > 0 && (
+          <Pagination
+            totalEntries={filteredPayments.length}
+            currentPage={currentPage}
+            entriesPerPage={entriesPerPage}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   );
