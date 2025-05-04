@@ -11,10 +11,9 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _authOptional?: boolean;
 }
 
-const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api`;
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api/auth`;
 
 const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
