@@ -1,5 +1,7 @@
 "use client";
 import ImageEnhancementModal from "@/components/modal/EnhancementModal";
+import { DiscountCodeSelector } from "@/components/products/DiscountCodeSelector";
+import { JSONUpload } from "@/components/products/JSONUpload";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
@@ -24,64 +26,6 @@ interface UploadedImage {
   file_name: string;
   file_url: string;
 }
-
-interface DiscountCode {
-  id: string;
-  public_name: string;
-  discountType: "percentage" | "fixed";
-  discountValue: number;
-  discountCode: string;
-  createdAt: string;
-}
-
-const DiscountCodeSelector: React.FC<{
-  discountCodes: DiscountCode[];
-  selectedCodes: string[];
-  onChange: (selected: string[]) => void;
-  disabled?: boolean;
-}> = ({ discountCodes = [], selectedCodes, onChange, disabled = false }) => {
-  const handleToggle = (codeId: string) => {
-    if (disabled) return;
-    if (selectedCodes.includes(codeId)) {
-      onChange(selectedCodes.filter((id) => id !== codeId));
-    } else {
-      onChange([...selectedCodes, codeId]);
-    }
-  };
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Discount Codes
-      </label>
-      <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2">
-        {discountCodes.length === 0 ? (
-          <span className="inline-block px-3 py-1 text-sm text-gray-500 bg-gray-100 rounded-full">
-            No discount codes available
-          </span>
-        ) : (
-          discountCodes.map((code) => (
-            <span
-              key={code.id}
-              className={`inline-block px-3 py-1 text-sm font-medium rounded-full cursor-pointer transition-colors ${
-                selectedCodes.includes(code.id)
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-              onClick={() => handleToggle(code.id)}
-            >
-              {code.public_name} (
-              {code.discountType === "percentage"
-                ? `${code.discountValue}%`
-                : `$${code.discountValue}`}
-              )
-            </span>
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
 
 export default function CreateProductPage() {
   const [title, setTitle] = useState("");
@@ -131,7 +75,6 @@ export default function CreateProductPage() {
     salePrice?: string;
     videoUrl?: string;
     stock?: string;
-    shopId?: string;
     images?: string;
   }>({});
 
@@ -366,7 +309,6 @@ export default function CreateProductPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
       const custom_specifications = specs.reduce(
         (acc, spec) => ({ ...acc, [spec.name]: spec.value }),
         {}
@@ -376,7 +318,6 @@ export default function CreateProductPage() {
         {}
       );
       createProduct({
-        sellerId,
         title,
         short_description: shortDescription,
         detailed_description: detailedDescription,
@@ -406,7 +347,6 @@ export default function CreateProductPage() {
   };
 
   const handleSaveDraft = () => {
-    const sellerId = "SELLER_ID"; // Replace with actual seller ID from auth context
     const custom_specifications = specs.reduce(
       (acc, spec) => ({ ...acc, [spec.name]: spec.value }),
       {}
@@ -416,7 +356,6 @@ export default function CreateProductPage() {
       {}
     );
     saveDraft({
-      sellerId,
       title,
       short_description: shortDescription,
       detailed_description: detailedDescription,
@@ -445,6 +384,76 @@ export default function CreateProductPage() {
     setSuccess("Draft saved successfully!", { autoDismiss: 3000 });
   };
 
+  const handleJsonData = (data: any) => {
+    try {
+      // Set basic information
+      if (data.title) setTitle(data.title);
+      if (data.short_description) setShortDescription(data.short_description);
+      if (data.detailed_description)
+        setDetailedDescription(data.detailed_description);
+      if (data.tags && Array.isArray(data.tags)) setTags(data.tags.join(", "));
+      if (data.warranty) setWarranty(data.warranty);
+      if (data.slug) setSlug(data.slug);
+      if (data.brand) setBrand(data.brand);
+
+      // Set colors
+      if (data.colors && Array.isArray(data.colors)) setColors(data.colors);
+
+      // Set category and subcategory
+      if (data.category) setCategory(data.category);
+      if (data.subCategory) setSubCategory(data.subCategory);
+
+      // Set pricing
+      if (data.regular_price !== undefined)
+        setRegularPrice(String(data.regular_price));
+      if (data.sale_price !== undefined) setSalePrice(String(data.sale_price));
+      if (data.cashOnDelivery !== undefined)
+        setCashOnDelivery(Boolean(data.cashOnDelivery));
+
+      // Set inventory
+      if (data.stock !== undefined) setStock(String(data.stock));
+      if (data.sizes && Array.isArray(data.sizes)) setSizes(data.sizes);
+
+      // Set discount codes
+      if (data.discount_codes && Array.isArray(data.discount_codes))
+        setDiscountCodes(data.discount_codes);
+
+      // Set media
+      if (data.video_url) setVideoUrl(data.video_url);
+
+      // Set specifications and properties
+      if (data.custom_specifications) {
+        const specsArray: Specification[] = [];
+        for (const [name, value] of Object.entries(
+          data.custom_specifications
+        )) {
+          specsArray.push({ name, value: value as string });
+        }
+        setSpecs(specsArray);
+      }
+
+      if (data.custom_properties) {
+        const propsArray: Property[] = [];
+        for (const [key, values] of Object.entries(data.custom_properties)) {
+          propsArray.push({ key, values: values as string[] });
+        }
+        setProperties(propsArray);
+      }
+
+      // Handle images - note that we can't directly set images as they need to be uploaded
+      if (data.images && Array.isArray(data.images)) {
+        setImageFiles(data.images as UploadedImage[]);
+      }
+
+      setSuccess("Product data imported successfully!", { autoDismiss: 3000 });
+    } catch (error: any) {
+      console.error("Error processing JSON data:", error);
+      setError("Failed to process JSON data", {
+        details: error.message,
+      });
+    }
+  };
+
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
@@ -463,17 +472,20 @@ export default function CreateProductPage() {
                   Fill in the details to add a new product to your catalog
                 </p>
               </div>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  mode === "draft"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : mode === "edit"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </span>
+              <div className="flex items-center gap-3">
+                <JSONUpload onJSONData={handleJsonData} />
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    mode === "draft"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : mode === "edit"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -597,6 +609,7 @@ export default function CreateProductPage() {
                   <ChevronDown className="h-5 w-5" />
                 )}
               </button>
+
               {expandedSections.media && (
                 <div className="p-6 space-y-6">
                   <div>
@@ -889,7 +902,7 @@ export default function CreateProductPage() {
               <button
                 type="button"
                 className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 focus:ring-2 focus:ring-gray-400 transition-colors"
-                onClick={() => router.push("/seller/products")}
+                onClick={() => router.push("/products")}
               >
                 Cancel
               </button>

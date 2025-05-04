@@ -18,6 +18,8 @@ export interface BackendErrorResponse {
   details?: any;
 }
 
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api/auth`;
+
 export const authService = {
   // Register a new user
   async register(data: { name: string; email: string; password: string }) {
@@ -59,11 +61,13 @@ export const authService = {
   // Log in a user
   async login(data: { email: string; password: string }) {
     try {
-      const response = await apiClient.post<ApiResponse<User>>("/login", data);
+      const response = await apiClient.post<ApiResponse<User>>(
+        `${API_BASE_URL}/login`,
+        data
+      );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
-      console.log(errorData);
       throw new Error(errorData?.message || "Login failed", {
         cause: errorData,
       });
@@ -73,7 +77,9 @@ export const authService = {
   // Log out user
   async logout() {
     try {
-      const response = await apiClient.post<ApiResponse<never>>("/logout");
+      const response = await apiClient.post<ApiResponse<never>>(
+        `${API_BASE_URL}/logout`
+      );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
@@ -87,7 +93,7 @@ export const authService = {
   async forgotPassword(data: { email: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/forgot-password-user",
+        `${API_BASE_URL}/forgot-password-user`,
         data
       );
       return response.data;
@@ -103,7 +109,7 @@ export const authService = {
   async verifyForgotPassword(data: { email: string; otp: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/verify-forgot-password-user",
+        `${API_BASE_URL}/verify-forgot-password-user`,
         data
       );
       return response.data;
@@ -119,7 +125,7 @@ export const authService = {
   async resetPassword(data: { email: string; password: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/reset-password-user",
+        `${API_BASE_URL}/reset-password-user`,
         data
       );
       return response.data;
@@ -139,7 +145,9 @@ export const authService = {
     password?: string;
   }) {
     const endpoint =
-      data.type === "register" ? "/register" : "/forgot-password-user";
+      `${API_BASE_URL}` + data.type === "register"
+        ? "/register"
+        : "/forgot-password-user";
     const payload =
       data.type === "register"
         ? { name: data.name, email: data.email, password: data.password }
@@ -166,7 +174,7 @@ export const authService = {
     };
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/refresh-token",
+        `${API_BASE_URL}/refresh-token`,
         data
       );
       return response.data;
@@ -182,7 +190,7 @@ export const authService = {
   async getCurrentUser() {
     try {
       const response = await apiClient.get<ApiResponse<User>>(
-        "/logged-in-user",
+        `${API_BASE_URL}/logged-in-user`,
         withOptionalAuth({}) // Mark this request as having optional authentication
       );
       return response.data;

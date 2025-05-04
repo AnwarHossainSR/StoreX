@@ -27,8 +27,6 @@ export const useProduct = () => {
     ApiResponse<Product>,
     Error,
     {
-      sellerId: string;
-      shopId: string;
       title: string;
       short_description: string;
       detailed_description: string;
@@ -54,7 +52,7 @@ export const useProduct = () => {
   >({
     mutationFn: productService.createProduct,
     onSuccess: () => {
-      router.push("/seller/products");
+      router.push("/products");
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;

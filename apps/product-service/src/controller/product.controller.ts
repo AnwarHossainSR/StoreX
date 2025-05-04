@@ -245,7 +245,6 @@ export const createProduct = async (
       subCategory,
       custom_properties = {},
       images = [],
-      shopId,
     } = req.body;
 
     if (
@@ -260,8 +259,7 @@ export const createProduct = async (
       !tags ||
       !stock ||
       !regular_price ||
-      !stock ||
-      !shopId
+      !stock
     ) {
       throw new ValidationError("Missing required fields");
     }
