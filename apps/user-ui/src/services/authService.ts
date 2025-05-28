@@ -25,7 +25,7 @@ export const authService = {
   async register(data: { name: string; email: string; password: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/register",
+        `${API_BASE_URL}/register`,
         data
       );
       return response.data;
@@ -46,7 +46,7 @@ export const authService = {
   }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/verify-otp",
+        `${API_BASE_URL}/verify-otp`,
         data
       );
       return response.data;
