@@ -128,6 +128,7 @@ model Product {
   stock                 Int
   sale_price            Float
   regular_price         Float
+  totalSales            Int           @default(0)
   ratings               Float         @default(5)
   warranty              String?
   custom_specifications Json?

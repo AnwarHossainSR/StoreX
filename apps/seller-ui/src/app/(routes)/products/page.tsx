@@ -72,7 +72,6 @@ export default function ProductsPage() {
         ? (aValue as number) - (bValue as number)
         : (bValue as number) - (aValue as number);
     });
-  console.log("filteredProducts", filteredProducts);
   const totalProducts = productsData?.total || filteredProducts.length;
   const activeProducts = filteredProducts.filter(
     (product) => product.status === "Active"
