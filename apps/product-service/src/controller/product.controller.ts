@@ -304,6 +304,7 @@ export const createProduct = async (
           create: images.map((image: any) => ({
             file_id: image.file_name,
             url: image.file_url,
+            shopsId: req.seller.shop.id,
           })),
         },
         sellerId: req.seller.id,
