@@ -137,7 +137,8 @@ export default function ProductSlider() {
           topProducts.map((product: Product) => (
             <div
               key={product.id}
-              className="min-w-[280px] sm:min-w-[300px] md:min-w-[320px] snap-start px-3 flex-shrink-0"
+              //  className="min-w-[280px] sm:min-w-[300px] md:min-w-[320px] snap-start px-3 flex-shrink-0"
+              className="w-[350px] sm:min-w-[300px] md:min-w-[320px] snap-start px-3 flex-shrink-0"
             >
               <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
                 <div className="relative">
