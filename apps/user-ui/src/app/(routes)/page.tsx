@@ -2,7 +2,6 @@ import FeaturedCategories from "@/components/home/FeaturedCategories";
 import NewsletterSignup from "@/components/home/NewsletterSignup";
 import PopularProducts from "@/components/home/PopularProducts";
 import ProductSlider from "@/components/home/ProductSlider";
-import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
@@ -35,12 +34,10 @@ export default function Home() {
             </div>
           </div>
           <div className="md:w-1/2">
-            <Image
+            <img
               src="https://images.pexels.com/photos/1005638/pexels-photo-1005638.jpeg"
               alt="Shopping Experience"
-              width={600}
-              height={400}
-              className="rounded-lg shadow-lg"
+              className="rounded-lg shadow-lg w-full max-h-[400px] h-[400px] object-cover"
             />
           </div>
         </div>
