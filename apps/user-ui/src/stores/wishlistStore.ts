@@ -1,3 +1,5 @@
+import useDeviceInfo from "@/hooks/useDeviceInfo";
+import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/types";
 import { toast } from "sonner";
 import { create } from "zustand";
@@ -10,6 +12,8 @@ interface WishlistItem {
 
 interface WishlistState {
   items: WishlistItem[];
+  userInfo: any | null;
+  deviceInfo: any | null;
   addItem: (product: Product) => void;
   removeItem: (id: string) => void;
   clearWishlist: () => void;
@@ -17,11 +21,24 @@ interface WishlistState {
   getTotalItems: () => number;
 }
 
+// Helper function to get user and device info
+const getTrackingInfo = () => {
+  const { userData, isLoading, error } = useUserTracking();
+  const deviceInfo = useDeviceInfo();
+  return {
+    userInfo: !isLoading && !error ? userData : null,
+    deviceInfo: deviceInfo || null,
+  };
+};
+
 export const useWishlistStore = create<WishlistState>()(
   persist(
     (set, get) => ({
       items: [],
+      userInfo: null,
+      deviceInfo: null,
       addItem: (product) => {
+        const { userInfo, deviceInfo } = getTrackingInfo();
         set((state) => {
           if (state.items.some((item) => item.id === product.id)) {
             toast.info("Item Already in Wishlist", {
@@ -31,7 +48,7 @@ export const useWishlistStore = create<WishlistState>()(
                 onClick: () => (window.location.href = "/wishlist"),
               },
             });
-            return state; // No duplicates
+            return { ...state, userInfo, deviceInfo }; // Update tracking info
           }
           toast.success("Added to Wishlist", {
             description: `${product.title} added to your wishlist.`,
@@ -42,11 +59,14 @@ export const useWishlistStore = create<WishlistState>()(
           });
           return {
             items: [...state.items, { id: product.id, product }],
+            userInfo,
+            deviceInfo,
           };
         });
       },
       removeItem: (id) =>
         set((state) => {
+          const { userInfo, deviceInfo } = getTrackingInfo();
           const item = state.items.find((item) => item.id === id);
           if (item) {
             toast.success("Removed from Wishlist", {
@@ -55,7 +75,10 @@ export const useWishlistStore = create<WishlistState>()(
                 label: "Undo",
                 onClick: () => {
                   set((current) => ({
+                    ...current,
                     items: [...current.items, item],
+                    userInfo,
+                    deviceInfo,
                   }));
                 },
               },
@@ -63,16 +86,19 @@ export const useWishlistStore = create<WishlistState>()(
           }
           return {
             items: state.items.filter((item) => item.id !== id),
+            userInfo,
+            deviceInfo,
           };
         }),
       clearWishlist: () =>
         set((state) => {
+          const { userInfo, deviceInfo } = getTrackingInfo();
           if (state.items.length > 0) {
             toast.success("Wishlist Cleared", {
               description: "All items have been removed from your wishlist.",
             });
           }
-          return { items: [] };
+          return { items: [], userInfo, deviceInfo };
         }),
       isInWishlist: (id) => get().items.some((item) => item.id === id),
       getTotalItems: () => get().items.length,
