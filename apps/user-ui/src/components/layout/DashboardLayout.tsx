@@ -1,4 +1,5 @@
-// app/dashboard/layout.tsx (continued)
+"use client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Bell,
   CheckCircle,
@@ -15,6 +16,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const { logout } = useAuth();
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="container mx-auto px-4 py-8">
@@ -120,7 +122,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     </Link>
                   </li>
                   <li>
-                    <button className="flex w-full items-center gap-3 px-4 py-3 rounded-md text-red-500 hover:bg-red-50">
+                    <button
+                      className="flex w-full items-center gap-3 px-4 py-3 rounded-md text-red-500 hover:bg-red-50"
+                      onClick={() => logout()}
+                    >
                       <LogOut size={20} />
                       <span>Logout</span>
                     </button>

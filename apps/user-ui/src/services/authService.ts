@@ -78,7 +78,7 @@ export const authService = {
   async logout() {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        `${API_BASE_URL}/logout`
+        `${API_BASE_URL}/logout-user`
       );
       return response.data;
     } catch (error) {
