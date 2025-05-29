@@ -1,7 +1,5 @@
 "use client";
 
-import useDeviceInfo from "@/hooks/useDeviceInfo";
-import useUserTracking from "@/hooks/useUserTracking";
 import { useCartStore } from "@/stores/cartStore";
 import { ChevronRight, CreditCard, Lock } from "lucide-react";
 import Image from "next/image";
@@ -11,8 +9,6 @@ import { toast } from "sonner";
 
 export default function CheckoutPage() {
   const { items, getTotalPrice } = useCartStore();
-  const { userData, isLoading, error } = useUserTracking(10); // 10-day cache
-  const deviceData = useDeviceInfo();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -82,12 +78,6 @@ export default function CheckoutPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(
-      "Place Order - User Info:",
-      userData,
-      "Device Info:",
-      deviceData
-    );
     console.log("Form submitted:", formData);
     toast.success("Order Placed", {
       description: "Your order has been successfully placed!",
@@ -136,17 +126,7 @@ export default function CheckoutPage() {
           <span className="text-gray-800">Checkout</span>
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-lg font-medium text-gray-800">
-              Loading user data...
-            </p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <p className="text-lg font-medium text-red-600">Error: {error}</p>
-          </div>
-        ) : items.length === 0 ? (
+        {items.length === 0 ? (
           <div className="text-center py-12">
             <h3 className="text-lg font-medium text-gray-800 mb-2">
               Your cart is empty
@@ -547,7 +527,6 @@ export default function CheckoutPage() {
                 <button
                   onClick={handleSubmit}
                   className="mt-6 w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  disabled={isLoading || !!error}
                 >
                   <Lock size={20} className="mr-2" />
                   Place Order
