@@ -1,5 +1,6 @@
 "use client";
 
+import ProductCardSkeleton from "@/components/skeletons/ProductCardSkeleton";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
 import { Product } from "@/services/productService";
@@ -55,13 +56,15 @@ export default function PopularProducts() {
     }
   };
 
-  console.log("products", products);
-
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {productsStatus === "pending" ? (
-          <p>Loading products...</p>
+          <>
+            {[...Array(4)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </>
         ) : products.length === 0 ? (
           <p>No products available</p>
         ) : (
@@ -153,7 +156,6 @@ export default function PopularProducts() {
         )}
       </div>
 
-      {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center mt-8 space-x-4">
           <button

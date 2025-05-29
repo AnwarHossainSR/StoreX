@@ -1,5 +1,6 @@
 "use client";
 
+import ProductCardSkeleton from "@/components/skeletons/ProductCardSkeleton";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
 import { Product } from "@/services/productService";
@@ -130,14 +131,22 @@ export default function ProductSlider() {
         onMouseMove={handleMouseMove}
       >
         {topProductsStatus === "pending" ? (
-          <p>Loading products...</p>
+          <div className="flex">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="w-[350px] sm:min-w-[300px] md:min-w-[320px] snap-start px-3 flex-shrink-0"
+              >
+                <ProductCardSkeleton />
+              </div>
+            ))}
+          </div>
         ) : topProducts.length === 0 ? (
           <p>No products available</p>
         ) : (
           topProducts.map((product: Product) => (
             <div
               key={product.id}
-              //  className="min-w-[280px] sm:min-w-[300px] md:min-w-[320px] snap-start px-3 flex-shrink-0"
               className="w-[350px] sm:min-w-[300px] md:min-w-[320px] snap-start px-3 flex-shrink-0"
             >
               <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">

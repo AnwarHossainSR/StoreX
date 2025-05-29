@@ -1,5 +1,6 @@
 "use client";
 
+import CategoryCardSkeleton from "@/components/skeletons/CategoryCardSkeleton";
 import { useAlert } from "@/hooks/useAlert";
 import { useProduct } from "@/hooks/useProduct";
 import Image from "next/image";
@@ -60,7 +61,11 @@ export default function FeaturedCategories() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       {categoriesStatus === "pending" ? (
-        <p>Loading categories...</p>
+        <>
+          {[...Array(6)].map((_, i) => (
+            <CategoryCardSkeleton key={i} />
+          ))}
+        </>
       ) : categories.length === 0 ? (
         <p>No categories available</p>
       ) : (
