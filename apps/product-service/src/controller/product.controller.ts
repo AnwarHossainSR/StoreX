@@ -537,3 +537,43 @@ export const getAllProducts = async (
     return next(error);
   }
 };
+
+export const getProductBySlug = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { slug } = req.params;
+
+    if (!slug) {
+      throw new ValidationError("Slug is required");
+    }
+
+    const product = await prisma.product.findUnique({
+      where: {
+        slug,
+        isDeleted: false,
+      },
+      include: {
+        images: {
+          select: { id: true, url: true },
+        },
+        Shop: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundError("Product not found");
+    }
+
+    return res.status(200).json({
+      message: "Product retrieved successfully",
+      data: product,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
