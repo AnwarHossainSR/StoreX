@@ -1,5 +1,3 @@
-import useDeviceInfo from "@/hooks/useDeviceInfo";
-import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/types";
 import { toast } from "sonner";
 import { create } from "zustand";
@@ -15,43 +13,45 @@ interface CartItem {
 
 interface CartState {
   items: CartItem[];
-  userInfo: any | null;
-  deviceInfo: any | null;
   addItem: (
     product: Product,
     quantity: number,
     color: string,
-    size: string
+    size: string,
+    userInfo: any | null,
+    deviceInfo: any | null
   ) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
-  clearCart: () => void;
+  removeItem: (
+    id: string,
+    userInfo: any | null,
+    deviceInfo: any | null
+  ) => void;
+  updateQuantity: (
+    id: string,
+    quantity: number,
+    userInfo: any | null,
+    deviceInfo: any | null
+  ) => void;
+  clearCart: (userInfo: any | null, deviceInfo: any | null) => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
 }
-
-// Helper function to get user and device info
-const getTrackingInfo = () => {
-  const { userData, isLoading, error } = useUserTracking();
-  const deviceInfo = useDeviceInfo();
-  return {
-    userInfo: !isLoading && !error ? userData : null,
-    deviceInfo: deviceInfo || null,
-  };
-};
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      userInfo: null,
-      deviceInfo: null,
-      addItem: (product, quantity, color, size) => {
-        const { userInfo, deviceInfo } = getTrackingInfo();
+      addItem: (product, quantity, color, size, userInfo, deviceInfo) => {
         const id = `${product.id}-${color}-${size}`;
         set((state) => {
           const existingItem = state.items.find((item) => item.id === id);
           if (existingItem) {
+            console.log(
+              "Add Item - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.info("Item Already in Cart", {
               description: `${product.title} (${color}, ${size}) is already in your cart.`,
               action: {
@@ -59,9 +59,15 @@ export const useCartStore = create<CartState>()(
                 onClick: () => (window.location.href = "/cart"),
               },
             });
-            return { ...state, userInfo, deviceInfo }; // Update tracking info
+            return state;
           }
           const validQuantity = Math.max(1, Math.min(quantity, product.stock));
+          console.log(
+            "Add Item - User Info:",
+            userInfo,
+            "Device Info:",
+            deviceInfo
+          );
           toast.success("Added to Cart", {
             description: `${product.title} (x${validQuantity}, ${color}, ${size}) added to cart.`,
             action: {
@@ -74,26 +80,26 @@ export const useCartStore = create<CartState>()(
               ...state.items,
               { id, product, quantity: validQuantity, color, size },
             ],
-            userInfo,
-            deviceInfo,
           };
         });
       },
-      removeItem: (id) =>
+      removeItem: (id, userInfo, deviceInfo) =>
         set((state) => {
-          const { userInfo, deviceInfo } = getTrackingInfo();
           const item = state.items.find((item) => item.id === id);
           if (item) {
+            console.log(
+              "Remove Item - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.success("Item Removed", {
               description: `${item.product.title} removed from cart.`,
               action: {
                 label: "Undo",
                 onClick: () => {
                   set((current) => ({
-                    ...current,
                     items: [...current.items, item],
-                    userInfo,
-                    deviceInfo,
                   }));
                 },
               },
@@ -101,29 +107,44 @@ export const useCartStore = create<CartState>()(
           }
           return {
             items: state.items.filter((item) => item.id !== id),
-            userInfo,
-            deviceInfo,
           };
         }),
-      updateQuantity: (id, quantity) =>
+      updateQuantity: (id, quantity, userInfo, deviceInfo) =>
         set((state) => {
-          const { userInfo, deviceInfo } = getTrackingInfo();
           const item = state.items.find((item) => item.id === id);
-          if (!item) return { ...state, userInfo, deviceInfo };
+          if (!item) return state;
 
           if (quantity < 1) {
+            console.log(
+              "Invalid Quantity - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.error("Invalid Quantity", {
               description: "Quantity cannot be less than 1.",
             });
-            return { ...state, userInfo, deviceInfo };
+            return state;
           }
           if (quantity > item.product.stock) {
+            console.log(
+              "Stock Limit - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.warning("Stock Limit Reached", {
               description: `Only ${item.product.stock} units available for ${item.product.title}.`,
             });
-            return { ...state, userInfo, deviceInfo };
+            return state;
           }
 
+          console.log(
+            "Update Quantity - User Info:",
+            userInfo,
+            "Device Info:",
+            deviceInfo
+          );
           toast.success("Quantity Updated", {
             description: `${item.product.title} quantity changed to ${quantity}.`,
           });
@@ -139,19 +160,22 @@ export const useCartStore = create<CartState>()(
                   }
                 : item
             ),
-            userInfo,
-            deviceInfo,
           };
         }),
-      clearCart: () =>
+      clearCart: (userInfo, deviceInfo) =>
         set((state) => {
-          const { userInfo, deviceInfo } = getTrackingInfo();
           if (state.items.length > 0) {
+            console.log(
+              "Clear Cart - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.success("Cart Cleared", {
               description: "All items have been removed from your cart.",
             });
           }
-          return { items: [], userInfo, deviceInfo };
+          return { items: [] };
         }),
       getTotalItems: () =>
         get().items.reduce((total, item) => total + item.quantity, 0),

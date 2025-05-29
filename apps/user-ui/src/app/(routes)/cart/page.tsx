@@ -1,5 +1,7 @@
 "use client";
 
+import useDeviceInfo from "@/hooks/useDeviceInfo";
+import useUserTracking from "@/hooks/useUserTracking";
 import { useCartStore } from "@/stores/cartStore";
 import { ChevronRight, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -8,6 +10,8 @@ import Link from "next/link";
 export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, getTotalItems } =
     useCartStore();
+  const { userData, isLoading, error } = useUserTracking(10); // 10-day cache
+  const deviceData = useDeviceInfo();
 
   const subtotal = items.reduce(
     (total, item) => total + item.product.sale_price * item.quantity,
@@ -17,15 +21,15 @@ export default function CartPage() {
   const total = subtotal + shipping;
 
   const handleUpdateQuantity = (id: string, newQuantity: number) => {
-    updateQuantity(id, newQuantity);
+    updateQuantity(id, newQuantity, userData, deviceData);
   };
 
   const handleRemoveItem = (id: string) => {
-    removeItem(id);
+    removeItem(id, userData, deviceData);
   };
 
   const handleClearCart = () => {
-    clearCart();
+    clearCart(userData, deviceData);
   };
 
   return (
@@ -53,7 +57,19 @@ export default function CartPage() {
                 </span>
               </div>
 
-              {items.length > 0 ? (
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <p className="text-lg font-medium text-gray-800">
+                    Loading user data...
+                  </p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <p className="text-lg font-medium text-red-600">
+                    Error: {error}
+                  </p>
+                </div>
+              ) : items.length > 0 ? (
                 <div className="divide-y divide-gray-200">
                   {items.map((item: any) => (
                     <div key={item.id} className="py-6 flex items-center">

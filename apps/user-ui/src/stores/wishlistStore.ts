@@ -1,5 +1,3 @@
-import useDeviceInfo from "@/hooks/useDeviceInfo";
-import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/types";
 import { toast } from "sonner";
 import { create } from "zustand";
@@ -12,35 +10,34 @@ interface WishlistItem {
 
 interface WishlistState {
   items: WishlistItem[];
-  userInfo: any | null;
-  deviceInfo: any | null;
-  addItem: (product: Product) => void;
-  removeItem: (id: string) => void;
-  clearWishlist: () => void;
+  addItem: (
+    product: Product,
+    userInfo: any | null,
+    deviceInfo: any | null
+  ) => void;
+  removeItem: (
+    id: string,
+    userInfo: any | null,
+    deviceInfo: any | null
+  ) => void;
+  clearWishlist: (userInfo: any | null, deviceInfo: any | null) => void;
   isInWishlist: (id: string) => boolean;
   getTotalItems: () => number;
 }
-
-// Helper function to get user and device info
-const getTrackingInfo = () => {
-  const { userData, isLoading, error } = useUserTracking();
-  const deviceInfo = useDeviceInfo();
-  return {
-    userInfo: !isLoading && !error ? userData : null,
-    deviceInfo: deviceInfo || null,
-  };
-};
 
 export const useWishlistStore = create<WishlistState>()(
   persist(
     (set, get) => ({
       items: [],
-      userInfo: null,
-      deviceInfo: null,
-      addItem: (product) => {
-        const { userInfo, deviceInfo } = getTrackingInfo();
+      addItem: (product, userInfo, deviceInfo) => {
         set((state) => {
           if (state.items.some((item) => item.id === product.id)) {
+            console.log(
+              "Add Item - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.info("Item Already in Wishlist", {
               description: `${product.title} is already in your wishlist.`,
               action: {
@@ -48,8 +45,14 @@ export const useWishlistStore = create<WishlistState>()(
                 onClick: () => (window.location.href = "/wishlist"),
               },
             });
-            return { ...state, userInfo, deviceInfo }; // Update tracking info
+            return state;
           }
+          console.log(
+            "Add Item - User Info:",
+            userInfo,
+            "Device Info:",
+            deviceInfo
+          );
           toast.success("Added to Wishlist", {
             description: `${product.title} added to your wishlist.`,
             action: {
@@ -59,26 +62,26 @@ export const useWishlistStore = create<WishlistState>()(
           });
           return {
             items: [...state.items, { id: product.id, product }],
-            userInfo,
-            deviceInfo,
           };
         });
       },
-      removeItem: (id) =>
+      removeItem: (id, userInfo, deviceInfo) =>
         set((state) => {
-          const { userInfo, deviceInfo } = getTrackingInfo();
           const item = state.items.find((item) => item.id === id);
           if (item) {
+            console.log(
+              "Remove Item - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.success("Removed from Wishlist", {
               description: `${item.product.title} removed from your wishlist.`,
               action: {
                 label: "Undo",
                 onClick: () => {
                   set((current) => ({
-                    ...current,
                     items: [...current.items, item],
-                    userInfo,
-                    deviceInfo,
                   }));
                 },
               },
@@ -86,19 +89,22 @@ export const useWishlistStore = create<WishlistState>()(
           }
           return {
             items: state.items.filter((item) => item.id !== id),
-            userInfo,
-            deviceInfo,
           };
         }),
-      clearWishlist: () =>
+      clearWishlist: (userInfo, deviceInfo) =>
         set((state) => {
-          const { userInfo, deviceInfo } = getTrackingInfo();
           if (state.items.length > 0) {
+            console.log(
+              "Clear Wishlist - User Info:",
+              userInfo,
+              "Device Info:",
+              deviceInfo
+            );
             toast.success("Wishlist Cleared", {
               description: "All items have been removed from your wishlist.",
             });
           }
-          return { items: [], userInfo, deviceInfo };
+          return { items: [] };
         }),
       isInWishlist: (id) => get().items.some((item) => item.id === id),
       getTotalItems: () => get().items.length,
