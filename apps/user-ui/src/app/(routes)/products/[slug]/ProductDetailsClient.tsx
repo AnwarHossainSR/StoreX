@@ -1,7 +1,6 @@
 "use client";
 
 import { Product } from "@/services/productService";
-import DomPurify from "dompurify";
 import {
   Award,
   CheckCircle,
@@ -460,9 +459,7 @@ export default function ProductDetailsClient({
               <div
                 className="text-gray-700 leading-relaxed space-y-4"
                 dangerouslySetInnerHTML={{
-                  __html: DomPurify.sanitize(
-                    product.detailed_description || "N/A"
-                  ),
+                  __html: product.detailed_description.replace(/\n/g, "<br>"),
                 }}
               />
             </div>
