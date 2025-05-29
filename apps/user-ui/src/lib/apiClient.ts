@@ -1,3 +1,4 @@
+// lib/apiClient.ts
 import axios, {
   AxiosInstance,
   AxiosRequestConfig,
@@ -5,19 +6,19 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 
-// Extend InternalAxiosRequestConfig to include _retry and _authOptional
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
   _authOptional?: boolean;
 }
 
-const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api/auth`;
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api`;
 
 const apiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Important for cookies
+  withCredentials: true,
 });
 
 interface FailedRequest {
@@ -45,7 +46,6 @@ const processQueue = (error: any) => {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Helper to mark endpoints where auth is optional
 export const withOptionalAuth = (
   config: AxiosRequestConfig
 ): AxiosRequestConfig & { _authOptional?: boolean } => {
@@ -57,9 +57,36 @@ export const withOptionalAuth = (
 
 apiClient.interceptors.request.use(
   (config: CustomAxiosRequestConfig) => {
+    // Ensure API_BASE_URL is defined
+    if (!API_BASE_URL) {
+      console.error(
+        "API_BASE_URL is undefined. Check NEXT_PUBLIC_SERVER_URL environment variable."
+      );
+      throw new Error("API_BASE_URL is not configured");
+    }
+
+    // If the URL is absolute, bypass baseURL but ensure it's valid
+    if (
+      config.url &&
+      (config.url.startsWith("http://") || config.url.startsWith("https://"))
+    ) {
+      try {
+        new URL(config.url); // Validate the URL
+        console.log(`Using absolute URL: ${config.url}`);
+        config.baseURL = undefined; // Bypass baseURL for absolute URLs
+      } catch (e) {
+        console.error(`Invalid absolute URL: ${config.url}`, e);
+        throw new Error(`Invalid URL provided: ${config.url}`);
+      }
+    } else {
+      // Ensure relative URLs use the correct baseURL
+      config.baseURL = API_BASE_URL;
+    }
+
     console.log(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
       retry: !!config._retry,
       authOptional: !!config._authOptional,
+      baseURL: config.baseURL,
     });
     return config;
   },
@@ -74,7 +101,6 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest: CustomAxiosRequestConfig = error.config;
 
-    // If this is an auth-optional endpoint and it failed with 401, just return the error
     if (originalRequest?._authOptional && error.response?.status === 401) {
       console.log(
         "Auth-optional endpoint failed with 401, returning error",
@@ -86,7 +112,7 @@ apiClient.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      originalRequest.url !== "/refresh-token"
+      !originalRequest.url?.endsWith("/refresh-token")
     ) {
       if (isRefreshing) {
         console.log(
@@ -101,7 +127,7 @@ apiClient.interceptors.response.use(
       if (refreshAttemptCount >= MAX_REFRESH_ATTEMPTS) {
         console.error("Max refresh attempts reached, redirecting to login");
         if (typeof window !== "undefined") {
-          window.location.href = "/auth/login";
+          // window.location.href = "/login";
         }
         return Promise.reject(error);
       }
@@ -114,9 +140,10 @@ apiClient.interceptors.response.use(
         console.log(
           `Attempting to refresh token (attempt ${refreshAttemptCount})`
         );
-        await delay(1000); // Delay to avoid rate limiting
+        await delay(1000);
+        // Use Gateway's auth route for refresh token
         await axios.post(
-          `${API_BASE_URL}/refresh-token`,
+          `${API_BASE_URL}/auth/refresh-token`,
           {
             type: "user",
           },
@@ -125,13 +152,13 @@ apiClient.interceptors.response.use(
 
         console.log("Token refreshed successfully");
         processQueue(null);
-        refreshAttemptCount = 0; // Reset on success
+        refreshAttemptCount = 0;
         return apiClient(originalRequest);
       } catch (refreshError) {
         console.error("Token refresh failed", refreshError);
         processQueue(refreshError);
         if (typeof window !== "undefined") {
-          window.location.href = "/auth/login";
+          // window.location.href = "/auth/login";
         }
         return Promise.reject(refreshError);
       } finally {
