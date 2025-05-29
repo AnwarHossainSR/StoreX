@@ -89,6 +89,7 @@
     "swagger-autogen": "^2.23.7",
     "swagger-ui-express": "^5.0.1",
     "tailwind-merge": "^2.5.2",
+    "ua-parser-js": "^2.0.3",
     "vaul": "^0.9.9",
     "zod": "^3.23.8",
     "zustand": "^5.0.3"
