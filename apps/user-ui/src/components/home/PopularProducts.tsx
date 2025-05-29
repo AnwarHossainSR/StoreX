@@ -107,7 +107,7 @@ export default function PopularProducts() {
                 )}
               </div>
               <div className="p-4">
-                <Link href={`/product/${product.slug}`} className="block">
+                <Link href={`/products/${product.slug}`} className="block">
                   <h3 className="text-gray-800 font-medium mb-1 hover:text-blue-500 transition-colors">
                     {product.title}
                   </h3>
