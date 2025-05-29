@@ -1,16 +1,20 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useCartStore } from "@/stores/cartStore";
+import { useWishlistStore } from "@/stores/wishlistStore";
 import { Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import Spinner from "../ui/Spinner";
 import MobileMenu from "./MobileMenu";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { user, isLoading } = useCurrentUser();
-
+  const { getTotalItems } = useCartStore();
+  const { getTotalItems: getTotalWishlistItems } = useWishlistStore();
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   return (
@@ -41,7 +45,9 @@ export default function Header() {
             {/* Only show loading state if we're actually trying to fetch the user */}
             {isLoading ? (
               <div className="flex items-center">
-                <span className="animate-pulse">Loading...</span>
+                <span className="animate-pulse">
+                  <Spinner />
+                </span>
               </div>
             ) : (
               <Link
@@ -60,7 +66,7 @@ export default function Header() {
               <span>Wishlist</span>
               {user && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  0
+                  {getTotalWishlistItems()}
                 </span>
               )}
             </Link>
@@ -71,7 +77,7 @@ export default function Header() {
               <ShoppingCart size={20} className="mr-1" />
               <span>Cart</span>
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                0
+                {getTotalItems()}
               </span>
             </Link>
           </div>

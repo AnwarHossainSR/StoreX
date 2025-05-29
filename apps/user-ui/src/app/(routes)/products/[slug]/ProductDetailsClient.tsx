@@ -1,6 +1,10 @@
 "use client";
 
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Product } from "@/services/productService";
+import { useCartStore } from "@/stores/cartStore";
+import { useWishlistStore } from "@/stores/wishlistStore";
+import DOMPurify from "isomorphic-dompurify";
 import {
   Award,
   CheckCircle,
@@ -24,7 +28,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-
+import { toast } from "sonner"; // Import Sonner toast
 interface ProductDetailsClientProps {
   product: Product;
 }
@@ -38,7 +42,12 @@ export default function ProductDetailsClient({
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
   const [showVideo, setShowVideo] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const {
+    addItem: addToWishlist,
+    removeItem: removeFromWishlist,
+    isInWishlist,
+  } = useWishlistStore();
+  const { addItem: addToCartStore } = useCartStore();
 
   const discountPercentage =
     product.regular_price > product.sale_price
@@ -57,17 +66,43 @@ export default function ProductDetailsClient({
     if (quantity < product.stock) setQuantity(quantity + 1);
   };
 
-  const addToCart = () => {
-    console.log("Added to cart:", {
-      productId: product.id,
-      quantity,
-      selectedColor,
-      selectedSize,
+  const handleAddToCart = () => {
+    addToCartStore(product, quantity, selectedColor, selectedSize);
+    toast.success("Added to Cart", {
+      description: `${product.title} (x${quantity}, ${selectedColor}, ${selectedSize}) added to cart.`,
+      action: {
+        label: "View Cart",
+        onClick: () => (window.location.href = "/cart"),
+      },
     });
   };
 
   const toggleWishlist = () => {
-    setIsWishlisted(!isWishlisted);
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id);
+      toast.error("Removed from Wishlist", {
+        description: `${product.title} removed from your wishlist.`,
+      });
+    } else {
+      addToWishlist(product);
+      toast.success("Added to Wishlist", {
+        description: `${product.title} added to your wishlist.`,
+      });
+    }
+  };
+
+  const shareProduct = async () => {
+    try {
+      await navigator.share({
+        title: product.title,
+        text: product.short_description,
+        url: window.location.href,
+      });
+    } catch (error) {
+      toast.error("Share Failed", {
+        description: "Could not share the product. Copy the URL instead.",
+      });
+    }
   };
 
   const renderStars = (rating: number) => {
@@ -106,6 +141,9 @@ export default function ProductDetailsClient({
       day: "numeric",
     });
   };
+
+  // Sanitize HTML for detailed_description
+  const sanitizedDescription = DOMPurify.sanitize(product.detailed_description);
 
   return (
     <div className="space-y-8">
@@ -153,6 +191,7 @@ export default function ProductDetailsClient({
                 <button
                   onClick={() => setShowVideo(true)}
                   className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-3 hover:bg-white transition-all shadow-lg hover:shadow-xl"
+                  aria-label="Play video"
                 >
                   <Play size={20} className="text-blue-600" />
                 </button>
@@ -160,21 +199,32 @@ export default function ProductDetailsClient({
 
               {/* Share & Wishlist */}
               <div className="absolute bottom-4 right-4 flex gap-2">
-                <button className="bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-all shadow-lg">
+                <button
+                  onClick={shareProduct}
+                  className="bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-all shadow-lg"
+                  aria-label="Share product"
+                >
                   <Share2 size={18} className="text-gray-600" />
                 </button>
                 <button
                   onClick={toggleWishlist}
                   className={`backdrop-blur-sm rounded-full p-2 transition-all shadow-lg ${
-                    isWishlisted
+                    isInWishlist(product.id)
                       ? "bg-red-500 hover:bg-red-600"
                       : "bg-white/90 hover:bg-white"
                   }`}
+                  aria-label={
+                    isInWishlist(product.id)
+                      ? "Remove from wishlist"
+                      : "Add to wishlist"
+                  }
                 >
                   <Heart
                     size={18}
                     className={
-                      isWishlisted ? "text-white fill-current" : "text-gray-600"
+                      isInWishlist(product.id)
+                        ? "text-white fill-current"
+                        : "text-gray-600"
                     }
                   />
                 </button>
@@ -193,6 +243,7 @@ export default function ProductDetailsClient({
                         ? "border-blue-500 ring-2 ring-blue-200 shadow-md"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
+                    aria-label={`Select image ${index + 1}`}
                   >
                     <Image
                       src={image.url}
@@ -307,6 +358,7 @@ export default function ProductDetailsClient({
                           ? "border-blue-500 bg-blue-50 text-blue-700"
                           : "border-gray-200 hover:border-gray-300 text-gray-700"
                       }`}
+                      aria-label={`Select color ${color}`}
                     >
                       {color}
                     </button>
@@ -334,6 +386,7 @@ export default function ProductDetailsClient({
                           ? "border-blue-500 bg-blue-50 text-blue-700"
                           : "border-gray-200 hover:border-gray-300 text-gray-700"
                       }`}
+                      aria-label={`Select size ${size}`}
                     >
                       {size}
                     </button>
@@ -366,8 +419,9 @@ export default function ProductDetailsClient({
                 <div className="flex items-center border border-gray-300 rounded-lg">
                   <button
                     onClick={decreaseQuantity}
-                    className="p-2 hover:bg-gray-100 transition-colors rounded-l-lg"
+                    className="p-2 hover:bg-gray-100 transition-colors rounded-l-lg disabled:opacity-50"
                     disabled={quantity <= 1}
+                    aria-label="Decrease quantity"
                   >
                     <Minus size={18} className="text-gray-600" />
                   </button>
@@ -376,8 +430,9 @@ export default function ProductDetailsClient({
                   </span>
                   <button
                     onClick={increaseQuantity}
-                    className="p-2 hover:bg-gray-100 transition-colors rounded-r-lg"
+                    className="p-2 hover:bg-gray-100 transition-colors rounded-r-lg disabled:opacity-50"
                     disabled={quantity >= product.stock}
+                    aria-label="Increase quantity"
                   >
                     <Plus size={18} className="text-gray-600" />
                   </button>
@@ -388,9 +443,10 @@ export default function ProductDetailsClient({
             {/* Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
-                onClick={addToCart}
+                onClick={handleAddToCart}
                 disabled={product.stock === 0}
-                className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl"
+                className="relative flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl"
+                aria-label="Add to cart"
               >
                 <ShoppingCart size={20} />
                 Add to Cart
@@ -398,6 +454,7 @@ export default function ProductDetailsClient({
               <Link
                 href="/checkout"
                 className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl hover:from-gray-900 hover:to-black transition-all font-semibold shadow-lg hover:shadow-xl"
+                aria-label="Buy now"
               >
                 <Zap size={20} />
                 Buy Now
@@ -445,6 +502,7 @@ export default function ProductDetailsClient({
                       ? "border-blue-500 text-blue-600"
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
+                  aria-label={`View ${tab}`}
                 >
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
@@ -458,9 +516,7 @@ export default function ProductDetailsClient({
             <div className="prose max-w-none">
               <div
                 className="text-gray-700 leading-relaxed space-y-4"
-                dangerouslySetInnerHTML={{
-                  __html: product.detailed_description.replace(/\n/g, "<br>"),
-                }}
+                dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
               />
             </div>
           )}
@@ -562,6 +618,22 @@ export default function ProductDetailsClient({
             </div>
           )}
         </div>
+        {showVideo && (
+          <Dialog open={showVideo} onOpenChange={setShowVideo}>
+            <DialogContent className="max-w-3xl">
+              <iframe
+                width="100%"
+                height="400"
+                src={product?.video_url?.replace("watch?v=", "embed/")}
+                title="Product Video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="rounded-lg"
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
