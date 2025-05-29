@@ -1,4 +1,5 @@
 import { Product } from "@/types";
+import { toast } from "sonner";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -34,18 +35,23 @@ export const useCartStore = create<CartState>()(
         set((state) => {
           const existingItem = state.items.find((item) => item.id === id);
           if (existingItem) {
-            // Item already in cart, show toast and don't modify cart
-            // toast.info("Item Already in Cart", {
-            //   description: `${product.title} (${color}, ${size}) is already in your cart.`,
-            //   action: {
-            //     label: "View Cart",
-            //     onClick: () => (window.location.href = "/cart"),
-            //   },
-            // });
+            toast.info("Item Already in Cart", {
+              description: `${product.title} (${color}, ${size}) is already in your cart.`,
+              action: {
+                label: "View Cart",
+                onClick: () => (window.location.href = "/cart"),
+              },
+            });
             return state; // No changes to cart
           }
-          // Add new item, respecting stock limit
           const validQuantity = Math.max(1, Math.min(quantity, product.stock));
+          toast.success("Added to Cart", {
+            description: `${product.title} (x${validQuantity}, ${color}, ${size}) added to cart.`,
+            action: {
+              label: "View Cart",
+              onClick: () => (window.location.href = "/cart"),
+            },
+          });
           return {
             items: [
               ...state.items,
@@ -55,23 +61,68 @@ export const useCartStore = create<CartState>()(
         });
       },
       removeItem: (id) =>
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        })),
+        set((state) => {
+          const item = state.items.find((item) => item.id === id);
+          if (item) {
+            toast.success("Item Removed", {
+              description: `${item.product.title} removed from cart.`,
+              action: {
+                label: "Undo",
+                onClick: () => {
+                  set((current) => ({
+                    items: [...current.items, item],
+                  }));
+                },
+              },
+            });
+          }
+          return {
+            items: state.items.filter((item) => item.id !== id),
+          };
+        }),
       updateQuantity: (id, quantity) =>
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  quantity: Math.max(1, Math.min(quantity, item.product.stock)),
-                }
-              : item
-          ),
-        })),
+        set((state) => {
+          const item = state.items.find((item) => item.id === id);
+          if (!item) return state;
+
+          if (quantity < 1) {
+            toast.error("Invalid Quantity", {
+              description: "Quantity cannot be less than 1.",
+            });
+            return state;
+          }
+          if (quantity > item.product.stock) {
+            toast.warning("Stock Limit Reached", {
+              description: `Only ${item.product.stock} units available for ${item.product.title}.`,
+            });
+            return state;
+          }
+
+          toast.success("Quantity Updated", {
+            description: `${item.product.title} quantity changed to ${quantity}.`,
+          });
+          return {
+            items: state.items.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    quantity: Math.max(
+                      1,
+                      Math.min(quantity, item.product.stock)
+                    ),
+                  }
+                : item
+            ),
+          };
+        }),
       clearCart: () =>
-        set({
-          items: [],
+        set((state) => {
+          if (state.items.length > 0) {
+            toast.success("Cart Cleared", {
+              description: "All items have been removed from your cart.",
+            });
+          }
+          return { items: [] };
         }),
       getTotalItems: () =>
         get().items.reduce((total, item) => total + item.quantity, 0),

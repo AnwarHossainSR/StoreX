@@ -68,26 +68,13 @@ export default function ProductDetailsClient({
 
   const handleAddToCart = () => {
     addToCartStore(product, quantity, selectedColor, selectedSize);
-    toast.success("Added to Cart", {
-      description: `${product.title} (x${quantity}, ${selectedColor}, ${selectedSize}) added to cart.`,
-      action: {
-        label: "View Cart",
-        onClick: () => (window.location.href = "/cart"),
-      },
-    });
   };
 
   const toggleWishlist = () => {
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id);
-      toast.error("Removed from Wishlist", {
-        description: `${product.title} removed from your wishlist.`,
-      });
     } else {
       addToWishlist(product);
-      toast.success("Added to Wishlist", {
-        description: `${product.title} added to your wishlist.`,
-      });
     }
   };
 
@@ -142,7 +129,6 @@ export default function ProductDetailsClient({
     });
   };
 
-  // Sanitize HTML for detailed_description
   const sanitizedDescription = DOMPurify.sanitize(product.detailed_description);
 
   return (
