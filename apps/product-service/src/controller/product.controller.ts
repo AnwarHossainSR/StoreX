@@ -304,6 +304,7 @@ export const createProduct = async (
           create: images.map((image: any) => ({
             file_id: image.file_name,
             url: image.file_url,
+            shopsId: req.seller.shop.id,
           })),
         },
         sellerId: req.seller.id,
@@ -484,15 +485,12 @@ export const getAllProducts = async (
     const skip = (page - 1) * limit;
     const type = req.query.type as string;
 
+    if (isNaN(page) || isNaN(limit) || page < 1 || limit < 1) {
+      throw new Error("Invalid pagination parameters");
+    }
+
     const baseFilter = {
-      OR: [
-        {
-          starting_date: null,
-        },
-        {
-          ending_date: null,
-        },
-      ],
+      isDeleted: false, // Simplified filter
     };
 
     const orderBy: Prisma.ProductOrderByWithRelationInput =
@@ -503,16 +501,13 @@ export const getAllProducts = async (
     const [products, total, top10Products] = await Promise.all([
       prisma.product.findMany({
         skip,
-        take: Number(limit),
+        take: limit,
         include: {
-          images: true,
-          Shop: true,
+          images: { select: { id: true, url: true } }, // Adjust fields
+          Shop: { select: { id: true, name: true } }, // Adjust fields
         },
         where: baseFilter,
-        orderBy: {
-          // totalSales:"desc"
-          createdAt: "desc",
-        },
+        orderBy: [{ totalSales: "desc" }, { createdAt: "desc" }],
       }),
       prisma.product.count({
         where: baseFilter,
@@ -520,22 +515,25 @@ export const getAllProducts = async (
       prisma.product.findMany({
         take: 10,
         include: {
-          images: true,
-          Shop: true,
+          images: { select: { id: true, url: true } },
+          Shop: { select: { id: true, name: true } },
         },
         orderBy,
       }),
     ]);
 
-    return res.status(200).json({
+    const response = {
       data: products,
       top10By: type === "latest" ? "latest" : "topSales",
       top10Products,
       total,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
-    });
+    };
+
+    return res.status(200).json(response);
   } catch (error) {
+    console.error("Error fetching products:", error);
     return next(error);
   }
 };

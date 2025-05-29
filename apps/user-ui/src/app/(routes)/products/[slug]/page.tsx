@@ -51,7 +51,7 @@ const product = {
   },
 };
 
-export default function ProductPage({ params }: { params: { id: string } }) {
+export default function ProductPage({ params }: { params: { slug: string } }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
 

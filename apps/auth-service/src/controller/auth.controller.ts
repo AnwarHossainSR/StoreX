@@ -122,7 +122,7 @@ export const loginUser = async (
       },
       process.env.JWT_SECRET_KEY!,
       {
-        expiresIn: "1h",
+        expiresIn: "1m",
       }
     );
 
@@ -233,6 +233,7 @@ export const refreshAccessToken = async (
     if (!refreshToken) {
       throw new ValidationError("Refresh token not found");
     }
+
     const decoded = jwt.verify(
       refreshToken,
       process.env.JWT_REFRESH_SECRET_KEY!
@@ -242,6 +243,7 @@ export const refreshAccessToken = async (
       name: string;
       role: string;
     };
+
     const accessToken = jwt.sign(
       {
         id: decoded.id,
@@ -252,13 +254,16 @@ export const refreshAccessToken = async (
       process.env.JWT_SECRET_KEY!,
       { expiresIn: "1h" }
     );
+
     setCookie(
       res,
       type === "user" ? "access_token" : "access_seller_token",
       accessToken
     );
+
     res.status(200).json({ message: "Access token refreshed successfully" });
   } catch (error: any) {
+    console.log("error", error);
     return next(error);
   }
 };

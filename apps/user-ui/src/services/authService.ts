@@ -1,4 +1,4 @@
-import apiClient, { withOptionalAuth } from "@/lib/apiClient";
+import apiClient from "@/lib/apiClient";
 
 export interface ApiResponse<T> {
   message: string;
@@ -25,7 +25,7 @@ export const authService = {
   async register(data: { name: string; email: string; password: string }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/register",
+        `${API_BASE_URL}/register`,
         data
       );
       return response.data;
@@ -46,7 +46,7 @@ export const authService = {
   }) {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
-        "/verify-otp",
+        `${API_BASE_URL}/verify-otp`,
         data
       );
       return response.data;
@@ -175,7 +175,8 @@ export const authService = {
     try {
       const response = await apiClient.post<ApiResponse<never>>(
         `${API_BASE_URL}/refresh-token`,
-        data
+        data,
+        { withCredentials: true }
       );
       return response.data;
     } catch (error) {
@@ -190,8 +191,7 @@ export const authService = {
   async getCurrentUser() {
     try {
       const response = await apiClient.get<ApiResponse<User>>(
-        `${API_BASE_URL}/logged-in-user`,
-        withOptionalAuth({}) // Mark this request as having optional authentication
+        `${API_BASE_URL}/logged-in-user`
       );
       return response.data;
     } catch (error) {

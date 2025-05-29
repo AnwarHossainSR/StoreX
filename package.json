@@ -3,14 +3,19 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "npx nx run-many --target=serve --all",
-    "generate": "npx prisma generate",
-    "push": "npx prisma db push",
+    "dev": "npm run cache && npm run dev:no-cache",
+    "dev:no-cache": "npx nx run-many --target=serve --all",
     "cache": "npx nx reset cache",
     "auth-docs": "node apps/auth-service/src/swagger.js",
     "user-ui": "npx nx run-many --target=dev --all --projects=user-ui",
     "seller-ui": "npx nx run-many --target=dev --all --projects=seller-ui",
-    "product-docs": "node apps/product-service/src/swagger.js"
+    "product-docs": "node apps/product-service/src/swagger.js",
+    "prisma:studio": "prisma studio",
+    "prisma:generate": "npx prisma generate",
+    "prisma:push": "npx prisma db push",
+    "prisma:clear-db": "npx ts-node prisma/clear-db.ts",
+    "start:services": "concurrently -k -n \"DEV,USERUI\" -c \"green,magenta\" \"npm run dev:no-cache\" \"npm run user-ui\"",
+    "start:all": "npm run start:services"
   },
   "private": true,
   "dependencies": {
@@ -119,6 +124,7 @@
     "@types/react-dom": "18.3.0",
     "@types/swagger-ui-express": "^4.1.8",
     "autoprefixer": "10.4.13",
+    "concurrently": "^9.1.2",
     "esbuild": "^0.19.2",
     "i": "^0.3.7",
     "jest": "^29.7.0",

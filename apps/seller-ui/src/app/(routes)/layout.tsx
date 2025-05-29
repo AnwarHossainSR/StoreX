@@ -158,8 +158,19 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
 
   useEffect(() => {
     console.log("layout:", user);
-    if (!isLoading && !user) alert("You are not logged in");
+    if (!isLoading && !user) {
+      window.location.href = "/login";
+    }
   }, [isLoading, user]);
+
+  if (isLoading || !user) {
+    // Show a loading state or redirect to login if user is not authenticated
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-900">
