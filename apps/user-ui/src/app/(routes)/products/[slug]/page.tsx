@@ -23,12 +23,8 @@ async function fetchProduct(slug: string): Promise<{
   }
 }
 
-export default async function ProductPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const { slug } = params;
+export default async function ProductPage(props: { params: { slug: string } }) {
+  const { slug } = await props.params;
   const { product, error } = await fetchProduct(slug);
 
   if (error) {
