@@ -9,6 +9,7 @@ import {
   getAllProducts,
   getCategories,
   getDiscountCodes,
+  getProductBySlug,
   getSellerProducts,
   restoreProduct,
   uploadProductImage,
@@ -28,5 +29,6 @@ router.get("/seller", isAuthenticated, getSellerProducts);
 router.delete("/seller/:id", isAuthenticated, deleteProduct);
 router.put("/seller/restore/:id", isAuthenticated, restoreProduct);
 router.get("/get-all-products", getAllProducts);
+router.get("/get-product/:slug", getProductBySlug);
 
 export default router;

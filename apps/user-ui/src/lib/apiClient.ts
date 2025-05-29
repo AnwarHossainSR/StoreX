@@ -72,7 +72,6 @@ apiClient.interceptors.request.use(
     ) {
       try {
         new URL(config.url); // Validate the URL
-        console.log(`Using absolute URL: ${config.url}`);
         config.baseURL = undefined; // Bypass baseURL for absolute URLs
       } catch (e) {
         console.error(`Invalid absolute URL: ${config.url}`, e);
@@ -83,11 +82,6 @@ apiClient.interceptors.request.use(
       config.baseURL = API_BASE_URL;
     }
 
-    console.log(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
-      retry: !!config._retry,
-      authOptional: !!config._authOptional,
-      baseURL: config.baseURL,
-    });
     return config;
   },
   (error) => {
