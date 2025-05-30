@@ -201,6 +201,11 @@ export const useAuth = () => {
       // clear localstorage access-seller-token and refresh-seller-token
       localStorage.removeItem("access_seller_token");
       localStorage.removeItem("refresh_seller_token");
+      // clear cookies access-seller-token and refresh-seller-token
+      document.cookie =
+        "access_seller_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie =
+        "refresh_seller_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       window.location.href = "/login";
     },
     onError: (error: Error) => {

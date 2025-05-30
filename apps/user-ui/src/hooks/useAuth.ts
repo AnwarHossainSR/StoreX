@@ -133,6 +133,31 @@ export const useAuth = () => {
     },
   });
 
+  // Logout mutation
+  const logoutMutation = useMutation<ApiResponse<never>, Error, void>({
+    mutationFn: authService.logout,
+    onSuccess: () => {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      // remove cookies
+      document.cookie =
+        "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie =
+        "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      router.push("/");
+    },
+    onError: (error: Error) => {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      // remove cookies
+      document.cookie =
+        "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie =
+        "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      router.push("/");
+    },
+  });
+
   return {
     login: loginMutation.mutate,
     loginStatus: loginMutation.status,
@@ -184,5 +209,7 @@ export const useAuth = () => {
     resendOtpErrorDetails: (
       resendOtpMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
+
+    logout: logoutMutation.mutate,
   };
 };
