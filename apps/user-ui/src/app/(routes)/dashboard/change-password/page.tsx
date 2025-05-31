@@ -1,10 +1,9 @@
 // app/dashboard/change-password/page.tsx
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Eye, Lock } from "lucide-react";
 
 export default function ChangePasswordPage() {
   return (
-    <DashboardLayout>
+    <>
       {/* Change Password Form */}
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-sm p-8">
@@ -102,6 +101,6 @@ export default function ChangePasswordPage() {
           </form>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

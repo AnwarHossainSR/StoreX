@@ -1,5 +1,4 @@
 // app/dashboard/shipping/page.tsx
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Edit, MapPin, Plus, Trash } from "lucide-react";
 
 export default function ShippingAddressPage() {
@@ -30,7 +29,7 @@ export default function ShippingAddressPage() {
   ];
 
   return (
-    <DashboardLayout>
+    <>
       {/* Add New Address Button */}
       <div className="mb-6">
         <button className="px-5 py-2.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2">
@@ -80,6 +79,6 @@ export default function ShippingAddressPage() {
           </div>
         ))}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

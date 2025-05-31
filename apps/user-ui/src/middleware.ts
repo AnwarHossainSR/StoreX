@@ -1,69 +1,175 @@
-import { ApiResponse, authService, User } from "@/services/authService";
 import { NextRequest, NextResponse } from "next/server";
 
-// Define public paths that don't require authentication
-const publicPaths = [
+// Define your route configurations
+const PUBLIC_ROUTES = [
+  "/",
   "/auth/login",
   "/auth/register",
   "/auth/forgot-password",
   "/auth/reset-password",
-  "/",
+  "/products",
+  "/cart",
+  "/checkout",
+  "/wishlist",
 ];
 
-// Helper function to check if the path is public
-function isPublicPath(path: string): boolean {
-  return publicPaths.some(
-    (publicPath) => path === publicPath || path.startsWith(publicPath)
-  );
+const PROTECTED_ROUTES = [
+  "/dashboard",
+  "/dashboard/orders",
+  "/dashboard/inbox",
+  "/dashboard/notifications",
+  "/dashboard/shipping",
+  "/dashboard/change-password",
+];
+
+// Routes that should redirect authenticated users away (like login page)
+const AUTH_REDIRECT_ROUTES = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((route) => {
+    // Handle dynamic routes like /products/[slug]
+    if (route === "/products" && pathname.startsWith("/products/")) {
+      return true;
+    }
+    return pathname === route;
+  });
+}
+
+async function verifyToken(request: NextRequest): Promise<boolean> {
+  try {
+    // Check for access token in cookies
+    const accessToken = request.cookies.get("access_token")?.value;
+    if (!accessToken) {
+      return false;
+    }
+
+    // Verify token with your backend
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SERVER_URI}/api/auth/logged-in-user`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: request.headers.get("cookie") || "",
+        },
+        credentials: "include",
+      }
+    );
+
+    return response.ok;
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return false;
+  }
+}
+
+async function refreshTokenIfNeeded(request: NextRequest): Promise<boolean> {
+  try {
+    const refreshToken = request.cookies.get("refresh_token")?.value;
+
+    if (!refreshToken) {
+      return false;
+    }
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SERVER_URI}/api/auth/refresh-token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: request.headers.get("cookie") || "",
+        },
+        body: JSON.stringify({ type: "user" }),
+        credentials: "include",
+      }
+    );
+
+    return response.ok;
+  } catch (error) {
+    console.error("Token refresh failed:", error);
+    return false;
+  }
+}
+
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_ROUTES.some((route) => {
+    if (route.endsWith("/*")) {
+      return pathname.startsWith(route.slice(0, -2));
+    }
+    return pathname === route || pathname.startsWith(route + "/");
+  });
+}
+
+function shouldRedirectAuthenticatedUser(pathname: string): boolean {
+  return AUTH_REDIRECT_ROUTES.includes(pathname);
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip authentication check for public paths
-  if (isPublicPath(pathname)) {
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
-  // Define protected paths explicitly (optional, for clarity)
-  const protectedPaths = ["/cart", "/checkout", "/dashboard", "/wishlist"];
-
-  // Check if the path is protected (or assume all non-public paths are protected)
+  // Skip middleware for API routes, static files, and Next.js internals
   if (
-    protectedPaths.some((path) => pathname.startsWith(path)) ||
-    !isPublicPath(pathname)
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.includes(".")
   ) {
-    try {
-      console.log("Middleware auth check:", pathname);
-      // Call authService.getCurrentUser with cookies
-      const response: ApiResponse<User> = await authService.getCurrentUser();
-      console.log("Middleware auth response:", response);
-      if (!response.user) {
-        // Redirect to login if no user is found
-        return NextResponse.redirect(new URL("/auth/login", request.url));
-      }
+    return NextResponse.next();
+  }
 
-      // Attach user info to headers for downstream use
-      const nextResponse = NextResponse.next();
-      nextResponse.headers.set("x-user-id", response.user.id);
-      nextResponse.headers.set("x-user-email", response.user.email);
-      nextResponse.headers.set("x-user-name", response.user.name);
-      return nextResponse;
-    } catch (error) {
-      console.error("Middleware auth error:", error);
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+  console.log(`Middleware processing: ${pathname}`);
+
+  // Check if user is authenticated
+  let isAuthenticated = await verifyToken(request);
+
+  // If not authenticated, try to refresh the token
+  if (!isAuthenticated) {
+    isAuthenticated = await refreshTokenIfNeeded(request);
+  }
+
+  // Handle protected routes
+  if (isProtectedRoute(pathname)) {
+    if (!isAuthenticated) {
+      console.log(
+        `Redirecting unauthenticated user from protected route: ${pathname}`
+      );
+      const loginUrl = new URL("/auth/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
-  console.log("Protected path:", pathname);
 
-  // Allow request to proceed for non-protected paths
+  // Handle auth redirect routes (redirect authenticated users away from login/register)
+  if (shouldRedirectAuthenticatedUser(pathname) && isAuthenticated) {
+    console.log(`Redirecting authenticated user from auth page: ${pathname}`);
+    const redirectTo =
+      request.nextUrl.searchParams.get("redirect") || "/dashboard";
+    return NextResponse.redirect(new URL(redirectTo, request.url));
+  }
+
+  // For public routes or successful authentication, continue
   return NextResponse.next();
 }
 
-// Configure which paths the middleware applies to
 export const config = {
   matcher: [
-    // Apply middleware to all routes except static assets and public files
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (public folder)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)",
   ],
 };
