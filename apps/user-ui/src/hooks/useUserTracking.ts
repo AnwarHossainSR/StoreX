@@ -21,7 +21,7 @@ const useUserTracking = (expirationDays = 10) => {
           throw new Error("Failed to fetch user data");
         }
         const data = await response.json();
-
+        console.log("data", data);
         const userInfo: any = {
           country: data.country,
           city: data.city,

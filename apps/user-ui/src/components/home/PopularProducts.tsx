@@ -2,7 +2,9 @@
 
 import ProductCardSkeleton from "@/components/skeletons/ProductCardSkeleton";
 import { useAlert } from "@/hooks/useAlert";
+import useDeviceInfo from "@/hooks/useDeviceInfo";
 import { useProduct } from "@/hooks/useProduct";
+import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/services/productService";
 import { useCartStore } from "@/stores/cartStore";
 import { useWishlistStore } from "@/stores/wishlistStore";
@@ -33,6 +35,9 @@ export default function PopularProducts() {
     removeItem: removeFromWishlist,
     isInWishlist,
   } = useWishlistStore();
+  const { userData } = useUserTracking(10);
+  const deviceData = useDeviceInfo();
+
   const { addItem: addToCart } = useCartStore();
 
   useEffect(() => {
@@ -66,16 +71,16 @@ export default function PopularProducts() {
 
   const handleToggleWishlist = (product: Product) => {
     if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id);
+      removeFromWishlist(product.id, userData, deviceData);
     } else {
-      addToWishlist(product);
+      addToWishlist(product, userData, deviceData);
     }
   };
 
   const handleAddToCart = (product: Product) => {
     const defaultColor = product.colors[0] || "N/A";
     const defaultSize = product.sizes[0] || "N/A";
-    addToCart(product, 1, defaultColor, defaultSize);
+    addToCart(product, 1, defaultColor, defaultSize, userData, deviceData);
   };
 
   return (

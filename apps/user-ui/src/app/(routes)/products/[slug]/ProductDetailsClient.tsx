@@ -1,6 +1,8 @@
 "use client";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import useDeviceInfo from "@/hooks/useDeviceInfo";
+import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/services/productService";
 import { useCartStore } from "@/stores/cartStore";
 import { useWishlistStore } from "@/stores/wishlistStore";
@@ -42,6 +44,8 @@ export default function ProductDetailsClient({
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
   const [showVideo, setShowVideo] = useState(false);
+  const { userData } = useUserTracking(10);
+  const deviceData = useDeviceInfo();
   const {
     addItem: addToWishlist,
     removeItem: removeFromWishlist,
@@ -67,14 +71,23 @@ export default function ProductDetailsClient({
   };
 
   const handleAddToCart = () => {
-    addToCartStore(product, quantity, selectedColor, selectedSize);
+    const defaultColor = product.colors[0] || "N/A";
+    const defaultSize = product.sizes[0] || "N/A";
+    addToCartStore(
+      product,
+      quantity,
+      defaultColor,
+      defaultSize,
+      userData,
+      deviceData
+    );
   };
 
   const toggleWishlist = () => {
     if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id);
+      removeFromWishlist(product.id, userData, deviceData);
     } else {
-      addToWishlist(product);
+      addToWishlist(product, userData, deviceData);
     }
   };
 

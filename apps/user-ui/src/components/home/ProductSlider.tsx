@@ -2,7 +2,9 @@
 
 import ProductCardSkeleton from "@/components/skeletons/ProductCardSkeleton";
 import { useAlert } from "@/hooks/useAlert";
+import useDeviceInfo from "@/hooks/useDeviceInfo";
 import { useProduct } from "@/hooks/useProduct";
+import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/services/productService";
 import { useCartStore } from "@/stores/cartStore";
 import { useWishlistStore } from "@/stores/wishlistStore";
@@ -36,6 +38,8 @@ export default function ProductSlider() {
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const { userData } = useUserTracking(10);
+  const deviceData = useDeviceInfo();
 
   useEffect(() => {
     if (topProductsStatus === "error" && topProductsError) {
@@ -129,16 +133,16 @@ export default function ProductSlider() {
 
   const handleToggleWishlist = (product: Product) => {
     if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id);
+      removeFromWishlist(product.id, userData, deviceData);
     } else {
-      addToWishlist(product);
+      addToWishlist(product, userData, deviceData);
     }
   };
 
   const handleAddToCart = (product: Product) => {
     const defaultColor = product.colors[0] || "N/A";
     const defaultSize = product.sizes[0] || "N/A";
-    addToCart(product, 1, defaultColor, defaultSize);
+    addToCart(product, 1, defaultColor, defaultSize, userData, deviceData);
   };
 
   return (
