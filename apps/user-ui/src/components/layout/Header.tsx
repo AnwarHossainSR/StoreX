@@ -64,18 +64,17 @@ export default function Header() {
             >
               <Heart size={20} className="mr-1" />
               <span>Wishlist</span>
-              {user && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {getTotalWishlistItems()}
-                </span>
-              )}
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {getTotalWishlistItems()}
+              </span>
             </Link>
             <Link
-              href="/cart"
+              href={user ? "/cart" : "/auth/login"}
               className="flex items-center hover:text-blue-500 transition-colors relative"
             >
               <ShoppingCart size={20} className="mr-1" />
               <span>Cart</span>
+
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                 {getTotalItems()}
               </span>

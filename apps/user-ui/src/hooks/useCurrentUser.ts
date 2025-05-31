@@ -7,10 +7,13 @@ export const useCurrentUser = () => {
 
   // Define public paths where we shouldn't try to fetch the user by default
   const isPublicPath = [
+    "/",
     "/auth/login",
     "/auth/register",
     "/auth/forgot-password",
     "/auth/reset-password",
+    "/products",
+    "/products/[slug]",
   ].includes(pathname);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -20,15 +23,6 @@ export const useCurrentUser = () => {
     retry: 1,
     enabled: !isPublicPath, // Don't run on public paths by default
   });
-
-  // console.log("Current user hook:", {
-  //   data,
-  //   isLoading,
-  //   isError,
-  //   error,
-  //   path: pathname,
-  //   isPublicPath,
-  // });
 
   const user = data?.user;
   const errorMessage = isError
