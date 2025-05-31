@@ -135,9 +135,7 @@ const Loading: React.FC<LoadingProps> = ({
   if (fullScreen) {
     return (
       <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
-          {content}
-        </div>
+        {content}
       </div>
     );
   }

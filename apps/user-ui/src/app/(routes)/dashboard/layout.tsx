@@ -1,10 +1,11 @@
 "use client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { DashboardGuard } from "@/components/layout/RouteGuard";
+import { ProtectedRoute } from "@/components/layout/RouteGuard";
+import Loading from "@/components/ui/loading";
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <DashboardGuard>
+    <ProtectedRoute fallback={<Loading fullScreen size="xl" />}>
       <DashboardLayout>{children}</DashboardLayout>
-    </DashboardGuard>
+    </ProtectedRoute>
   );
 }
