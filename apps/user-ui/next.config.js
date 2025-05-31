@@ -47,6 +47,9 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    typedRoutes: true,
+  },
 };
 
 const plugins = [
