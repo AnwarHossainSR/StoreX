@@ -1,5 +1,3 @@
-// app/dashboard/page.tsx
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   Gift,
   HelpCircle,
@@ -12,7 +10,7 @@ import Image from "next/image";
 
 export default function Dashboard() {
   return (
-    <DashboardLayout>
+    <>
       {/* Profile Section */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
         <h2 className="text-xl font-bold mb-6">Profile</h2>
@@ -136,6 +134,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

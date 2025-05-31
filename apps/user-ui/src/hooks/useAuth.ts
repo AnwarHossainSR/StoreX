@@ -1,14 +1,38 @@
-import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import {
   ApiResponse,
   authService,
   BackendErrorResponse,
   User,
-} from "../services/authService";
+} from "@/services/authService";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
+// Custom hook for handling authentication mutations
 export const useAuth = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // Helper function to handle errors
+  const handleError = (error: Error) => {
+    const errorData = error.cause as BackendErrorResponse | undefined;
+    const message = errorData?.message || error.message || "An error occurred";
+    toast.error(message);
+    return {
+      message,
+      details: errorData?.details,
+    };
+  };
+
+  // Helper function to handle success
+  const handleSuccess = (message: string, redirectTo?: string) => {
+    toast.success(message);
+    if (redirectTo) {
+      router.push(redirectTo);
+    }
+    // Invalidate user query to refetch
+    queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+  };
 
   // Login mutation
   const loginMutation = useMutation<
@@ -17,16 +41,12 @@ export const useAuth = () => {
     { email: string; password: string }
   >({
     mutationFn: authService.login,
-    onSuccess: () => {
-      router.push("/");
+    onSuccess: (data) => {
+      handleSuccess("Login successful!", "/dashboard");
+      // Update user in cache
+      queryClient.setQueryData(["currentUser"], data);
     },
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
-    },
+    onError: handleError,
   });
 
   // Register mutation
@@ -36,13 +56,12 @@ export const useAuth = () => {
     { name: string; email: string; password: string }
   >({
     mutationFn: authService.register,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
+    onSuccess: () => {
+      handleSuccess(
+        "Registration successful! Please check your email for OTP."
+      );
     },
+    onError: handleError,
   });
 
   // Verify OTP for registration
@@ -52,13 +71,10 @@ export const useAuth = () => {
     { email: string; otp: string; password: string; name: string }
   >({
     mutationFn: authService.verifyOtp,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
+    onSuccess: () => {
+      handleSuccess("Account verified successfully!", "/auth/login");
     },
+    onError: handleError,
   });
 
   // Forgot password mutation
@@ -68,13 +84,10 @@ export const useAuth = () => {
     { email: string }
   >({
     mutationFn: authService.forgotPassword,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
+    onSuccess: () => {
+      handleSuccess("Password reset email sent! Please check your email.");
     },
+    onError: handleError,
   });
 
   // Verify OTP for forgot password
@@ -84,13 +97,10 @@ export const useAuth = () => {
     { email: string; otp: string }
   >({
     mutationFn: authService.verifyForgotPassword,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
+    onSuccess: () => {
+      handleSuccess("OTP verified! You can now reset your password.");
     },
+    onError: handleError,
   });
 
   // Reset password mutation
@@ -101,15 +111,9 @@ export const useAuth = () => {
   >({
     mutationFn: authService.resetPassword,
     onSuccess: () => {
-      router.push("/auth/login");
+      handleSuccess("Password reset successful!", "/auth/login");
     },
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
-    },
+    onError: handleError,
   });
 
   // Resend OTP mutation
@@ -124,92 +128,87 @@ export const useAuth = () => {
     }
   >({
     mutationFn: authService.resendOtp,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
+    onSuccess: () => {
+      handleSuccess("OTP resent successfully!");
     },
+    onError: handleError,
   });
 
   // Logout mutation
   const logoutMutation = useMutation<ApiResponse<never>, Error, void>({
     mutationFn: authService.logout,
     onSuccess: () => {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      // remove cookies
-      document.cookie =
-        "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie =
-        "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      router.push("/");
+      // Clear local storage and cookies
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        document.cookie =
+          "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie =
+          "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      }
+
+      // Clear user from cache
+      queryClient.setQueryData(["currentUser"], null);
+      queryClient.removeQueries({ queryKey: ["currentUser"] });
+
+      handleSuccess("Logged out successfully!", "/");
     },
-    onError: (error: Error) => {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      // remove cookies
-      document.cookie =
-        "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie =
-        "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    onError: (error) => {
+      // Even if logout fails on server, clear local data
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        document.cookie =
+          "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie =
+          "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      }
+
+      queryClient.setQueryData(["currentUser"], null);
+      queryClient.removeQueries({ queryKey: ["currentUser"] });
+
       router.push("/");
     },
   });
 
   return {
+    // Auth actions
     login: loginMutation.mutate,
-    loginStatus: loginMutation.status,
-    loginError: loginMutation.error?.message,
-    loginErrorDetails: (
-      loginMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-
     register: registerMutation.mutate,
-    registerStatus: registerMutation.status,
-    registerError: registerMutation.error?.message,
-    registerErrorDetails: (
-      registerMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-
     verifyOtp: verifyOtpMutation.mutate,
-    verifyOtpStatus: verifyOtpMutation.status,
-    verifyOtpError: verifyOtpMutation.error?.message,
-    verifyOtpErrorDetails: (
-      verifyOtpMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-
     forgotPassword: forgotPasswordMutation.mutate,
-    forgotPasswordStatus: forgotPasswordMutation.status,
-    forgotPasswordError: forgotPasswordMutation.error?.message,
-    forgotPasswordErrorDetails: (
-      forgotPasswordMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-
     verifyForgotPassword: verifyForgotPasswordMutation.mutate,
-    verifyForgotPasswordStatus: verifyForgotPasswordMutation.status,
-    verifyForgotPasswordError: verifyForgotPasswordMutation.error?.message,
-    verifyForgotPasswordErrorDetails: (
-      verifyForgotPasswordMutation.error?.cause as
-        | BackendErrorResponse
-        | undefined
-    )?.details,
-
     resetPassword: resetPasswordMutation.mutate,
-    resetPasswordStatus: resetPasswordMutation.status,
-    resetPasswordError: resetPasswordMutation.error?.message,
-    resetPasswordErrorDetails: (
-      resetPasswordMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-
     resendOtp: resendOtpMutation.mutate,
-    resendOtpStatus: resendOtpMutation.status,
-    resendOtpError: resendOtpMutation.error?.message,
-    resendOtpErrorDetails: (
-      resendOtpMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-
     logout: logoutMutation.mutate,
+
+    // Loading states
+    isLoggingIn: loginMutation.isPending,
+    isRegistering: registerMutation.isPending,
+    isVerifyingOtp: verifyOtpMutation.isPending,
+    isForgotPassword: forgotPasswordMutation.isPending,
+    isVerifyingForgotPassword: verifyForgotPasswordMutation.isPending,
+    isResettingPassword: resetPasswordMutation.isPending,
+    isResendingOtp: resendOtpMutation.isPending,
+    isLoggingOut: logoutMutation.isPending,
+
+    // Error states (simplified)
+    loginError: loginMutation.error?.message,
+    registerError: registerMutation.error?.message,
+    verifyOtpError: verifyOtpMutation.error?.message,
+    forgotPasswordError: forgotPasswordMutation.error?.message,
+    verifyForgotPasswordError: verifyForgotPasswordMutation.error?.message,
+    resetPasswordError: resetPasswordMutation.error?.message,
+    resendOtpError: resendOtpMutation.error?.message,
+
+    // Reset functions
+    resetLoginError: () => loginMutation.reset(),
+    resetRegisterError: () => registerMutation.reset(),
+    resetVerifyOtpError: () => verifyOtpMutation.reset(),
+    resetForgotPasswordError: () => forgotPasswordMutation.reset(),
+    resetVerifyForgotPasswordError: () => verifyForgotPasswordMutation.reset(),
+    resetResetPasswordError: () => resetPasswordMutation.reset(),
+    resetResendOtpError: () => resendOtpMutation.reset(),
   };
 };

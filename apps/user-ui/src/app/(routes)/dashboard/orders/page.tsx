@@ -1,5 +1,4 @@
 // app/dashboard/orders/page.tsx
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Filter, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
@@ -30,7 +29,7 @@ export default function OrdersPage() {
   ];
 
   return (
-    <DashboardLayout>
+    <>
       {/* Search and Filter */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
         <div className="flex flex-col md:flex-row gap-4">
@@ -141,6 +140,6 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

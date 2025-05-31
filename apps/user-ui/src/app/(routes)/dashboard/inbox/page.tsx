@@ -1,5 +1,4 @@
 // app/dashboard/inbox/page.tsx
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Filter, Inbox as InboxIcon, Search, Send, User } from "lucide-react";
 
 export default function InboxPage() {
@@ -37,7 +36,7 @@ export default function InboxPage() {
   const unreadCount = messages.filter((m) => !m.read).length;
 
   return (
-    <DashboardLayout>
+    <>
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -193,6 +192,6 @@ export default function InboxPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

@@ -1,5 +1,4 @@
 // app/dashboard/notifications/page.tsx
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   Bell,
   CheckCircle,
@@ -67,7 +66,7 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <DashboardLayout>
+    <>
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -163,6 +162,6 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }
