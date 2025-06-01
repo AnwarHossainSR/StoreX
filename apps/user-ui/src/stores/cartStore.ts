@@ -138,7 +138,7 @@ export const useCartStore = create<CartState>()(
               // send Kafka event
               sendKafkaEvent({
                 userId: user.id,
-                productId: item.id,
+                productId: item.product.id,
                 shopId: item.product.shopId,
                 action: "remove_from_cart",
                 country: userInfo?.country,
