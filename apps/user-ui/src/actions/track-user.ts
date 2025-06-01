@@ -1,6 +1,6 @@
 "use server";
 import { kafkaClient } from "@packages/utils/kafka";
-
+import { Partitioners } from "kafkajs";
 interface KafkaEvent {
   userId: string;
   productId?: string;
@@ -21,7 +21,9 @@ interface KafkaEvent {
   device?: string;
 }
 
-const producer = kafkaClient.producer();
+const producer = kafkaClient.producer({
+  createPartitioner: Partitioners.LegacyPartitioner,
+});
 
 export const sendKafkaEvent = async (event: KafkaEvent) => {
   try {

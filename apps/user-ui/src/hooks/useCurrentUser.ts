@@ -17,15 +17,14 @@ export const useCurrentUser = (options?: {
 
   // Define public paths where we shouldn't try to fetch the user by default
   const publicPaths = [
-    "/",
     "/auth/login",
     "/auth/register",
-    "/auth/forgot-password",
-    "/auth/reset-password",
-    "/products",
-    "/cart",
-    "/checkout",
-    "/wishlist",
+    // "/auth/forgot-password",
+    // "/auth/reset-password",
+    // "/products",
+    // "/cart",
+    // "/checkout",
+    // "/wishlist",
   ];
 
   const isPublicPath = publicPaths.some((path) => {

@@ -35,6 +35,9 @@ export const updateUserAnalytics = async (event: AnalyticsEvent) => {
       where: {
         userId: event.userId,
       },
+      select: {
+        actions: true,
+      },
     });
 
     // Safely cast existing actions to Action[] or initialize as empty array
