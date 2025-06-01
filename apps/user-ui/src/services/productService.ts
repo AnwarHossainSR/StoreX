@@ -41,7 +41,7 @@ export interface Product {
 export interface SiteConfig {
   id: string;
   categories: string[];
-  subCategories: Record<string, any>;
+  subCategories: Record<string, string[]>;
 }
 
 // Define ProductResponse for getAllProducts
@@ -77,15 +77,34 @@ export const productService = {
     category?: string;
     subCategory?: string;
     search?: string;
+    brands?: string[];
+    colors?: string[];
+    minPrice?: number;
+    maxPrice?: number;
   }): Promise<ProductResponse> {
     try {
+      // Clean up params - remove undefined values
+      const cleanParams: Record<string, any> = {};
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          if (Array.isArray(value) && value.length > 0) {
+            cleanParams[key] = value.join(","); // Convert arrays to comma-separated strings
+          } else if (!Array.isArray(value)) {
+            cleanParams[key] = value;
+          }
+        }
+      });
+
       const response = await apiClient.get<ProductResponse>(
         `${API_BASE_URL}/get-all-products`,
-        { params }
+        { params: cleanParams }
       );
+
       console.log("getAllProducts response:", response.data);
-      return response.data; // Fixed: response.data.data, not response.data.data!
+      return response.data;
     } catch (error) {
+      console.error("Product service error:", error);
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Failed to fetch products", {
         cause: errorData,
@@ -99,8 +118,9 @@ export const productService = {
         `${API_BASE_URL}/get-categories`
       );
       console.log("getCategories response:", response.data);
-      return response.data; // Fixed: response.data.data
+      return response.data;
     } catch (error) {
+      console.error("Categories service error:", error);
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Failed to fetch categories", {
         cause: errorData,
@@ -115,11 +135,59 @@ export const productService = {
       );
       return response.data;
     } catch (error: any) {
+      console.error("Product by slug service error:", error);
       throw {
         status: "error",
         message: error.response?.data?.message || "Failed to fetch product",
         details: error.response?.data?.details || {},
       } as BackendErrorResponse;
     }
+  },
+
+  // Additional utility methods
+  async searchProducts(
+    query: string,
+    filters?: {
+      category?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<ProductResponse> {
+    return this.getAllProducts({
+      search: query,
+      ...filters,
+    });
+  },
+
+  async getProductsByCategory(
+    category: string,
+    options?: {
+      subCategory?: string;
+      page?: number;
+      limit?: number;
+      type?: "latest" | "topSales" | "priceLow" | "priceHigh";
+    }
+  ): Promise<ProductResponse> {
+    return this.getAllProducts({
+      category,
+      ...options,
+    });
+  },
+
+  async getFilteredProducts(filters: {
+    brands?: string[];
+    colors?: string[];
+    minPrice?: number;
+    maxPrice?: number;
+    category?: string;
+    subCategory?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+    type?: "latest" | "topSales" | "priceLow" | "priceHigh";
+  }): Promise<ProductResponse> {
+    return this.getAllProducts(filters);
   },
 };
