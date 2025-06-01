@@ -34,17 +34,37 @@ const processQueue = async () => {
 setInterval(processQueue, 3000);
 
 export const consumeKafkaMessages = async () => {
-  await consumer.connect();
-  await consumer.subscribe({ topic: "users-events", fromBeginning: true });
-  await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      if (!message) return;
-      const value = message.value?.toString();
-      if (!value) return;
-      const event = JSON.parse(value);
-      eventQueue.push(event);
-    },
-  });
+  try {
+    await consumer.connect();
+    console.log("Consumer connected");
+    await consumer.subscribe({ topic: "users-events", fromBeginning: true });
+    console.log("Subscribed to topic: users-events");
+    await consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        if (!message || !message.value) {
+          console.warn("Empty message received", { topic, partition });
+          return;
+        }
+        try {
+          const event = JSON.parse(message.value.toString());
+          eventQueue.push(event);
+          console.log("Message queued", { event });
+        } catch (error) {
+          console.error("Error parsing message:", error);
+        }
+      },
+    });
+  } catch (error) {
+    console.error("Consumer error:", error);
+  }
 };
 
-consumeKafkaMessages().catch(console.error);
+consumer.on("consumer.connect", () => console.log("Consumer connected"));
+consumer.on("consumer.disconnect", () => console.log("Consumer disconnected"));
+consumer.on("consumer.crash", (event) =>
+  console.error("Consumer crashed:", event)
+);
+
+consumeKafkaMessages().catch((error) =>
+  console.error("error initialize", error)
+);

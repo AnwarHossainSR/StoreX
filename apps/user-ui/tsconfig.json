@@ -19,10 +19,11 @@
       }
     ],
     "paths": {
-      "@/*": ["apps/user-ui/src/*"]
+      "@/*": ["apps/user-ui/src/*"],
+      "@packages/*": ["packages/*"]
     },
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "../../",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
   "include": [
@@ -33,7 +34,9 @@
     "src/**/*.jsx",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "../../packages/**/*.ts",
+    "../../packages/**/*.tsx"
   ],
   "exclude": [
     "out-tsc",

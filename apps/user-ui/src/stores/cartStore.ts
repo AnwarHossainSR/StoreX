@@ -1,3 +1,4 @@
+import { sendKafkaEvent } from "@/actions/track-user";
 import { Product } from "@/types";
 import { toast } from "sonner";
 import { create } from "zustand";
@@ -19,12 +20,14 @@ interface CartState {
     color: string,
     size: string,
     userInfo: any | null,
-    deviceInfo: any | null
+    deviceInfo: any | null,
+    user: any | null
   ) => void;
   removeItem: (
     id: string,
     userInfo: any | null,
-    deviceInfo: any | null
+    deviceInfo: any | null,
+    user: any | null
   ) => void;
   updateQuantity: (
     id: string,
@@ -41,7 +44,15 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      addItem: (product, quantity, color, size, userInfo, deviceInfo) => {
+      addItem: (
+        product,
+        quantity,
+        color,
+        size,
+        userInfo,
+        deviceInfo,
+        user: any = null
+      ) => {
         const id = `${product.id}-${color}-${size}`;
         set((state) => {
           const existingItem = state.items.find((item) => item.id === id);
@@ -75,6 +86,24 @@ export const useCartStore = create<CartState>()(
               onClick: () => (window.location.href = "/cart"),
             },
           });
+
+          if (user && user.id) {
+            // send Kafka event
+            sendKafkaEvent({
+              userId: user.id,
+              productId: product.id,
+              shopId: product.shopId,
+              action: "add_to_cart",
+              country: userInfo?.country,
+              city: userInfo?.city,
+              region: userInfo?.region,
+              latitude: userInfo?.latitude,
+              longitude: userInfo?.longitude,
+              ip: userInfo?.ip,
+              device: deviceInfo?.device?.type,
+            });
+          }
+
           return {
             items: [
               ...state.items,
@@ -83,7 +112,7 @@ export const useCartStore = create<CartState>()(
           };
         });
       },
-      removeItem: (id, userInfo, deviceInfo) =>
+      removeItem: (id, userInfo, deviceInfo, user: any = null) =>
         set((state) => {
           const item = state.items.find((item) => item.id === id);
           if (item) {
@@ -104,6 +133,23 @@ export const useCartStore = create<CartState>()(
                 },
               },
             });
+
+            if (user && user.id) {
+              // send Kafka event
+              sendKafkaEvent({
+                userId: user.id,
+                productId: item.id,
+                shopId: item.product.shopId,
+                action: "remove_from_cart",
+                country: userInfo?.country,
+                city: userInfo?.city,
+                region: userInfo?.region,
+                latitude: userInfo?.latitude,
+                longitude: userInfo?.longitude,
+                ip: userInfo?.ip,
+                device: deviceInfo?.device?.type,
+              });
+            }
           }
           return {
             items: state.items.filter((item) => item.id !== id),

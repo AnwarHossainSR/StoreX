@@ -1,8 +1,8 @@
 import { Kafka } from "kafkajs";
 
 export const kafkaClient = new Kafka({
-  clientId: "kafka-service",
-  brokers: [process.env.KAFKA_BROKER_URL!],
+  clientId: "lkc-2qv80m",
+  brokers: ["pkc-619z3.us-east1.gcp.confluent.cloud:9092"],
   ssl: true,
   sasl: {
     mechanism: "plain",
