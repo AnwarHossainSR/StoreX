@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import useDeviceInfo from "@/hooks/useDeviceInfo";
 import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/services/productService";
@@ -46,6 +47,8 @@ export default function ProductDetailsClient({
   const [showVideo, setShowVideo] = useState(false);
   const { userData } = useUserTracking(10);
   const deviceData = useDeviceInfo();
+  const { user } = useCurrentUser();
+
   const {
     addItem: addToWishlist,
     removeItem: removeFromWishlist,
@@ -79,15 +82,16 @@ export default function ProductDetailsClient({
       defaultColor,
       defaultSize,
       userData,
-      deviceData
+      deviceData,
+      user
     );
   };
 
   const toggleWishlist = () => {
     if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id, userData, deviceData);
+      removeFromWishlist(product.id, userData, deviceData, user);
     } else {
-      addToWishlist(product, userData, deviceData);
+      addToWishlist(product, userData, deviceData, user);
     }
   };
 

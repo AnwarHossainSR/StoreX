@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import useDeviceInfo from "@/hooks/useDeviceInfo";
 import useUserTracking from "@/hooks/useUserTracking";
 import { useCartStore } from "@/stores/cartStore";
@@ -15,6 +16,7 @@ export default function WishlistPage() {
   const { addItem } = useCartStore();
   const { userData, isLoading, error } = useUserTracking(10); // 10-day cache
   const deviceData = useDeviceInfo();
+  const { user } = useCurrentUser();
 
   const handleRemoveItem = (id: string) => {
     console.log(
@@ -23,28 +25,16 @@ export default function WishlistPage() {
       "Device Info:",
       deviceData
     );
-    removeItem(id, userData, deviceData);
+    removeItem(id, userData, deviceData, user);
   };
 
   const handleClearWishlist = () => {
-    console.log(
-      "Clear Wishlist - User Info:",
-      userData,
-      "Device Info:",
-      deviceData
-    );
     clearWishlist(userData, deviceData);
   };
 
   const handleMoveToCart = (item: any) => {
-    console.log(
-      "Move to Cart - User Info:",
-      userData,
-      "Device Info:",
-      deviceData
-    );
-    addItem(item.product, 1, "Default", "Default", userData, deviceData);
-    removeItem(item.id, userData, deviceData);
+    addItem(item.product, 1, "Default", "Default", userData, deviceData, user);
+    removeItem(item.id, userData, deviceData, user);
     toast.success("Moved to Cart", {
       description: `${item.product.title} has been added to your cart.`,
       action: {

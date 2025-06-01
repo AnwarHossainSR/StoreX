@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import useDeviceInfo from "@/hooks/useDeviceInfo";
 import useUserTracking from "@/hooks/useUserTracking";
 import { useCartStore } from "@/stores/cartStore";
@@ -12,6 +13,7 @@ export default function CartPage() {
     useCartStore();
   const { userData, isLoading, error } = useUserTracking(10); // 10-day cache
   const deviceData = useDeviceInfo();
+  const { user } = useCurrentUser();
 
   const subtotal = items.reduce(
     (total, item) => total + item.product.sale_price * item.quantity,
@@ -25,7 +27,7 @@ export default function CartPage() {
   };
 
   const handleRemoveItem = (id: string) => {
-    removeItem(id, userData, deviceData);
+    removeItem(id, userData, deviceData, user);
   };
 
   const handleClearCart = () => {
