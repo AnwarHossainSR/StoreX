@@ -1,7 +1,12 @@
 "use client";
 
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import useDeviceInfo from "@/hooks/useDeviceInfo";
 import { ProductFilters } from "@/hooks/useProduct";
+import useUserTracking from "@/hooks/useUserTracking";
 import { Product } from "@/services/productService";
+import { useCartStore } from "@/stores/cartStore";
+import { useWishlistStore } from "@/stores/wishlistStore";
 import {
   ChevronLeft,
   ChevronRight,
@@ -40,6 +45,17 @@ export default function ProductGrid({
 }: ProductGridProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
 
+  // Cart and Wishlist functionality
+  const {
+    addItem: addToWishlist,
+    removeItem: removeFromWishlist,
+    isInWishlist,
+  } = useWishlistStore();
+  const { addItem: addToCart } = useCartStore();
+  const { userData } = useUserTracking(10);
+  const deviceData = useDeviceInfo();
+  const { user } = useCurrentUser();
+
   // Calculate display range
   const startRange = totalProducts > 0 ? (currentPage - 1) * 12 + 1 : 0;
   const endRange = Math.min(currentPage * 12, totalProducts);
@@ -54,6 +70,28 @@ export default function ProductGrid({
   const calculateDiscount = (regular: number, sale: number) => {
     if (sale >= regular) return 0;
     return Math.round(((regular - sale) / regular) * 100);
+  };
+
+  const handleToggleWishlist = (product: Product) => {
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id, userData, deviceData, user);
+    } else {
+      addToWishlist(product, userData, deviceData, user);
+    }
+  };
+
+  const handleAddToCart = (product: Product) => {
+    const defaultColor = product.colors[0] || "N/A";
+    const defaultSize = product.sizes[0] || "N/A";
+    addToCart(
+      product,
+      1,
+      defaultColor,
+      defaultSize,
+      userData,
+      deviceData,
+      user
+    );
   };
 
   const renderStars = (rating: number) => {
@@ -199,29 +237,57 @@ export default function ProductGrid({
             return (
               <div
                 key={product.id}
-                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300"
+                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 group"
               >
                 <div className="relative">
                   <div className="h-60 overflow-hidden">
-                    <Image
-                      src={primaryImage}
-                      alt={product.title}
-                      width={400}
-                      height={300}
-                      className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        e.currentTarget.src = "/placeholder-product.jpg";
-                      }}
-                    />
+                    <Link href={`/products/${product.slug}`}>
+                      <Image
+                        src={primaryImage}
+                        alt={product.title}
+                        width={400}
+                        height={300}
+                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder-product.jpg";
+                        }}
+                      />
+                    </Link>
                   </div>
-                  <div className="absolute top-2 right-2 flex flex-col gap-2">
-                    <button className="w-9 h-9 rounded-full bg-white shadow hover:bg-gray-100 flex items-center justify-center transition-colors">
-                      <Heart size={18} className="text-gray-600" />
+                  <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                      onClick={() => handleToggleWishlist(product)}
+                      className={`w-[2.5rem] h-[2.25rem] rounded-lg bg-white/80 shadow-md hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none ${
+                        isInWishlist(product.id)
+                          ? "text-red-500"
+                          : "text-gray-600"
+                      }`}
+                      aria-label={
+                        isInWishlist(product.id)
+                          ? "Remove from wishlist"
+                          : "Add to wishlist"
+                      }
+                    >
+                      <Heart
+                        size={18}
+                        className={
+                          isInWishlist(product.id) ? "fill-current" : ""
+                        }
+                      />
                     </button>
-                    <button className="w-9 h-9 rounded-full bg-white shadow hover:bg-gray-100 flex items-center justify-center transition-colors">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="w-[2.5rem] h-[2.25rem] rounded-lg bg-white/80 shadow-md hover:bg-gray-100 flex items-center justify-center transition-colors"
+                      aria-label="View product"
+                    >
                       <Eye size={18} className="text-gray-600" />
-                    </button>
-                    <button className="w-9 h-9 rounded-full bg-white shadow hover:bg-gray-100 flex items-center justify-center transition-colors">
+                    </Link>
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                      disabled={product.stock === 0}
+                      className="w-[2.5rem] h-[2.25rem] rounded-lg bg-white/80 shadow-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors focus:outline-none"
+                      aria-label="Add to cart"
+                    >
                       <ShoppingCart size={18} className="text-gray-600" />
                     </button>
                   </div>
@@ -239,7 +305,7 @@ export default function ProductGrid({
                   )}
                 </div>
                 <div className="p-4">
-                  <Link href={`/product/${product.slug}`} className="block">
+                  <Link href={`/products/${product.slug}`} className="block">
                     <h3 className="text-gray-800 font-medium mb-1 hover:text-blue-500 transition-colors line-clamp-2">
                       {product.title}
                     </h3>
@@ -269,16 +335,6 @@ export default function ProductGrid({
                         </span>
                       )}
                     </div>
-                    <button
-                      className={`text-sm font-medium ${
-                        product.stock > 0
-                          ? "text-blue-500 hover:text-blue-600"
-                          : "text-gray-400 cursor-not-allowed"
-                      }`}
-                      disabled={product.stock === 0}
-                    >
-                      {product.stock > 0 ? "Add to cart" : "Out of stock"}
-                    </button>
                   </div>
                 </div>
               </div>
@@ -305,16 +361,18 @@ export default function ProductGrid({
               >
                 <div className="relative md:w-1/3">
                   <div className="h-60 md:h-full overflow-hidden">
-                    <Image
-                      src={primaryImage}
-                      alt={product.title}
-                      width={400}
-                      height={300}
-                      className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        e.currentTarget.src = "/placeholder-product.jpg";
-                      }}
-                    />
+                    <Link href={`/products/${product.slug}`}>
+                      <Image
+                        src={primaryImage}
+                        alt={product.title}
+                        width={400}
+                        height={300}
+                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          e.currentTarget.src = "/placeholder-product.jpg";
+                        }}
+                      />
+                    </Link>
                   </div>
                   {discount > 0 && (
                     <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded">
@@ -331,7 +389,7 @@ export default function ProductGrid({
                 </div>
                 <div className="p-6 flex-1 flex flex-col">
                   <div className="mb-2">
-                    <Link href={`/product/${product.slug}`} className="block">
+                    <Link href={`/products/${product.slug}`} className="block">
                       <h3 className="text-xl text-gray-800 font-medium mb-1 hover:text-blue-500 transition-colors">
                         {product.title}
                       </h3>
@@ -391,19 +449,44 @@ export default function ProductGrid({
                       )}
                     </div>
                     <div className="flex space-x-2">
-                      <button className="p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-                        <Heart size={20} className="text-gray-600" />
-                      </button>
-                      <button className="p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-                        <Eye size={20} className="text-gray-600" />
-                      </button>
                       <button
+                        onClick={() => handleToggleWishlist(product)}
+                        className={`p-2.5 rounded-full transition-colors ${
+                          isInWishlist(product.id)
+                            ? "bg-red-100 hover:bg-red-200"
+                            : "bg-gray-100 hover:bg-gray-200"
+                        }`}
+                        aria-label={
+                          isInWishlist(product.id)
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                      >
+                        <Heart
+                          size={20}
+                          className={
+                            isInWishlist(product.id)
+                              ? "text-red-500 fill-current"
+                              : "text-gray-600"
+                          }
+                        />
+                      </button>
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                        aria-label="View product"
+                      >
+                        <Eye size={20} className="text-gray-600" />
+                      </Link>
+                      <button
+                        onClick={() => handleAddToCart(product)}
                         className={`flex items-center px-4 py-2 rounded-md transition-colors ${
                           product.stock > 0
                             ? "bg-blue-500 text-white hover:bg-blue-600"
                             : "bg-gray-300 text-gray-500 cursor-not-allowed"
                         }`}
                         disabled={product.stock === 0}
+                        aria-label="Add to cart"
                       >
                         <ShoppingCart size={18} className="mr-2" />
                         {product.stock > 0 ? "Add to Cart" : "Out of Stock"}
