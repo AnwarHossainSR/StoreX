@@ -1,6 +1,7 @@
 import ProductPageSkeleton from "@/components/skeletons/ProductPageSkeleton";
 import { Product, productService } from "@/services/productService";
 import { ChevronRight } from "lucide-react";
+import { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import ProductDetailsClient from "./ProductDetailsClient";
@@ -21,6 +22,129 @@ async function fetchProduct(slug: string): Promise<{
       },
     };
   }
+}
+
+// Generate dynamic metadata
+export async function generateMetadata(props: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const { slug } = await props.params;
+  const { product } = await fetchProduct(slug);
+
+  if (!product) {
+    return {
+      title: "Product Not Found",
+      description: "The requested product could not be found.",
+    };
+  }
+
+  // Calculate discount percentage
+  const discountPercentage =
+    product.regular_price > product.sale_price
+      ? Math.round(
+          ((product.regular_price - product.sale_price) /
+            product.regular_price) *
+            100
+        )
+      : 0;
+
+  // Create structured description
+  const description = `${product.short_description} | ${
+    product.brand ? `${product.brand} | ` : ""
+  }${discountPercentage > 0 ? `${discountPercentage}% OFF | ` : ""}৳${
+    product.sale_price
+  }${
+    product.regular_price > product.sale_price
+      ? ` (was ৳${product.regular_price})`
+      : ""
+  } | ${
+    product.stock > 0 ? "In Stock" : "Out of Stock"
+  } | Free Delivery Available`;
+
+  // Get the primary image
+  const primaryImage = product.images?.[0]?.url;
+
+  return {
+    title: `${product.title} | ${
+      product.brand || product.category
+    } | Best Price in Bangladesh`,
+    description:
+      description.length > 160
+        ? description.substring(0, 157) + "..."
+        : description,
+    keywords: [
+      product.title,
+      product.brand,
+      product.category,
+      product.subCategory,
+      ...product.tags,
+      ...product.colors,
+      "Bangladesh",
+      "Online Shopping",
+      "Best Price",
+      product.cashOnDelivery ? "Cash on Delivery" : "",
+    ]
+      .filter(Boolean)
+      .join(", "),
+
+    // Open Graph metadata for social sharing
+    openGraph: {
+      title: `${product.title} - ${
+        discountPercentage > 0 ? `${discountPercentage}% OFF` : "Best Price"
+      }`,
+      description: product.short_description,
+      type: "website",
+      url: `/products/${slug}`,
+      images: primaryImage
+        ? [
+            {
+              url: primaryImage,
+              width: 800,
+              height: 800,
+              alt: product.title,
+            },
+          ]
+        : [],
+      siteName: process.env.NEXT_PUBLIC_SITE_NAME, // Replace with your actual site name
+    },
+
+    // Twitter Card metadata
+    twitter: {
+      card: "summary_large_image",
+      title: `${product.title} - ${
+        discountPercentage > 0 ? `${discountPercentage}% OFF` : "Best Price"
+      }`,
+      description: product.short_description,
+      images: primaryImage ? [primaryImage] : [],
+    },
+
+    // Product-specific structured data
+    other: {
+      "product:price:amount": product.sale_price.toString(),
+      "product:price:currency": "BDT",
+      "product:availability": product.stock > 0 ? "in stock" : "out of stock",
+      "product:condition": "new",
+      "product:brand": product.brand || "",
+      "product:category": product.category,
+    },
+
+    // Additional metadata
+    robots: {
+      index: product.status === "Active" && !product.isDeleted,
+      follow: true,
+      googleBot: {
+        index: product.status === "Active" && !product.isDeleted,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
+
+    // Canonical URL to prevent duplicate content
+    alternates: {
+      canonical: `/products/${slug}`,
+    },
+  };
 }
 
 export default async function ProductPage(props: { params: { slug: string } }) {
