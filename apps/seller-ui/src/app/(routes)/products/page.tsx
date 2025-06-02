@@ -32,7 +32,8 @@ export default function ProductsPage() {
   const entriesPerPage = 10;
 
   const router = useRouter();
-  const { getProducts, categories, deleteProduct } = useProduct();
+  const { getProducts, categories, deleteProduct, updateProductStatus } =
+    useProduct();
   const { data: productsData, status: productsStatus } = getProducts(
     currentPage,
     entriesPerPage
@@ -47,6 +48,23 @@ export default function ProductsPage() {
       setSortField(field);
       setSortDirection("asc");
     }
+  };
+
+  const handleStatusToggle = async (
+    productId: string,
+    currentStatus: string
+  ) => {
+    let newStatus: "Active" | "Pending" | "Draft";
+
+    if (currentStatus === "Active") {
+      newStatus = "Pending";
+    } else if (currentStatus === "Pending") {
+      newStatus = "Draft";
+    } else {
+      newStatus = "Active";
+    }
+
+    await updateProductStatus(productId, newStatus);
   };
 
   const filteredProducts = (productsData?.data || [])
@@ -122,19 +140,44 @@ export default function ProductsPage() {
       header: "Status",
       sortable: true,
       render: (product: any) => (
-        <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-            product.status === "Active"
-              ? "bg-green-100 text-green-800"
-              : product.status === "Pending"
-              ? "bg-yellow-100 text-yellow-800"
-              : product.status === "Deleted"
-              ? "bg-destructive text-white"
-              : "bg-gray-100 text-gray-800"
-          }`}
-        >
-          {product.status}
-        </span>
+        <div className="flex items-center space-x-2">
+          <span
+            className={`px-2 py-1 text-xs font-semibold rounded-full ${
+              product.status === "Active"
+                ? "bg-green-100 text-green-800"
+                : product.status === "Pending"
+                ? "bg-yellow-100 text-yellow-800"
+                : product.status === "Draft"
+                ? "bg-gray-100 text-gray-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {product.status}
+          </span>
+          {product.status !== "Deleted" && (
+            <button
+              onClick={() => handleStatusToggle(product.id, product.status)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                product.status === "Active"
+                  ? "bg-green-600"
+                  : product.status === "Pending"
+                  ? "bg-yellow-500"
+                  : "bg-gray-400"
+              }`}
+              title={`Toggle status (Current: ${product.status})`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  product.status === "Active"
+                    ? "translate-x-6"
+                    : product.status === "Pending"
+                    ? "translate-x-3"
+                    : "translate-x-1"
+                }`}
+              />
+            </button>
+          )}
+        </div>
       ),
     },
     {
