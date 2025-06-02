@@ -51,8 +51,8 @@ const services: Service[] = [
   { name: "auth-service", command: "serve" },
   { name: "@source/product-service", command: "serve" },
   { name: "@./api-gateway", command: "serve" },
-  // { name: "@source/user-ui", command: "dev" },
-  { name: "@source/seller-ui", command: "dev" },
+  { name: "@source/user-ui", command: "dev" },
+  // { name: "@source/seller-ui", command: "dev" },
 ];
 
 function runNxTarget(project: string, command: string): Promise<void> {
