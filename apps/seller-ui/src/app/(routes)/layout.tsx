@@ -156,12 +156,14 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
     };
   }, []);
 
-  useEffect(() => {
-    console.log("layout:", user);
-    if (!isLoading && !user) {
-      window.location.href = "/login";
-    }
-  }, [isLoading, user]);
+  // useEffect(() => {
+  //   console.log("layout:", user);
+  //   if (!isLoading && !user) {
+  //     window.location.href = "/login";
+  //   }
+  // }, [isLoading, user]);
+
+  console.log("isLoading || !user", isLoading, user);
 
   if (isLoading || !user) {
     // Show a loading state or redirect to login if user is not authenticated
@@ -198,7 +200,7 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
             <div className="px-4 flex items-center">
               <img
                 className="h-10 w-10 rounded-full mr-3"
-                src="/storex-logo.png"
+                src={user?.shop?.logo || "/images/avatar-placeholder.png"}
                 alt="Logo"
               />
               <div>
@@ -262,7 +264,7 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
               <div className="flex items-center">
                 <img
                   className="h-10 w-10 rounded-full mr-3"
-                  src="/storex-logo.png"
+                  src={user?.shop?.logo || "/images/avatar-placeholder.png"}
                   alt="Logo"
                 />
                 <div>
