@@ -54,7 +54,7 @@ const staticCategories = ["Electronics", "Fashion", "Home & Living", "Books"];
 
 export default function ShopsPage() {
   const [shops, setShops] = useState(staticShops);
-  const [categories, setCategories] = useState(staticCategories);
+  const [categories] = useState(staticCategories);
   const [filters, setFilters] = useState({
     category: "",
     search: "",
