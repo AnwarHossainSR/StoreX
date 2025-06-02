@@ -204,11 +204,10 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
                 alt="Logo"
               />
               <div>
-                <div className="text-2xl font-bold text-white">
+                <div className="text-xl font-bold text-white">
                   {user?.shop?.name}
                 </div>
-                <div className="text-sm text-gray-400">
-                  {" "}
+                <div className="text-xs text-gray-400">
                   {user?.shop?.address}
                 </div>
               </div>
@@ -268,10 +267,10 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
                   alt="Logo"
                 />
                 <div>
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-xl font-bold text-white">
                     {user?.shop?.name}
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-xs text-gray-400">
                     {user?.shop?.address}
                   </div>
                 </div>

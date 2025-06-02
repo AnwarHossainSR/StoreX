@@ -163,6 +163,27 @@ export const productService = {
     }
   },
 
+  async updateProductStatus(
+    id: string,
+    status: "Active" | "Pending" | "Draft"
+  ) {
+    try {
+      const response = await apiClient.put<ApiResponse<Product>>(
+        `${PRODUCT_BASE_URL}/seller/${id}`,
+        { status },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to update product status", {
+        cause: errorData,
+      });
+    }
+  },
+
   async deleteProduct(id: string) {
     try {
       const response = await apiClient.delete<ApiResponse<void>>(

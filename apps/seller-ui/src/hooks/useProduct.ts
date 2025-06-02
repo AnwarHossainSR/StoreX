@@ -10,6 +10,7 @@ import {
 } from "@/services/productService";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export const useProduct = () => {
   const router = useRouter();
@@ -60,6 +61,29 @@ export const useProduct = () => {
         message: error.message,
         details: errorData?.details,
       };
+    },
+  });
+
+  // Update product status mutation
+  const updateProductStatusMutation = useMutation<
+    ApiResponse<Product>,
+    Error,
+    { id: string; status: "Active" | "Pending" | "Draft" }
+  >({
+    mutationFn: ({ id, status }) =>
+      productService.updateProductStatus(id, status),
+    onSuccess: () => {
+      // Invalidate products query to refetch data
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Product status updated successfully");
+    },
+    onError: (error: Error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      console.error("Failed to update product status:", {
+        message: error.message,
+        details: errorData?.details,
+      });
+      toast.error("Failed to update product status");
     },
   });
 
@@ -138,6 +162,22 @@ export const useProduct = () => {
     saveDraft: (data: Parameters<typeof createProductMutation.mutate>[0]) => {
       createProductMutation.mutate({ ...data, status: "Draft" });
     },
+
+    // Update product status
+    updateProductStatus: (
+      id: string,
+      status: "Active" | "Pending" | "Draft"
+    ) => {
+      updateProductStatusMutation.mutate({ id, status });
+    },
+    updateProductStatusStatus: updateProductStatusMutation.status,
+    updateProductStatusError: updateProductStatusMutation.error?.message,
+    updateProductStatusErrorDetails: (
+      updateProductStatusMutation.error?.cause as
+        | BackendErrorResponse
+        | undefined
+    )?.details,
+
     deleteProduct: deleteProductMutation.mutate,
     deleteProductStatus: deleteProductMutation.status,
     deleteProductError: deleteProductMutation.error?.message,
