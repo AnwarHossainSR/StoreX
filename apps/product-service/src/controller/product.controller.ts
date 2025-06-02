@@ -1,7 +1,7 @@
 import { NotFoundError, ValidationError } from "@packages/error-handler";
 import { imageKit } from "@packages/libs/imagekit";
 import prisma from "@packages/libs/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma, ProductStatus } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
 
 export const getCategories = async (
@@ -484,13 +484,26 @@ export const getAllProducts = async (
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
     const type = req.query.type as string;
+    const status = (req.query.status as string) || "Active";
 
     if (isNaN(page) || isNaN(limit) || page < 1 || limit < 1) {
       throw new Error("Invalid pagination parameters");
     }
 
-    const baseFilter = {
-      isDeleted: false, // Simplified filter
+    // Validate or cast status to ProductStatus
+    const validStatuses: ProductStatus[] = [
+      "Active",
+      "Pending",
+      "Deleted",
+      "Draft",
+    ];
+    if (!validStatuses.includes(status as ProductStatus)) {
+      throw new Error("Invalid status value");
+    }
+
+    const baseFilter: Prisma.ProductWhereInput = {
+      isDeleted: false,
+      status: status as ProductStatus,
     };
 
     const orderBy: Prisma.ProductOrderByWithRelationInput =
@@ -503,8 +516,8 @@ export const getAllProducts = async (
         skip,
         take: limit,
         include: {
-          images: { select: { id: true, url: true } }, // Adjust fields
-          Shop: { select: { id: true, name: true } }, // Adjust fields
+          images: { select: { id: true, url: true } },
+          Shop: { select: { id: true, name: true } },
         },
         where: baseFilter,
         orderBy: [{ totalSales: "desc" }, { createdAt: "desc" }],
@@ -514,6 +527,7 @@ export const getAllProducts = async (
       }),
       prisma.product.findMany({
         take: 10,
+        where: baseFilter,
         include: {
           images: { select: { id: true, url: true } },
           Shop: { select: { id: true, name: true } },
