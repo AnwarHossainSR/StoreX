@@ -231,7 +231,7 @@ export const refreshAccessToken = async (
       refreshToken = req.cookies["refresh_seller_token"];
     }
     if (!refreshToken) {
-      throw new ValidationError("Refresh token not found");
+      return next(new ValidationError("Refresh token not found"));
     }
 
     const decoded = jwt.verify(
