@@ -591,3 +591,139 @@ export const getProductBySlug = async (
     return next(error);
   }
 };
+
+export const updateProduct = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      short_description,
+      detailed_description,
+      warranty,
+      custom_specifications,
+      slug,
+      tags,
+      cashOnDelivery,
+      brand,
+      video_url,
+      category,
+      colors = [],
+      sizes = [],
+      discount_codes,
+      stock,
+      sale_price,
+      regular_price,
+      subCategory,
+      custom_properties = {},
+      images = [],
+      status,
+    } = req.body;
+
+    if (!id) {
+      throw new ValidationError("Product ID is required");
+    }
+
+    // Check if product exists and belongs to the seller
+    const existingProduct = await prisma.product.findUnique({
+      where: {
+        id,
+        isDeleted: false,
+      },
+      include: {
+        images: true,
+      },
+    });
+
+    if (!existingProduct) {
+      throw new NotFoundError("Product not found");
+    }
+
+    if (existingProduct.sellerId !== req.seller.id) {
+      throw new ValidationError("Unauthorized to update this product");
+    }
+
+    // If slug is being updated, check for uniqueness
+    if (slug && slug !== existingProduct.slug) {
+      const slugExists = await prisma.product.findUnique({
+        where: { slug },
+      });
+      if (slugExists) {
+        throw new ValidationError("Slug already exists");
+      }
+    }
+
+    // Validate status if provided
+    if (status && !["Active", "Pending", "Draft", "Deleted"].includes(status)) {
+      throw new ValidationError("Invalid status value");
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+
+    if (title !== undefined) updateData.title = title;
+    if (short_description !== undefined)
+      updateData.short_description = short_description;
+    if (detailed_description !== undefined)
+      updateData.detailed_description = detailed_description;
+    if (warranty !== undefined) updateData.warranty = warranty;
+    if (custom_specifications !== undefined)
+      updateData.custom_specifications = custom_specifications;
+    if (slug !== undefined) updateData.slug = slug;
+    if (tags !== undefined) updateData.tags = tags;
+    if (cashOnDelivery !== undefined)
+      updateData.cashOnDelivery = cashOnDelivery;
+    if (brand !== undefined) updateData.brand = brand;
+    if (video_url !== undefined) updateData.video_url = video_url;
+    if (category !== undefined) updateData.category = category;
+    if (colors !== undefined) updateData.colors = colors;
+    if (sizes !== undefined) updateData.sizes = sizes;
+    if (discount_codes !== undefined)
+      updateData.discount_codes = discount_codes;
+    if (stock !== undefined) updateData.stock = stock;
+    if (sale_price !== undefined) updateData.sale_price = sale_price;
+    if (regular_price !== undefined) updateData.regular_price = regular_price;
+    if (subCategory !== undefined) updateData.subCategory = subCategory;
+    if (custom_properties !== undefined)
+      updateData.custom_properties = custom_properties;
+    if (status !== undefined) updateData.status = status;
+
+    // Handle images update if provided
+    if (images && images.length > 0) {
+      // Delete existing images
+      await prisma.images.deleteMany({
+        where: {
+          productId: id,
+        },
+      });
+
+      // Add new images
+      updateData.images = {
+        create: images.map((image: any) => ({
+          file_id: image.file_name,
+          url: image.file_url,
+          shopsId: req.seller.shop.id,
+        })),
+      };
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id },
+      data: updateData,
+      include: {
+        images: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      product: updatedProduct,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};

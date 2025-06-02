@@ -12,6 +12,7 @@ import {
   getProductBySlug,
   getSellerProducts,
   restoreProduct,
+  updateProduct,
   uploadProductImage,
   validateDiscountCode,
 } from "../controller/product.controller";
@@ -26,6 +27,7 @@ router.post("/upload-product-image", uploadProductImage);
 router.post("/delete-product-image", deleteProductImage);
 router.post("/create-product", isAuthenticated, createProduct);
 router.get("/seller", isAuthenticated, getSellerProducts);
+router.put("/seller/:id", isAuthenticated, updateProduct);
 router.delete("/seller/:id", isAuthenticated, deleteProduct);
 router.put("/seller/restore/:id", isAuthenticated, restoreProduct);
 router.get("/get-all-products", getAllProducts);
