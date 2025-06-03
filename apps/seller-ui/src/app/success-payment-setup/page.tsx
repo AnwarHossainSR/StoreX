@@ -14,7 +14,7 @@ export default function SuccessPage() {
   useEffect(() => {
     resetSignupState();
     console.log("Zustand signup state reset on SuccessPage");
-  }, [resetSignupState]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -39,7 +39,7 @@ export default function SuccessPage() {
         {/* Action Button */}
         <div>
           <Link
-            href="/auth/seller/login"
+            href="/login"
             className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
           >
             Start Selling Now

@@ -1,4 +1,4 @@
-import isAuthenticated from "@packages/middleware/isAuthenticated";
+import { withAuth } from "@packages/middleware/isAuthenticated";
 import express from "express";
 import {
   cerateShop,
@@ -29,7 +29,7 @@ router.post("/forgot-password-user", userForgotPassword);
 router.post("/reset-password-user", ResetUserForgotPassword);
 router.post("/verify-forgot-password-user", verifyForgotPassword);
 router.post("/refresh-token", refreshAccessToken);
-router.get("/logged-in-user", isAuthenticated, getAuthenticatedUser);
+router.get("/logged-in-user", withAuth("user"), getAuthenticatedUser);
 
 // seller
 router.post("/register-seller", createSellerAccount);
@@ -37,9 +37,9 @@ router.post("/seller-login", sellerLogin);
 router.post("/verify-seller-otp", VerifySellerOtp);
 router.post("/create-shop", cerateShop);
 router.post("/create-stripe-connect-account", createStripeConnectAccount);
-router.get("/logged-in-seller", isAuthenticated, getAuthenticatedSeller);
+router.get("/logged-in-seller", withAuth("seller"), getAuthenticatedSeller);
 
-router.post("/logout-seller", isAuthenticated, logoutSeller);
-router.post("/logout-user", isAuthenticated, logoutUser);
+router.post("/logout-seller", withAuth("seller"), logoutSeller);
+router.post("/logout-user", withAuth("user"), logoutUser);
 
 export default router;
