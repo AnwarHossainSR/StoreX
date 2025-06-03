@@ -605,3 +605,22 @@ export const getAuthenticatedSeller = async (
     return next(error);
   }
 };
+
+export const userDetails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const userId = req.user.id;
+    const user = await prisma.users.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
+    return next(error);
+  }
+};

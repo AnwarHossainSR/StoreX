@@ -12,6 +12,7 @@ import {
   refreshAccessToken,
   ResetUserForgotPassword,
   sellerLogin,
+  userDetails,
   userForgotPassword,
   userRegistration,
   verifyForgotPassword,
@@ -30,6 +31,7 @@ router.post("/reset-password-user", ResetUserForgotPassword);
 router.post("/verify-forgot-password-user", verifyForgotPassword);
 router.post("/refresh-token", refreshAccessToken);
 router.get("/logged-in-user", withAuth("user"), getAuthenticatedUser);
+router.get("/user-details", withAuth("user"), userDetails);
 
 // seller
 router.post("/register-seller", createSellerAccount);
