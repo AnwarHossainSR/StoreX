@@ -1,7 +1,18 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { User, Heart, ShoppingCart, LogOut, ChevronRight, Home, Package, Store, Tag, UserPlus } from 'lucide-react';
+import {
+  ChevronRight,
+  Heart,
+  Home,
+  LogOut,
+  Package,
+  ShoppingCart,
+  Store,
+  Tag,
+  User,
+  UserPlus,
+} from "lucide-react";
+import Link from "next/link";
 
 interface MobileMenuProps {
   onClose: () => void;
@@ -9,9 +20,12 @@ interface MobileMenuProps {
 
 export default function MobileMenu({ onClose }: MobileMenuProps) {
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={onClose}>
-      <div 
-        className="absolute top-0 left-0 w-3/4 h-full bg-white overflow-y-auto" 
+    <div
+      className="fixed inset-0 z-50 bg-black bg-opacity-50"
+      onClick={onClose}
+    >
+      <div
+        className="absolute top-0 left-0 w-3/4 h-full bg-white overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 bg-blue-500 text-white">
@@ -28,8 +42,8 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
           <p className="font-medium text-gray-500 mb-2">Navigation</p>
           <ul className="space-y-2">
             <li>
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
@@ -38,8 +52,8 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/products" 
+              <Link
+                href="/products"
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
@@ -48,8 +62,8 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/shops" 
+              <Link
+                href="/shops"
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
@@ -58,8 +72,8 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/offers" 
+              <Link
+                href="/offers"
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
@@ -68,10 +82,11 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/become-seller" 
+              <Link
+                href={`${process.env.NEXT_PUBLIC_SELLER_URI}/auth/register`}
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
+                target="_blank"
               >
                 <UserPlus size={20} className="mr-3 text-gray-500" />
                 <span>Become A Seller</span>
@@ -83,10 +98,20 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
         <div className="p-4 border-b">
           <p className="font-medium text-gray-500 mb-2">Categories</p>
           <ul className="space-y-2">
-            {['Electronics', 'Fashion', 'Home & Kitchen', 'Sports & Fitness', 'Beauty', 'Toys', 'Books'].map((category, index) => (
+            {[
+              "Electronics",
+              "Fashion",
+              "Home & Kitchen",
+              "Sports & Fitness",
+              "Beauty",
+              "Toys",
+              "Books",
+            ].map((category, index) => (
               <li key={index}>
-                <Link 
-                  href={`/category/${category.toLowerCase().replace(/\s+/g, '-')}`}
+                <Link
+                  href={`/category/${category
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
                   className="flex items-center justify-between px-2 py-2 rounded hover:bg-gray-100"
                   onClick={onClose}
                 >
@@ -102,8 +127,8 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
           <p className="font-medium text-gray-500 mb-2">Account</p>
           <ul className="space-y-2">
             <li>
-              <Link 
-                href="/account" 
+              <Link
+                href="/account"
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
@@ -112,8 +137,8 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/wishlist" 
+              <Link
+                href="/wishlist"
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
@@ -122,8 +147,8 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
               </Link>
             </li>
             <li>
-              <Link 
-                href="/cart" 
+              <Link
+                href="/cart"
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
@@ -132,7 +157,7 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
               </Link>
             </li>
             <li>
-              <button 
+              <button
                 className="flex items-center w-full text-left px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
               >
