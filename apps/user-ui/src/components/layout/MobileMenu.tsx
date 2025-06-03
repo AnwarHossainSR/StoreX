@@ -83,7 +83,7 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             </li>
             <li>
               <Link
-                href={`${process.env.NEXT_PUBLIC_SELLER_URI}/auth/register`}
+                href={`${process.env.NEXT_PUBLIC_SELLER_URI}/register`}
                 className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
                 onClick={onClose}
                 target="_blank"

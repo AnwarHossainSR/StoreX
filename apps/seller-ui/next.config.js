@@ -15,7 +15,7 @@ const nextConfig = {
   },
   webpack(config) {
     // Add alias configuration for the @ symbol
-    config.resolve.alias["@"] = path.resolve(__dirname, "apps/user-ui/src");
+    config.resolve.alias["@"] = path.resolve(__dirname, "apps/seller-ui/src");
 
     return config;
   },

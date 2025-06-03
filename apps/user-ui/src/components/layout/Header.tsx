@@ -135,7 +135,7 @@ export default function Header() {
                         item === "Home"
                           ? "/"
                           : item === "Become A Seller"
-                          ? `${process.env.NEXT_PUBLIC_SELLER_URI}/auth/register`
+                          ? `${process.env.NEXT_PUBLIC_SELLER_URI}/register`
                           : `/${item.toLowerCase().replace(/\s+/g, "-")}`
                       }
                       className="text-gray-700 hover:text-blue-500 transition-colors"

@@ -20,7 +20,11 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:8080"], // Allow Gateway and frontend
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:8080",
+    ], // Allow Gateway and frontend
     allowedHeaders: ["Authorization", "Content-Type"],
     credentials: true,
   })

@@ -26,7 +26,7 @@ export default function Home() {
                 Shop Now
               </Link>
               <Link
-                href={`${process.env.NEXT_PUBLIC_SELLER_URI}/auth/register`}
+                href={`${process.env.NEXT_PUBLIC_SELLER_URI}/register`}
                 className="px-6 py-3 border border-blue-500 text-blue-500 rounded-full font-medium hover:bg-blue-50 transition-colors"
                 target="_blank"
               >
