@@ -20,7 +20,6 @@ interface DisplayCategory {
   id: string;
   name: string;
   image: string;
-  count: number;
 }
 
 export default function FeaturedCategories() {
@@ -54,7 +53,6 @@ export default function FeaturedCategories() {
       id: `cat-${index + 1}`,
       name,
       image: placeholderImages[index % placeholderImages.length],
-      count: Math.floor(Math.random() * 500) + 50,
     })
   );
 
@@ -91,9 +89,6 @@ export default function FeaturedCategories() {
                 <h3 className="text-lg font-medium text-gray-800 mb-1">
                   {category.name}
                 </h3>
-                <p className="text-sm text-gray-500">
-                  {category.count} products
-                </p>
               </div>
             </div>
           </Link>

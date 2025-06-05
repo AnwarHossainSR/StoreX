@@ -1,14 +1,56 @@
 import { AuthError } from "@packages/error-handler";
-import prisma from "@packages/libs/prisma";
 import { NextFunction, Response } from "express";
 import Jwt from "jsonwebtoken";
 
-const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
-  try {
-    const token =
-      req.cookies["access_token"] ||
+import prisma from "@packages/libs/prisma";
+
+export const getAuthenticatedAccount = async (
+  role: "user" | "seller",
+  id: string
+) => {
+  if (role === "user") {
+    const user = await prisma.users.findUnique({
+      where: { id },
+    });
+    return { role: "user", account: user };
+  }
+
+  if (role === "seller") {
+    const seller = await prisma.sellers.findUnique({
+      where: { id },
+      include: { shop: true },
+    });
+    return { role: "seller", account: seller };
+  }
+
+  return { role, account: null };
+};
+
+export const getTokenFromRequest = (
+  req: any,
+  role: "user" | "seller" = "user"
+): string | undefined => {
+  if (role === "seller") {
+    return (
       req.cookies["access_seller_token"] ||
-      req.headers.authorization?.split(" ")[1];
+      req.headers.authorization?.split(" ")[1]
+    );
+  }
+
+  // Default to user token
+  return (
+    req.cookies["access_token"] || req.headers.authorization?.split(" ")[1]
+  );
+};
+
+const isAuthenticated = async (
+  req: any,
+  res: Response,
+  next: NextFunction,
+  role?: "user" | "seller"
+) => {
+  try {
+    const token = getTokenFromRequest(req, role);
 
     if (!token) {
       throw new AuthError("Unauthenticated! Token not found");
@@ -23,31 +65,19 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
       throw new AuthError("Unauthenticated! Invalid token");
     }
 
-    let account;
-
-    if (decoded.role === "user") {
-      account = await prisma.users.findUnique({
-        where: {
-          id: decoded.id,
-        },
-      });
-      req.user = account;
-    } else if (decoded.role === "seller") {
-      account = await prisma.sellers.findUnique({
-        where: {
-          id: decoded.id,
-        },
-        include: {
-          shop: true,
-        },
-      });
-      req.seller = account;
+    // Optional role match validation
+    if (role && decoded.role !== role) {
+      throw new AuthError("Unauthorized! Role mismatch");
     }
+
+    const { account } = await getAuthenticatedAccount(decoded.role, decoded.id);
 
     if (!account) {
       throw new AuthError("Unauthenticated! Account not found");
     }
 
+    // Attach to req object
+    req[decoded.role] = account;
     req.role = decoded.role;
 
     return next();
@@ -58,3 +88,7 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
 };
 
 export default isAuthenticated;
+
+export const withAuth =
+  (role?: "user" | "seller") => (req: any, res: Response, next: NextFunction) =>
+    isAuthenticated(req, res, next, role);

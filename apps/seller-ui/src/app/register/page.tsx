@@ -398,7 +398,7 @@ export default function SellerSignupPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Already have a seller account?{" "}
             <Link
-              href="/auth/seller/login"
+              href="/login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Sign in

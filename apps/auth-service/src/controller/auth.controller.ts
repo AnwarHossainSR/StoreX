@@ -231,7 +231,7 @@ export const refreshAccessToken = async (
       refreshToken = req.cookies["refresh_seller_token"];
     }
     if (!refreshToken) {
-      throw new ValidationError("Refresh token not found");
+      return next(new ValidationError("Refresh token not found"));
     }
 
     const decoded = jwt.verify(
@@ -600,6 +600,25 @@ export const getAuthenticatedSeller = async (
   try {
     // @ts-ignore
     const user = req.seller;
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const userDetails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const userId = req.user.id;
+    const user = await prisma.users.findUnique({
+      where: {
+        id: userId,
+      },
+    });
     res.status(200).json({ success: true, user });
   } catch (error: any) {
     return next(error);

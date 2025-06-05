@@ -1,3 +1,4 @@
+import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
@@ -5,13 +6,12 @@ import proxy from "express-http-proxy";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
 import initializeSiteConfig from "./lib/initializeSiteConfig";
-import bodyParser from "body-parser";
 
 const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"],
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     allowedHeaders: ["Authorization", "Content-Type"],
     credentials: true,
   })

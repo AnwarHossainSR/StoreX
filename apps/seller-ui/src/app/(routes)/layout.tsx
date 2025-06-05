@@ -1,5 +1,6 @@
 "use client";
 
+import Loading from "@/components/ui/loading";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrentUser } from "@/hooks/useSeller";
 import {
@@ -167,11 +168,7 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
 
   if (isLoading || !user) {
     // Show a loading state or redirect to login if user is not authenticated
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <div className="text-gray-500">Loading...</div>
-      </div>
-    );
+    return <Loading fullScreen size="lg" />;
   }
 
   return (

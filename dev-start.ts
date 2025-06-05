@@ -14,7 +14,7 @@ async function ensureKafkaRunning(): Promise<void> {
     let output = "";
     check.stdout.on("data", (data) => (output += data.toString()));
 
-    check.on("close", (code) => {
+    check.on("close", () => {
       if (output.includes("broker")) {
         console.log("✅ Kafka broker container is already running.");
         return resolve();
@@ -51,15 +51,20 @@ const services: Service[] = [
   { name: "auth-service", command: "serve" },
   { name: "@source/product-service", command: "serve" },
   { name: "@./api-gateway", command: "serve" },
-  // { name: "@source/user-ui", command: "dev" },
+  { name: "@source/user-ui", command: "dev" },
   { name: "@source/seller-ui", command: "dev" },
 ];
 
-function runNxTarget(project: string, command: string): Promise<void> {
+function runNxTarget(
+  project: string,
+  command: string,
+  envVars: Record<string, string> = {}
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const proc = spawn("npx", ["nx", command, project], {
       stdio: "inherit",
       shell: true,
+      env: { ...process.env, ...envVars },
     });
 
     proc.on("error", (err) => {
@@ -77,7 +82,11 @@ function runNxTarget(project: string, command: string): Promise<void> {
 
     for (const service of services) {
       console.log(`🔧 Starting ${service.name} (${service.command})...`);
-      await runNxTarget(service.name, service.command);
+
+      const env: Record<string, string> =
+        service.name === "@source/seller-ui" ? { PORT: "3001" } : {};
+
+      await runNxTarget(service.name, service.command, env);
       await new Promise((res) => setTimeout(res, 1000)); // Delay for stability
     }
 

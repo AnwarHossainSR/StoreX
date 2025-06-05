@@ -66,7 +66,7 @@ export const useAuth = () => {
       authService.createStripeConnectAccount(sellerId, country, currency),
     onSuccess: (data) => {
       if (data.accountLink) {
-        window.location.href = data.accountLink; // Redirect to Stripe
+        window.location.href = data.accountLink + "?locale=en"; // Redirect to Stripe
       }
     },
     onError: (error: Error) => {
@@ -118,7 +118,7 @@ export const useAuth = () => {
   >({
     mutationFn: authService.resetPassword,
     onSuccess: () => {
-      router.push("/auth/seller/login");
+      router.push("/login");
     },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;

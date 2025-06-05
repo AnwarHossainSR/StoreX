@@ -134,9 +134,17 @@ export default function Header() {
                       href={
                         item === "Home"
                           ? "/"
+                          : item === "Become A Seller"
+                          ? `${process.env.NEXT_PUBLIC_SELLER_URI}/register`
                           : `/${item.toLowerCase().replace(/\s+/g, "-")}`
                       }
                       className="text-gray-700 hover:text-blue-500 transition-colors"
+                      target={item === "Become A Seller" ? "_blank" : undefined}
+                      rel={
+                        item === "Become A Seller"
+                          ? "noopener noreferrer"
+                          : undefined
+                      }
                     >
                       {item}
                     </Link>
