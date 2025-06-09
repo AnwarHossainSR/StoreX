@@ -1,6 +1,6 @@
 "use client";
 
-import { useProduct } from "@/hooks/useProduct";
+import { ProductFilters, useProduct } from "@/hooks/useProduct";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import FilterSidebar from "../../../components/products/FilterSidebar";
@@ -8,24 +8,17 @@ import ProductGrid from "../../../components/products/ProductGrid";
 
 export default function ProductsPage() {
   const {
-    // Products data
     products,
     isLoadingProducts,
     isFetchingProducts,
     productsError,
-
-    // Categories data
     categories,
     subCategories,
     isLoadingCategories,
-
-    // Pagination
     currentPage,
     totalPages,
     totalProducts,
     setPage,
-
-    // Filters
     filters,
     updateFilters,
     updateSortBy,
@@ -33,14 +26,12 @@ export default function ProductsPage() {
   } = useProduct();
 
   // Handle filter changes
-  const handleFiltersChange = (
-    newFilters: Parameters<typeof updateFilters>[0]
-  ) => {
+  const handleFiltersChange = (newFilters: Partial<ProductFilters>) => {
     updateFilters(newFilters);
   };
 
   // Handle sort change
-  const handleSortChange = (sortBy: Parameters<typeof updateSortBy>[0]) => {
+  const handleSortChange = (sortBy: ProductFilters["sortBy"]) => {
     updateSortBy(sortBy);
   };
 
@@ -60,9 +51,6 @@ export default function ProductsPage() {
       <div className="bg-gray-50 min-h-screen">
         <div className="bg-white py-8 border-b border-gray-200">
           <div className="container mx-auto px-4">
-            {/* <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-              All Products
-            </h1> */}
             <div className="flex items-center text-sm text-gray-500">
               <Link href="/" className="hover:text-blue-500 transition-colors">
                 Home
@@ -109,11 +97,6 @@ export default function ProductsPage() {
       {/* Page Header */}
       <div className="bg-white py-8 border-b border-gray-200">
         <div className="container mx-auto px-4">
-          {/* <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-            All Products
-          </h1> */}
-
-          {/* Breadcrumb */}
           <div className="flex items-center text-sm text-gray-500">
             <Link href="/" className="hover:text-blue-500 transition-colors">
               Home
@@ -143,26 +126,22 @@ export default function ProductsPage() {
             filters.maxPrice) && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="text-sm text-gray-600">Active filters:</span>
-
               {filters.search && (
                 <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                   Search: "{filters.search}"
                 </span>
               )}
-
               {filters.category && (
                 <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                   {filters.category}
                 </span>
               )}
-
               {filters.subCategory && (
                 <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                   {filters.subCategory}
                 </span>
               )}
-
-              {filters.brands?.map((brand) => (
+              {filters.brands?.map((brand: string) => (
                 <span
                   key={brand}
                   className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
@@ -170,8 +149,7 @@ export default function ProductsPage() {
                   {brand}
                 </span>
               ))}
-
-              {filters.colors?.map((color) => (
+              {filters.colors?.map((color: string) => (
                 <span
                   key={color}
                   className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm"
@@ -179,7 +157,6 @@ export default function ProductsPage() {
                   {color}
                 </span>
               ))}
-
               {(filters.minPrice || filters.maxPrice) && (
                 <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm">
                   ${filters.minPrice || 0} - ${filters.maxPrice || 2000}

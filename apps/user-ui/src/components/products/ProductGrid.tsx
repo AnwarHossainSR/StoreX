@@ -45,7 +45,6 @@ export default function ProductGrid({
 }: ProductGridProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
 
-  // Cart and Wishlist functionality
   const {
     addItem: addToWishlist,
     removeItem: removeFromWishlist,
@@ -56,7 +55,6 @@ export default function ProductGrid({
   const deviceData = useDeviceInfo();
   const { user } = useCurrentUser();
 
-  // Calculate display range
   const startRange = totalProducts > 0 ? (currentPage - 1) * 12 + 1 : 0;
   const endRange = Math.min(currentPage * 12, totalProducts);
 
@@ -117,7 +115,6 @@ export default function ProductGrid({
   if (isLoading) {
     return (
       <div>
-        {/* Toolbar Skeleton */}
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6 animate-pulse">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
@@ -127,8 +124,6 @@ export default function ProductGrid({
             <div className="w-40 h-8 bg-gray-200 rounded"></div>
           </div>
         </div>
-
-        {/* Products Skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div
@@ -154,7 +149,6 @@ export default function ProductGrid({
 
   return (
     <div className={isFetching ? "opacity-75 pointer-events-none" : ""}>
-      {/* Toolbar */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-col sm:flex-row justify-between items-center">
         <div className="flex items-center mb-4 sm:mb-0">
           <button
@@ -185,7 +179,6 @@ export default function ProductGrid({
             of <span className="font-semibold">{totalProducts}</span> results
           </span>
         </div>
-
         <div className="flex items-center w-full sm:w-auto">
           <label htmlFor="sort" className="mr-2 text-gray-700">
             Sort By:
@@ -208,7 +201,6 @@ export default function ProductGrid({
         </div>
       </div>
 
-      {/* No Results */}
       {products.length === 0 && !isLoading && (
         <div className="bg-white rounded-lg p-12 text-center">
           <div className="text-gray-400 mb-4">
@@ -223,7 +215,6 @@ export default function ProductGrid({
         </div>
       )}
 
-      {/* Products Grid */}
       {view === "grid" && products.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => {
@@ -343,7 +334,6 @@ export default function ProductGrid({
         </div>
       )}
 
-      {/* Products List */}
       {view === "list" && products.length > 0 && (
         <div className="space-y-6">
           {products.map((product) => {
@@ -401,19 +391,15 @@ export default function ProductGrid({
                       </p>
                     )}
                   </div>
-
                   <div className="flex items-center mb-4">
                     {renderStars(product.ratings)}
                     <span className="text-gray-500 ml-2">
                       {product.ratings} ({product.totalSales} sold)
                     </span>
                   </div>
-
                   <p className="text-gray-600 mb-4 line-clamp-2">
                     {product.short_description}
                   </p>
-
-                  {/* Colors */}
                   {product.colors && product.colors.length > 0 && (
                     <div className="mb-4">
                       <span className="text-sm text-gray-500 mr-2">
@@ -436,7 +422,6 @@ export default function ProductGrid({
                       </div>
                     </div>
                   )}
-
                   <div className="mt-auto flex flex-wrap items-center justify-between">
                     <div className="mb-3 md:mb-0">
                       <span className="text-2xl font-bold text-gray-800">
@@ -500,7 +485,6 @@ export default function ProductGrid({
         </div>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-8 flex justify-center">
           <nav className="flex items-center">
@@ -515,8 +499,6 @@ export default function ProductGrid({
             >
               <ChevronLeft size={16} />
             </button>
-
-            {/* Page Numbers */}
             {(() => {
               const pages = [];
               const showPages = 5;
@@ -548,7 +530,6 @@ export default function ProductGrid({
 
               return pages;
             })()}
-
             <button
               onClick={() =>
                 onPageChange(Math.min(totalPages, currentPage + 1))

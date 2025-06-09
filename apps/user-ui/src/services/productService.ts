@@ -73,7 +73,7 @@ export const productService = {
   async getAllProducts(params: {
     page?: number;
     limit?: number;
-    type?: "latest" | "topSales" | "priceLow" | "priceHigh";
+    type?: "latest" | "topSales" | "priceLow" | "priceHigh" | "highest-rated";
     category?: string;
     subCategory?: string;
     search?: string;

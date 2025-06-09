@@ -4,9 +4,10 @@ import {
   SiteConfig,
   productService,
 } from "@/services/productService";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query"; // Updated import for v5
 import { useCallback, useState } from "react";
 
+// Define ProductFilters interface
 export interface ProductFilters {
   search?: string;
   category?: string;
@@ -24,10 +25,46 @@ export interface ProductFilters {
     | "highest-rated";
 }
 
-export const useProduct = () => {
+// Define the return type for the useProduct hook
+export interface UseProductReturn {
+  getProducts: () => Promise<void>;
+  products: ProductResponse["data"];
+  productsStatus: "pending" | "success" | "error";
+  productsError: string | null;
+  productsErrorDetails: Record<string, any> | null;
+  isLoadingProducts: boolean;
+  isFetchingProducts: boolean;
+  topProducts: ProductResponse["top10Products"];
+  topProductsStatus: "pending" | "success" | "error";
+  topProductsError: string | null;
+  topProductsErrorDetails: Record<string, any> | null;
+  getCategories: () => Promise<void>;
+  categories: SiteConfig["categories"];
+  subCategories: SiteConfig["subCategories"];
+  categoriesStatus: "pending" | "success" | "error";
+  categoriesError: string | null;
+  categoriesErrorDetails: Record<string, any> | null;
+  isLoadingCategories: boolean;
+  currentPage: number;
+  totalPages: number;
+  totalProducts: number;
+  limit: number;
+  setPage: (newPage: number) => void;
+  filters: ProductFilters;
+  updateFilters: (newFilters: Partial<ProductFilters>) => void;
+  updateSearch: (search: string) => void;
+  updateCategory: (category: string) => void;
+  updatePriceRange: (minPrice: number, maxPrice: number) => void;
+  updateSortBy: (sortBy: ProductFilters["sortBy"]) => void;
+  clearFilters: () => void;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export const useProduct = (): UseProductReturn => {
   // Pagination state
   const [page, setPage] = useState<number>(1);
-  const [limit, setLimit] = useState<number>(12);
+  const [limit] = useState<number>(12);
 
   // Filter state
   const [filters, setFilters] = useState<ProductFilters>({
@@ -39,21 +76,21 @@ export const useProduct = () => {
     switch (sortBy) {
       case "latest":
         return "latest";
-      case "best-selling":
+      case "topSales":
         return "topSales";
-      case "price-low-high":
+      case "priceLow":
         return "priceLow";
-      case "price-high-low":
+      case "priceHigh":
         return "priceHigh";
       case "highest-rated":
-        return "topSales"; // Use topSales as proxy for highest rated
+        return "highest-rated";
       default:
         return "topSales";
     }
   };
 
   // Fetch all products with filters
-  const productsQuery = useQuery<ProductResponse, Error>({
+  const productsQuery = useQuery({
     queryKey: ["products", page, limit, filters],
     queryFn: () =>
       productService.getAllProducts({
@@ -69,15 +106,16 @@ export const useProduct = () => {
         maxPrice: filters.maxPrice,
       }),
     retry: 2,
-    // keepPreviousData: true,
+    placeholderData: keepPreviousData, // Replace keepPreviousData with placeholderData
   });
 
   // Fetch categories
-  const categoriesQuery = useQuery<SiteConfig, Error>({
+  const categoriesQuery = useQuery({
     queryKey: ["categories"],
     queryFn: () => productService.getCategories(),
     retry: 2,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    placeholderData: keepPreviousData, // Replace keepPreviousData with placeholderData
   });
 
   // Filter update functions
@@ -88,21 +126,24 @@ export const useProduct = () => {
 
   const updateSearch = useCallback(
     (search: string) => {
-      updateFilters({ search });
+      updateFilters({ search: search || undefined });
     },
     [updateFilters]
   );
 
   const updateCategory = useCallback(
     (category: string) => {
-      updateFilters({ category, subCategory: undefined }); // Reset subcategory when category changes
+      updateFilters({ category, subCategory: undefined });
     },
     [updateFilters]
   );
 
   const updatePriceRange = useCallback(
     (minPrice: number, maxPrice: number) => {
-      updateFilters({ minPrice, maxPrice });
+      updateFilters({
+        minPrice: minPrice > 0 ? minPrice : undefined,
+        maxPrice: maxPrice < 2000 ? maxPrice : undefined,
+      });
     },
     [updateFilters]
   );
@@ -123,13 +164,7 @@ export const useProduct = () => {
     setPage(newPage);
   }, []);
 
-  const changeLimit = useCallback((newLimit: number) => {
-    setLimit(newLimit);
-    setPage(1); // Reset to first page when limit changes
-  }, []);
-
   return {
-    // Products
     getProducts: productsQuery.refetch,
     products: productsQuery.data?.data ?? [],
     productsStatus: productsQuery.status,
@@ -139,16 +174,12 @@ export const useProduct = () => {
         ?.details ?? null,
     isLoadingProducts: productsQuery.isLoading,
     isFetchingProducts: productsQuery.isFetching,
-
-    // Top Products
     topProducts: productsQuery.data?.top10Products ?? [],
     topProductsStatus: productsQuery.status,
     topProductsError: productsQuery.error?.message ?? null,
     topProductsErrorDetails:
       (productsQuery.error?.cause as BackendErrorResponse | undefined)
         ?.details ?? null,
-
-    // Categories
     getCategories: categoriesQuery.refetch,
     categories: categoriesQuery.data?.categories ?? [],
     subCategories: categoriesQuery.data?.subCategories ?? {},
@@ -158,16 +189,11 @@ export const useProduct = () => {
       (categoriesQuery.error?.cause as BackendErrorResponse | undefined)
         ?.details ?? null,
     isLoadingCategories: categoriesQuery.isLoading,
-
-    // Pagination
     currentPage: productsQuery.data?.currentPage ?? page,
     totalPages: productsQuery.data?.totalPages ?? 1,
     totalProducts: productsQuery.data?.total ?? 0,
     limit,
     setPage: goToPage,
-    setLimit: changeLimit,
-
-    // Filters
     filters,
     updateFilters,
     updateSearch,
@@ -175,8 +201,6 @@ export const useProduct = () => {
     updatePriceRange,
     updateSortBy,
     clearFilters,
-
-    // Helper functions
     hasNextPage:
       (productsQuery.data?.currentPage ?? page) <
       (productsQuery.data?.totalPages ?? 1),

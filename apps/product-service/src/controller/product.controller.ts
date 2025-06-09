@@ -485,6 +485,17 @@ export const getAllProducts = async (
     const skip = (page - 1) * limit;
     const type = req.query.type as string;
     const status = (req.query.status as string) || "Active";
+    const category = req.query.category as string;
+    const subCategory = req.query.subCategory as string;
+    const search = req.query.search as string;
+    const brands = req.query.brands
+      ? (req.query.brands as string).split(",")
+      : undefined;
+    const colors = req.query.colors
+      ? (req.query.colors as string).split(",")
+      : undefined;
+    const minPrice = parseFloat(req.query.minPrice as string);
+    const maxPrice = parseFloat(req.query.maxPrice as string);
 
     if (isNaN(page) || isNaN(limit) || page < 1 || limit < 1) {
       throw new Error("Invalid pagination parameters");
@@ -501,15 +512,46 @@ export const getAllProducts = async (
       throw new Error("Invalid status value");
     }
 
+    // Build the base filter
     const baseFilter: Prisma.ProductWhereInput = {
       isDeleted: false,
       status: status as ProductStatus,
+      ...(category && { category }),
+      ...(subCategory && { subCategory }),
+      ...(search && {
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { short_description: { contains: search, mode: "insensitive" } },
+          { detailed_description: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+      ...(brands && { brand: { in: brands } }),
+      ...(colors && { colors: { hasSome: colors } }),
+      ...(minPrice && !isNaN(minPrice) && { sale_price: { gte: minPrice } }),
+      ...(maxPrice && !isNaN(maxPrice) && { sale_price: { lte: maxPrice } }),
     };
 
-    const orderBy: Prisma.ProductOrderByWithRelationInput =
-      type === "latest"
-        ? { createdAt: "desc" as Prisma.SortOrder }
-        : { createdAt: "asc" as Prisma.SortOrder };
+    // Define sorting logic based on type
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] = [];
+    switch (type) {
+      case "latest":
+        orderBy.push({ createdAt: "desc" });
+        break;
+      case "topSales":
+        orderBy.push({ totalSales: "desc" });
+        break;
+      case "priceLow":
+        orderBy.push({ sale_price: "asc" });
+        break;
+      case "priceHigh":
+        orderBy.push({ sale_price: "desc" });
+        break;
+      case "highest-rated":
+        orderBy.push({ ratings: "desc" });
+        break;
+      default:
+        orderBy.push({ totalSales: "desc" }, { createdAt: "desc" });
+    }
 
     const [products, total, top10Products] = await Promise.all([
       prisma.product.findMany({
@@ -520,7 +562,7 @@ export const getAllProducts = async (
           Shop: { select: { id: true, name: true } },
         },
         where: baseFilter,
-        orderBy: [{ totalSales: "desc" }, { createdAt: "desc" }],
+        orderBy,
       }),
       prisma.product.count({
         where: baseFilter,
@@ -538,7 +580,7 @@ export const getAllProducts = async (
 
     const response = {
       data: products,
-      top10By: type === "latest" ? "latest" : "topSales",
+      top10By: type || "topSales",
       top10Products,
       total,
       currentPage: page,

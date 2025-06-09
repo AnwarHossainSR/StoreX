@@ -34,7 +34,7 @@ function FilterSection({
 interface FilterSidebarProps {
   categories: string[];
   subCategories: Record<string, string[]>;
-  products: any[]; // To extract brands and colors
+  products: any[];
   filters: ProductFilters;
   onFiltersChange: (filters: Partial<ProductFilters>) => void;
   onClearFilters: () => void;
@@ -54,8 +54,8 @@ export default function FilterSidebar({
     filters?.minPrice || 0,
     filters?.maxPrice || 2000,
   ]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [localSearch, setLocalSearch] = useState(filters?.search || "");
+  const [searchTerm, setSearchTerm] = useState(filters?.search || "");
+  const [brandSearch, setBrandSearch] = useState(""); // Renamed for clarity
 
   // Extract unique brands and colors from products
   const { availableBrands, availableColors } = useMemo(() => {
@@ -135,20 +135,16 @@ export default function FilterSidebar({
     }
 
     setPriceRange(newPriceRange);
-  };
-
-  // Apply price filter
-  const applyPriceFilter = () => {
     onFiltersChange({
-      minPrice: priceRange[0],
-      maxPrice: priceRange[1],
+      minPrice: newPriceRange[0] > 0 ? newPriceRange[0] : undefined,
+      maxPrice: newPriceRange[1] < 2000 ? newPriceRange[1] : undefined,
     });
   };
 
   // Handle category selection
   const handleCategoryChange = (category: string, checked: boolean) => {
     if (checked) {
-      onFiltersChange({ category });
+      onFiltersChange({ category, subCategory: undefined });
     } else {
       onFiltersChange({ category: undefined, subCategory: undefined });
     }
@@ -190,12 +186,12 @@ export default function FilterSidebar({
   // Handle search
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onFiltersChange({ search: localSearch });
+    onFiltersChange({ search: searchTerm || undefined });
   };
 
   // Filter brands based on search term
   const filteredBrands = availableBrands.filter((brand) =>
-    brand.name.toLowerCase().includes(searchTerm.toLowerCase())
+    brand.name.toLowerCase().includes(brandSearch.toLowerCase())
   );
 
   // Get current subcategories for selected category
@@ -243,8 +239,11 @@ export default function FilterSidebar({
         <form onSubmit={handleSearchSubmit} className="relative">
           <input
             type="text"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              onFiltersChange({ search: e.target.value || undefined });
+            }}
             placeholder="Search products..."
             className="w-full p-3 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -293,12 +292,6 @@ export default function FilterSidebar({
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
             />
           </div>
-          <button
-            onClick={applyPriceFilter}
-            className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            Apply Price Filter
-          </button>
         </div>
       </FilterSection>
 
@@ -405,8 +398,8 @@ export default function FilterSidebar({
           <div className="mb-3">
             <input
               type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={brandSearch}
+              onChange={(e) => setBrandSearch(e.target.value)}
               placeholder="Search brands..."
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
