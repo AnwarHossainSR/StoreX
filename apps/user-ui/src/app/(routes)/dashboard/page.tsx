@@ -1,4 +1,6 @@
 "use client";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { format } from "date-fns";
 import {
   Gift,
   HelpCircle,
@@ -10,6 +12,11 @@ import {
 import Image from "next/image";
 
 export default function Dashboard() {
+  const { user } = useCurrentUser();
+  console.log("user", user);
+  if (!user) {
+    return;
+  }
   return (
     <>
       {/* Profile Section */}
@@ -42,22 +49,24 @@ export default function Dashboard() {
           <div className="flex-1 space-y-4">
             <div>
               <p className="text-gray-500 mb-1">Name:</p>
-              <p className="font-medium">Shahriar Sajeeb</p>
+              <p className="font-medium">{user?.name}</p>
             </div>
 
             <div>
               <p className="text-gray-500 mb-1">Email:</p>
-              <p className="font-medium">support@becodemy.com</p>
+              <p className="font-medium">{user?.email}</p>
             </div>
 
             <div>
               <p className="text-gray-500 mb-1">Joined:</p>
-              <p className="font-medium">07/04/2025</p>
+              <p className="font-medium">
+                {format(new Date(user?.createdAt), "PPPppp")}
+              </p>
             </div>
 
             <div>
               <p className="text-gray-500 mb-1">Earned Points:</p>
-              <p className="font-medium">0</p>
+              <p className="font-medium">{user?.points || 0}</p>
             </div>
           </div>
         </div>

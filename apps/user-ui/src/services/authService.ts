@@ -10,6 +10,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  createdAt: string;
+  points: number;
+  updatedAt: string;
 }
 
 export interface BackendErrorResponse {
