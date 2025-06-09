@@ -172,6 +172,18 @@ export const useAuth = () => {
     },
   });
 
+  const chanagePassword = useMutation<
+    ApiResponse<never>,
+    Error,
+    { oldPassword: string; newPassword: string; confirmPassword: string }
+  >({
+    mutationFn: authService.changePassword,
+    onSuccess: () => {
+      handleSuccess("Password changed successfully!");
+    },
+    onError: handleError,
+  });
+
   return {
     // Auth actions
     login: loginMutation.mutate,
@@ -210,5 +222,11 @@ export const useAuth = () => {
     resetVerifyForgotPasswordError: () => verifyForgotPasswordMutation.reset(),
     resetResetPasswordError: () => resetPasswordMutation.reset(),
     resetResendOtpError: () => resendOtpMutation.reset(),
+
+    // Auth actions
+    changePassword: chanagePassword.mutate,
+    isChangingPassword: chanagePassword.isPending,
+    changePasswordError: chanagePassword.error?.message,
+    resetChangePasswordError: () => chanagePassword.reset(),
   };
 };

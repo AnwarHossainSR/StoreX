@@ -204,4 +204,24 @@ export const authService = {
       });
     }
   },
+
+  async changePassword(data: {
+    oldPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }) {
+    console.log("changePassword data:", data);
+    try {
+      const response = await apiClient.put<ApiResponse<never>>(
+        `${API_BASE_URL}/change-password-user`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Password change failed", {
+        cause: errorData,
+      });
+    }
+  },
 };

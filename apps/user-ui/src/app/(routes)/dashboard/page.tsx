@@ -13,7 +13,6 @@ import Image from "next/image";
 
 export default function Dashboard() {
   const { user } = useCurrentUser();
-  console.log("user", user);
   if (!user) {
     return;
   }

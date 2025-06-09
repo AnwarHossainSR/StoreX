@@ -1,4 +1,5 @@
 "use client";
+
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { ProtectedRoute } from "@/components/layout/RouteGuard";
 import Loading from "@/components/ui/loading";

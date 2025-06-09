@@ -1,7 +1,18 @@
-// app/dashboard/change-password/page.tsx
+"use client";
+import { useAuth } from "@/hooks/useAuth";
 import { Eye, Lock } from "lucide-react";
 
 export default function ChangePasswordPage() {
+  const { changePassword, isChangingPassword } = useAuth();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    console.log("Password change submitted", event);
+    changePassword({
+      oldPassword: (event.target as any).elements["current-password"].value,
+      newPassword: (event.target as any).elements["new-password"].value,
+      confirmPassword: (event.target as any).elements["confirm-password"].value,
+    });
+  };
   return (
     <>
       {/* Change Password Form */}
@@ -14,7 +25,7 @@ export default function ChangePasswordPage() {
             <h2 className="text-xl font-semibold">Update Your Password</h2>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
                 htmlFor="current-password"
@@ -94,8 +105,9 @@ export default function ChangePasswordPage() {
               <button
                 type="submit"
                 className="w-full px-6 py-3 bg-blue-500 text-white font-medium rounded-md hover:bg-blue-600 transition-colors"
+                disabled={isChangingPassword}
               >
-                Update Password
+                {isChangingPassword ? "Updating..." : "Update Password"}
               </button>
             </div>
           </form>
