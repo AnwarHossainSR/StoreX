@@ -363,6 +363,76 @@ export const chnageUserPassword = async (
   }
 };
 
+export const userShippingAddress = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const userId = req.user.id;
+    const user = await prisma.users.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        shippingAddresses: true,
+      },
+    });
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const createShippingAddress = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const userId = req.user.id;
+    const { shippingAddress } = req.body;
+    await prisma.users.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        shippingAddresses: {
+          create: shippingAddress,
+        },
+      },
+    });
+    res.status(200).json({ success: true, message: "Shipping address added" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const updateShippingAddress = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { shippingAddress } = req.body;
+    await prisma.shippingAddress.update({
+      where: {
+        id,
+      },
+      data: shippingAddress,
+    });
+    res
+      .status(200)
+      .json({ success: true, message: "Shipping address updated" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
 // Sellers controller
 
 export const createSellerAccount = async (

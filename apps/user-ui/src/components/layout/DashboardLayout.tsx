@@ -38,7 +38,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { logout } = useAuth();
   const { user } = useCurrentUser();
   const pathname = usePathname();
-  console.log("user", user);
 
   const isActivePath = (path: string) => {
     if (path === "/dashboard") {

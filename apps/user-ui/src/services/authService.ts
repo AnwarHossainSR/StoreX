@@ -1,7 +1,9 @@
+// services/authService.ts
 import apiClient from "@/lib/apiClient";
 
 export interface ApiResponse<T> {
-  message: string;
+  success: boolean;
+  message?: string;
   user?: T;
   access_token?: string;
 }
@@ -13,6 +15,25 @@ export interface User {
   createdAt: string;
   points: number;
   updatedAt: string;
+}
+
+export interface UserWithAddresses {
+  id: number;
+  shippingAddresses: ShippingAddress[];
+}
+
+export interface ShippingAddress {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  phone: string;
+  createdAt: string;
+  updatedAt: string;
+  isDefault?: boolean;
 }
 
 export interface BackendErrorResponse {
@@ -148,9 +169,9 @@ export const authService = {
     password?: string;
   }) {
     const endpoint =
-      `${API_BASE_URL}` + data.type === "register"
-        ? "/register"
-        : "/forgot-password-user";
+      data.type === "register"
+        ? `${API_BASE_URL}/register`
+        : `${API_BASE_URL}/forgot-password-user`;
     const payload =
       data.type === "register"
         ? { name: data.name, email: data.email, password: data.password }
@@ -190,7 +211,7 @@ export const authService = {
     }
   },
 
-  // Get current authenticated user - Mark this as optional auth
+  // Get current authenticated user
   async getCurrentUser() {
     try {
       const response = await apiClient.get<ApiResponse<User>>(
@@ -205,12 +226,12 @@ export const authService = {
     }
   },
 
+  // Change user password
   async changePassword(data: {
     oldPassword: string;
     newPassword: string;
     confirmPassword: string;
   }) {
-    console.log("changePassword data:", data);
     try {
       const response = await apiClient.put<ApiResponse<never>>(
         `${API_BASE_URL}/change-password-user`,
@@ -222,6 +243,86 @@ export const authService = {
       throw new Error(errorData?.message || "Password change failed", {
         cause: errorData,
       });
+    }
+  },
+
+  // Get user shipping addresses
+  async getUserShippingAddress() {
+    try {
+      const response = await apiClient.get<ApiResponse<UserWithAddresses>>(
+        `${API_BASE_URL}/shipping-address-user`
+      );
+      console.log(response.data);
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(
+        errorData?.message || "Failed to fetch shipping address",
+        {
+          cause: errorData,
+        }
+      );
+    }
+  },
+
+  // Create a new shipping address
+  async createShippingAddress(
+    data: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">
+  ) {
+    try {
+      const response = await apiClient.post<ApiResponse<ShippingAddress>>(
+        `${API_BASE_URL}/shipping-address`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(
+        errorData?.message || "Failed to create shipping address",
+        {
+          cause: errorData,
+        }
+      );
+    }
+  },
+
+  // Update an existing shipping address
+  async updateShippingAddress(
+    id: string,
+    data: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">
+  ) {
+    try {
+      const response = await apiClient.put<ApiResponse<ShippingAddress>>(
+        `${API_BASE_URL}/shipping-address/${id}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(
+        errorData?.message || "Failed to update shipping address",
+        {
+          cause: errorData,
+        }
+      );
+    }
+  },
+
+  // Delete a shipping address
+  async deleteShippingAddress(id: string) {
+    try {
+      const response = await apiClient.delete<ApiResponse<never>>(
+        `${API_BASE_URL}/shipping-address/${id}`
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(
+        errorData?.message || "Failed to delete shipping address",
+        {
+          cause: errorData,
+        }
+      );
     }
   },
 };
