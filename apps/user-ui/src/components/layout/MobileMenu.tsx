@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import {
   ChevronRight,
   Heart,
@@ -13,12 +14,15 @@ import {
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface MobileMenuProps {
   onClose: () => void;
 }
 
 export default function MobileMenu({ onClose }: MobileMenuProps) {
+  const pathname = usePathname();
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black bg-opacity-50"
@@ -44,7 +48,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href="/"
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === "/"
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
               >
                 <Home size={20} className="mr-3 text-gray-500" />
@@ -54,7 +63,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href="/products"
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === "/products"
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
               >
                 <Package size={20} className="mr-3 text-gray-500" />
@@ -64,7 +78,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href="/shops"
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === "/shops"
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
               >
                 <Store size={20} className="mr-3 text-gray-500" />
@@ -74,7 +93,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href="/offers"
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === "/offers"
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
               >
                 <Tag size={20} className="mr-3 text-gray-500" />
@@ -84,7 +108,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href={`${process.env.NEXT_PUBLIC_SELLER_URI}/register`}
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === `${process.env.NEXT_PUBLIC_SELLER_URI}/register`
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
                 target="_blank"
               >
@@ -112,7 +141,13 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
                   href={`/category/${category
                     .toLowerCase()
                     .replace(/\s+/g, "-")}`}
-                  className="flex items-center justify-between px-2 py-2 rounded hover:bg-gray-100"
+                  className={cn(
+                    "flex items-center justify-between px-2 py-2 rounded",
+                    pathname ===
+                      `/category/${category.toLowerCase().replace(/\s+/g, "-")}`
+                      ? "bg-blue-50 text-blue-500"
+                      : "hover:bg-gray-100"
+                  )}
                   onClick={onClose}
                 >
                   <span>{category}</span>
@@ -129,7 +164,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href="/account"
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === "/account"
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
               >
                 <User size={20} className="mr-3 text-gray-500" />
@@ -139,7 +179,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href="/wishlist"
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === "/wishlist"
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
               >
                 <Heart size={20} className="mr-3 text-gray-500" />
@@ -149,7 +194,12 @@ export default function MobileMenu({ onClose }: MobileMenuProps) {
             <li>
               <Link
                 href="/cart"
-                className="flex items-center px-2 py-2 rounded hover:bg-gray-100"
+                className={cn(
+                  "flex items-center px-2 py-2 rounded",
+                  pathname === "/cart"
+                    ? "bg-blue-50 text-blue-500"
+                    : "hover:bg-gray-100"
+                )}
                 onClick={onClose}
               >
                 <ShoppingCart size={20} className="mr-3 text-gray-500" />

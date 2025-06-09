@@ -1,10 +1,12 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { useWishlistStore } from "@/stores/wishlistStore";
 import { Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Spinner from "../ui/Spinner";
 import MobileMenu from "./MobileMenu";
@@ -16,6 +18,7 @@ export default function Header() {
   const { getTotalItems } = useCartStore();
   const { getTotalItems: getTotalWishlistItems } = useWishlistStore();
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  const pathname = usePathname();
 
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
@@ -42,7 +45,6 @@ export default function Header() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-            {/* Only show loading state if we're actually trying to fetch the user */}
             {isLoading ? (
               <div className="flex items-center">
                 <span className="animate-pulse">
@@ -52,7 +54,12 @@ export default function Header() {
             ) : (
               <Link
                 href={user ? "/dashboard" : "/auth/login"}
-                className="flex items-center hover:text-blue-500 transition-colors"
+                className={cn(
+                  "flex items-center transition-colors",
+                  pathname === (user ? "/dashboard" : "/auth/login")
+                    ? "text-blue-500 font-semibold"
+                    : "text-gray-700 hover:text-blue-500"
+                )}
               >
                 <User size={20} className="mr-1" />
                 <span>{user ? "Dashboard" : "Login"}</span>
@@ -60,7 +67,12 @@ export default function Header() {
             )}
             <Link
               href={user ? "/wishlist" : "/auth/login"}
-              className="flex items-center hover:text-blue-500 transition-colors relative"
+              className={cn(
+                "flex items-center transition-colors relative",
+                pathname === (user ? "/wishlist" : "/auth/login")
+                  ? "text-blue-500 font-semibold"
+                  : "text-gray-700 hover:text-blue-500"
+              )}
             >
               <Heart size={20} className="mr-1" />
               <span>Wishlist</span>
@@ -70,11 +82,15 @@ export default function Header() {
             </Link>
             <Link
               href={user ? "/cart" : "/auth/login"}
-              className="flex items-center hover:text-blue-500 transition-colors relative"
+              className={cn(
+                "flex items-center transition-colors relative",
+                pathname === (user ? "/cart" : "/auth/login")
+                  ? "text-blue-500 font-semibold"
+                  : "text-gray-700 hover:text-blue-500"
+              )}
             >
               <ShoppingCart size={20} className="mr-1" />
               <span>Cart</span>
-
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                 {getTotalItems()}
               </span>
@@ -82,10 +98,16 @@ export default function Header() {
           </div>
 
           <div className="md:hidden flex items-center">
-            <Link href="/cart" className="mr-4 relative">
+            <Link
+              href="/cart"
+              className={cn(
+                "mr-4 relative",
+                pathname === "/cart" ? "text-blue-500" : "text-gray-700"
+              )}
+            >
               <ShoppingCart size={24} />
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                0
+                {getTotalItems()}
               </span>
             </Link>
             <button onClick={toggleMenu} className="text-gray-700">
@@ -117,7 +139,15 @@ export default function Header() {
                         href={`/category/${category
                           .toLowerCase()
                           .replace(/\s+/g, "-")}`}
-                        className="block px-4 py-2 hover:bg-gray-50 transition-colors"
+                        className={cn(
+                          "block px-4 py-2 transition-colors",
+                          pathname ===
+                            `/category/${category
+                              .toLowerCase()
+                              .replace(/\s+/g, "-")}`
+                            ? "bg-blue-50 text-blue-500 font-semibold"
+                            : "hover:bg-gray-50"
+                        )}
                       >
                         {category}
                       </Link>
@@ -138,7 +168,17 @@ export default function Header() {
                           ? `${process.env.NEXT_PUBLIC_SELLER_URI}/register`
                           : `/${item.toLowerCase().replace(/\s+/g, "-")}`
                       }
-                      className="text-gray-700 hover:text-blue-500 transition-colors"
+                      className={cn(
+                        "text-gray-700 transition-colors",
+                        pathname ===
+                          (item === "Home"
+                            ? "/"
+                            : item === "Become A Seller"
+                            ? `${process.env.NEXT_PUBLIC_SELLER_URI}/register`
+                            : `/${item.toLowerCase().replace(/\s+/g, "-")}`)
+                          ? "text-blue-500 font-semibold"
+                          : "hover:text-blue-500"
+                      )}
                       target={item === "Become A Seller" ? "_blank" : undefined}
                       rel={
                         item === "Become A Seller"
