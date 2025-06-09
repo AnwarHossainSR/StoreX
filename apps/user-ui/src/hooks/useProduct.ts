@@ -4,7 +4,11 @@ import {
   SiteConfig,
   productService,
 } from "@/services/productService";
-import { keepPreviousData, useQuery } from "@tanstack/react-query"; // Updated import for v5
+import {
+  QueryObserverResult,
+  keepPreviousData,
+  useQuery,
+} from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 
 // Define ProductFilters interface
@@ -27,7 +31,7 @@ export interface ProductFilters {
 
 // Define the return type for the useProduct hook
 export interface UseProductReturn {
-  getProducts: () => Promise<void>;
+  getProducts: () => Promise<QueryObserverResult<ProductResponse, Error>>; // Updated type
   products: ProductResponse["data"];
   productsStatus: "pending" | "success" | "error";
   productsError: string | null;
@@ -38,7 +42,7 @@ export interface UseProductReturn {
   topProductsStatus: "pending" | "success" | "error";
   topProductsError: string | null;
   topProductsErrorDetails: Record<string, any> | null;
-  getCategories: () => Promise<void>;
+  getCategories: () => Promise<QueryObserverResult<SiteConfig, Error>>; // Updated type
   categories: SiteConfig["categories"];
   subCategories: SiteConfig["subCategories"];
   categoriesStatus: "pending" | "success" | "error";
@@ -106,7 +110,7 @@ export const useProduct = (): UseProductReturn => {
         maxPrice: filters.maxPrice,
       }),
     retry: 2,
-    placeholderData: keepPreviousData, // Replace keepPreviousData with placeholderData
+    placeholderData: keepPreviousData,
   });
 
   // Fetch categories
@@ -115,7 +119,7 @@ export const useProduct = (): UseProductReturn => {
     queryFn: () => productService.getCategories(),
     retry: 2,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    placeholderData: keepPreviousData, // Replace keepPreviousData with placeholderData
+    placeholderData: keepPreviousData,
   });
 
   // Filter update functions
@@ -188,7 +192,7 @@ export const useProduct = (): UseProductReturn => {
     categoriesErrorDetails:
       (categoriesQuery.error?.cause as BackendErrorResponse | undefined)
         ?.details ?? null,
-    isLoadingCategories: categoriesQuery.isLoading,
+    isLoadingCategories: productsQuery.isLoading,
     currentPage: productsQuery.data?.currentPage ?? page,
     totalPages: productsQuery.data?.totalPages ?? 1,
     totalProducts: productsQuery.data?.total ?? 0,
