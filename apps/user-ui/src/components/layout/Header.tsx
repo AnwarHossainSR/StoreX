@@ -43,7 +43,7 @@ export default function Header() {
               <Search size={20} />
             </button>
           </div>
-
+          {/* pathname === (user ? "/dashboard" : "/auth/login") */}
           <div className="hidden md:flex items-center space-x-4">
             {isLoading ? (
               <div className="flex items-center">
@@ -56,7 +56,8 @@ export default function Header() {
                 href={user ? "/dashboard" : "/auth/login"}
                 className={cn(
                   "flex items-center transition-colors",
-                  pathname === (user ? "/dashboard" : "/auth/login")
+                  pathname.startsWith("/dashboard") ||
+                    pathname === "/auth/login"
                     ? "text-blue-500 font-semibold"
                     : "text-gray-700 hover:text-blue-500"
                 )}
