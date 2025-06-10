@@ -14,6 +14,10 @@ import {
 } from "../utils/auth.helper";
 import { setCookie } from "../utils/cookies/setCookie";
 import { verifyOtpHelper } from "../utils/sendEmail";
+import {
+  addressSchema,
+  handleDefaultAddress,
+} from "../utils/shippingAddress.helper";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
@@ -269,12 +273,11 @@ export const refreshAccessToken = async (
 };
 
 export const getAuthenticatedUser = async (
-  req: Request,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // @ts-ignore
     const user = req.user;
     res.status(200).json({ success: true, user });
   } catch (error: any) {
@@ -297,12 +300,11 @@ export const logoutUser = async (
 };
 
 export const userDetails = async (
-  req: Request,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // @ts-ignore
     const userId = req.user.id;
     const user = await prisma.users.findUnique({
       where: {
@@ -364,12 +366,11 @@ export const chnageUserPassword = async (
 };
 
 export const userShippingAddress = async (
-  req: Request,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // @ts-ignore
     const userId = req.user.id;
     const user = await prisma.users.findUnique({
       where: {
@@ -387,47 +388,121 @@ export const userShippingAddress = async (
 };
 
 export const createShippingAddress = async (
-  req: Request,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // @ts-ignore
     const userId = req.user.id;
-    const { shippingAddress } = req.body;
-    await prisma.users.update({
-      where: {
-        id: userId,
-      },
+    const validatedData = addressSchema.parse(req.body);
+
+    if (validatedData.isDefault) {
+      await handleDefaultAddress(userId);
+    }
+
+    const newAddress = await prisma.shippingAddress.create({
       data: {
-        shippingAddresses: {
-          create: shippingAddress,
-        },
+        userId,
+        ...validatedData,
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+        state: true,
+        postalCode: true,
+        country: true,
+        phone: true,
+        isDefault: true,
       },
     });
-    res.status(200).json({ success: true, message: "Shipping address added" });
-  } catch (error: any) {
+
+    res.status(201).json({
+      success: true,
+      message: "Shipping address created successfully",
+      data: newAddress,
+    });
+  } catch (error) {
     return next(error);
   }
 };
 
 export const updateShippingAddress = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    // Validate ID format (assuming UUID or similar)
+    if (!id || typeof id !== "string") {
+      throw new ValidationError("Invalid address ID");
+    }
+
+    const validatedData = addressSchema.partial().parse(req.body); // Allow partial updates
+    if (Object.keys(validatedData).length === 0) {
+      throw new ValidationError(
+        "At least one field must be provided for update"
+      );
+    }
+
+    // Check if address exists and belongs to the user
+    const existingAddress = await prisma.shippingAddress.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existingAddress) {
+      throw new ValidationError("Shipping address not found or unauthorized");
+    }
+
+    if (validatedData.isDefault) {
+      await handleDefaultAddress(userId, id);
+    }
+
+    const updatedAddress = await prisma.shippingAddress.update({
+      where: { id },
+      data: validatedData,
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+        state: true,
+        postalCode: true,
+        country: true,
+        phone: true,
+        isDefault: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Shipping address updated successfully",
+      data: updatedAddress,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const deleteShippingAddress = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const { id } = req.params;
-    const { shippingAddress } = req.body;
-    await prisma.shippingAddress.update({
+    await prisma.shippingAddress.delete({
       where: {
         id,
       },
-      data: shippingAddress,
     });
     res
       .status(200)
-      .json({ success: true, message: "Shipping address updated" });
+      .json({ success: true, message: "Shipping address deleted" });
   } catch (error: any) {
     return next(error);
   }
@@ -716,14 +791,13 @@ export const createStripeConnectAccount = async (
 };
 
 export const getAuthenticatedSeller = async (
-  req: Request,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // @ts-ignore
-    const user = req.seller;
-    res.status(200).json({ success: true, user });
+    const seller = req.seller;
+    res.status(200).json({ success: true, seller });
   } catch (error: any) {
     return next(error);
   }

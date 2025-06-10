@@ -22,7 +22,7 @@ const CreateShippingAddressModal: React.FC<CreateShippingAddressModalProps> = ({
     address: "",
     city: "",
     state: "",
-    pincode: "",
+    postalCode: "",
     country: "",
     phone: "",
     isDefault: false,
@@ -46,7 +46,7 @@ const CreateShippingAddressModal: React.FC<CreateShippingAddressModalProps> = ({
     if (!formData.address) newErrors.address = "Address is required";
     if (!formData.city) newErrors.city = "City is required";
     if (!formData.state) newErrors.state = "State is required";
-    if (!formData.pincode) newErrors.pincode = "Pincode is required";
+    if (!formData.postalCode) newErrors.postalCode = "Postal Code is required";
     if (!formData.country) newErrors.country = "Country is required";
     if (!formData.phone) newErrors.phone = "Phone is required";
     return newErrors;
@@ -65,7 +65,7 @@ const CreateShippingAddressModal: React.FC<CreateShippingAddressModalProps> = ({
       address: "",
       city: "",
       state: "",
-      pincode: "",
+      postalCode: "",
       country: "",
       phone: "",
       isDefault: false,
@@ -162,18 +162,20 @@ const CreateShippingAddressModal: React.FC<CreateShippingAddressModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-gray-500">
-                  Pincode
+                  Postal Code
                 </label>
                 <input
                   type="text"
-                  name="pincode"
-                  value={formData.pincode}
+                  name="postalCode"
+                  value={formData.postalCode}
                   onChange={handleChange}
                   className="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter pincode"
+                  placeholder="Enter postalCode"
                 />
-                {errors.pincode && (
-                  <p className="text-xs text-red-500 mt-1">{errors.pincode}</p>
+                {errors.postalCode && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.postalCode}
+                  </p>
                 )}
               </div>
               <div>
