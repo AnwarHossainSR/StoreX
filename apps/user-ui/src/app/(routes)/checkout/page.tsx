@@ -1,19 +1,30 @@
 "use client";
 
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCartStore } from "@/stores/cartStore";
 import { ChevronRight, CreditCard, Lock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function CheckoutPage() {
   const { items, getTotalPrice } = useCartStore();
+  const { shippingAddress, user } = useCurrentUser({
+    enabled: true,
+    refetchOnMount: true,
+  });
+
+  const defaultShippingAddress = shippingAddress?.find(
+    (address) => address.isDefault
+  );
+
+  console.log("user", user);
+  console.log("shippingAddress", defaultShippingAddress);
 
   const [formData, setFormData] = useState({
-    email: "",
-    firstName: "",
-    lastName: "",
+    email: user?.email || "",
+    name: "",
     address: "",
     apartment: "",
     city: "",
@@ -26,6 +37,21 @@ export default function CheckoutPage() {
     expiryDate: "",
     cvv: "",
   });
+
+  // Update formData when defaultShippingAddress or user changes
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      email: user?.email || prev.email,
+      name: defaultShippingAddress?.name || prev.name,
+      address: defaultShippingAddress?.address || prev.address,
+      city: defaultShippingAddress?.city || prev.city,
+      country: defaultShippingAddress?.country || prev.country,
+      state: defaultShippingAddress?.state || prev.state,
+      zipCode: defaultShippingAddress?.postalCode || prev.zipCode,
+      phone: defaultShippingAddress?.phone || prev.phone,
+    }));
+  }, [user, defaultShippingAddress]);
 
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -85,8 +111,7 @@ export default function CheckoutPage() {
     // Clear form and coupon after submission
     setFormData({
       email: "",
-      firstName: "",
-      lastName: "",
+      name: "",
       address: "",
       apartment: "",
       city: "",
@@ -173,35 +198,18 @@ export default function CheckoutPage() {
                   Shipping Address
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="md:col-span-2">
                     <label
-                      htmlFor="firstName"
+                      htmlFor="name"
                       className="block text-sm font-medium text-gray-700 mb-1"
                     >
-                      First name
+                      Name
                     </label>
                     <input
                       type="text"
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="lastName"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Last name
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
+                      id="name"
+                      name="name"
+                      value={formData.name}
                       onChange={handleChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
