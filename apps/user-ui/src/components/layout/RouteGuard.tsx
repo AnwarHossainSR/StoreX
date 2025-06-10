@@ -20,10 +20,10 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { isLoading, isAuthenticated, isClient } = useCurrentUser();
+  const { isLoading, isAuthenticated, isFetchingUser } = useCurrentUser();
 
   useEffect(() => {
-    if (!isClient || isLoading) return;
+    if (isFetchingUser || isLoading) return;
 
     if (requireAuth && !isAuthenticated) {
       const redirectUrl = redirectTo || "/auth/login";
@@ -33,7 +33,7 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
       router.push(loginUrl);
     }
   }, [
-    isClient,
+    isFetchingUser,
     isLoading,
     isAuthenticated,
     requireAuth,
@@ -43,7 +43,7 @@ const RouteGuard: React.FC<RouteGuardProps> = ({
   ]);
 
   // Show loading while checking authentication
-  if (!isClient || isLoading) {
+  if (isFetchingUser || isLoading) {
     return fallback || <AuthLoading />;
   }
 
@@ -84,18 +84,18 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const router = useRouter();
-  const { isAuthenticated, isLoading, isClient } = useCurrentUser();
+  const { isAuthenticated, isLoading, isFetchingUser } = useCurrentUser();
 
   useEffect(() => {
-    if (isClient && !isLoading && isAuthenticated) {
+    if (!isFetchingUser && !isLoading && isAuthenticated) {
       const redirectTo =
         new URLSearchParams(window.location.search).get("redirect") ||
         "/dashboard";
       router.push(redirectTo);
     }
-  }, [isClient, isLoading, isAuthenticated, router]);
+  }, [isFetchingUser, isLoading, isAuthenticated, router]);
 
-  if (!isClient || isLoading) {
+  if (!isFetchingUser || isLoading) {
     return <AuthLoading />;
   }
 

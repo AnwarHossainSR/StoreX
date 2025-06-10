@@ -1,31 +1,83 @@
 // hooks/useCurrentUser.ts
-import { authService, BackendErrorResponse } from "@/services/authService";
-import { useQuery } from "@tanstack/react-query";
+import {
+  authService,
+  BackendErrorResponse,
+  ShippingAddress,
+  User,
+  UserWithAddresses,
+} from "@/services/authService";
+import {
+  keepPreviousData,
+  QueryObserverResult,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
-export const useCurrentUser = (options?: {
+// Assuming this is the structure of the API response
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  user?: T;
+  [key: string]: any;
+}
+
+// Define AuthOptions interface
+export interface AuthOptions {
   enabled?: boolean;
   refetchOnMount?: boolean;
-}) => {
+}
+
+// Define the return type for the useCurrentUser hook
+export interface UseCurrentUserReturn {
+  getCurrentUser: () => Promise<QueryObserverResult<ApiResponse<User>, Error>>;
+  user: User | null;
+  userStatus: "pending" | "success" | "error";
+  userError: string | null;
+  userErrorDetails: Record<string, any> | null;
+  isLoading: boolean;
+  isFetchingUser: boolean;
+  isAuthenticated: boolean;
+  isPublicPath: boolean;
+  isProtectedPath: boolean;
+  updateOptions: (newOptions: Partial<AuthOptions>) => void;
+  clearOptions: () => void;
+  getShippingAddress: () => Promise<
+    QueryObserverResult<ApiResponse<UserWithAddresses>, Error>
+  >;
+  shippingAddress: ShippingAddress[] | null;
+  shippingAddressStatus: "pending" | "success" | "error";
+  shippingAddressError: string | null;
+  shippingAddressErrorDetails: Record<string, any> | null;
+  isLoadingShippingAddress: boolean;
+  isFetchingShippingAddress: boolean;
+  createShippingAddress: (
+    data: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">
+  ) => Promise<void>;
+  updateShippingAddress: (
+    id: string,
+    data: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">
+  ) => Promise<void>;
+  deleteShippingAddress: (id: string) => Promise<void>;
+}
+
+export const useCurrentUser = (
+  initialOptions?: AuthOptions
+): UseCurrentUserReturn => {
   const pathname = usePathname();
-  const [isClient, setIsClient] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  // State for auth options
+  const [options, setOptions] = useState<AuthOptions>({
+    enabled: initialOptions?.enabled ?? true,
+    refetchOnMount: initialOptions?.refetchOnMount ?? true,
+  });
 
-  // Define public paths where we shouldn't try to fetch the user by default
-  const publicPaths = [
-    "/auth/login",
-    "/auth/register",
-    // "/auth/forgot-password",
-    // "/auth/reset-password",
-    // "/products",
-    // "/cart",
-    // "/checkout",
-    // "/wishlist",
-  ];
+  // Define public paths
+  const publicPaths = ["/auth/login", "/auth/register"];
 
   const isPublicPath = publicPaths.some((path) => {
     if (path === "/products" && pathname.startsWith("/products/")) {
@@ -36,60 +88,128 @@ export const useCurrentUser = (options?: {
 
   const isProtectedPath = pathname.startsWith("/dashboard");
 
-  // Always enable for protected paths, optionally for public paths
-  const shouldFetch =
-    options?.enabled !== undefined
-      ? options.enabled
-      : isProtectedPath || !isPublicPath;
-
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ["currentUser"],
+  // Fetch current user
+  const userQuery = useQuery({
+    queryKey: ["currentUser", options],
     queryFn: () => authService.getCurrentUser(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
     retry: (failureCount, error) => {
-      // Don't retry on 401/403 errors
       const status = (error as any)?.response?.status;
       if (status === 401 || status === 403) {
         return false;
       }
       return failureCount < 2;
     },
-    enabled: isClient && shouldFetch,
-    refetchOnMount: options?.refetchOnMount ?? true,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    placeholderData: keepPreviousData,
+    enabled: options.enabled,
+    refetchOnMount: options.refetchOnMount,
     refetchOnWindowFocus: false,
   });
 
-  const user = data?.user;
-  const errorMessage = isError
-    ? (error?.cause as BackendErrorResponse | undefined)?.message ||
-      error?.message ||
-      "Failed to fetch user"
-    : null;
-  const errorDetails = isError
-    ? (error?.cause as BackendErrorResponse | undefined)?.details
-    : null;
+  // Fetch shipping address
+  const userShippingAddress = useQuery({
+    queryKey: ["userShippingAddress"],
+    queryFn: () => authService.getUserShippingAddress(),
+  });
+
+  // Create shipping address mutation
+  const createShippingAddressMutation = useMutation({
+    mutationFn: (
+      data: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">
+    ) => authService.createShippingAddress(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userShippingAddress"] });
+      toast.success("Shipping address created successfully");
+    },
+    onError: (error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      const message =
+        errorData?.message || error.message || "An error occurred";
+      toast.error(message);
+    },
+  });
+
+  // Update shipping address mutation
+  const updateShippingAddressMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">;
+    }) => authService.updateShippingAddress(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userShippingAddress"] });
+      toast.success("Shipping address updated successfully");
+    },
+    onError: (error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      const message =
+        errorData?.message || error.message || "An error occurred";
+      toast.error(message);
+    },
+  });
+
+  // Delete shipping address mutation
+  const deleteShippingAddressMutation = useMutation({
+    mutationFn: (id: string) => authService.deleteShippingAddress(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userShippingAddress"] });
+    },
+  });
+
+  // Option update functions
+  const updateOptions = useCallback((newOptions: Partial<AuthOptions>) => {
+    setOptions((prev) => ({ ...prev, ...newOptions }));
+  }, []);
+
+  const clearOptions = useCallback(() => {
+    setOptions({ enabled: true, refetchOnMount: true });
+  }, []);
 
   return {
-    user,
-    isLoading: isLoading || isFetching,
-    isError,
-    error: errorMessage,
-    errorDetails,
-    refetch,
-    isAuthenticated: !!user,
-    isClient,
+    getCurrentUser: userQuery.refetch,
+    user: userQuery.data?.user ?? null,
+    userStatus: userQuery.status,
+    userError: userQuery.error?.message ?? null,
+    userErrorDetails:
+      (userQuery.error?.cause as BackendErrorResponse | undefined)?.details ??
+      null,
+    isLoading: userQuery.isLoading,
+    isFetchingUser: userQuery.isFetching,
+    isAuthenticated: !!userQuery.data?.user,
     isPublicPath,
     isProtectedPath,
+    updateOptions,
+    clearOptions,
+    getShippingAddress: userShippingAddress.refetch,
+    shippingAddress: userShippingAddress.data?.user?.shippingAddresses ?? [],
+    shippingAddressStatus: userShippingAddress.status,
+    shippingAddressError: userShippingAddress.error?.message ?? null,
+    shippingAddressErrorDetails:
+      (userShippingAddress.error?.cause as BackendErrorResponse | undefined)
+        ?.details ?? null,
+    isLoadingShippingAddress: userShippingAddress.isLoading,
+    isFetchingShippingAddress: userShippingAddress.isFetching,
+    createShippingAddress: async (data) => {
+      await createShippingAddressMutation.mutateAsync(data);
+    },
+    updateShippingAddress: async (id, data) => {
+      await updateShippingAddressMutation.mutateAsync({ id, data });
+    },
+    deleteShippingAddress: async (id) => {
+      await deleteShippingAddressMutation.mutateAsync(id);
+    },
   };
 };
 
-// Hook specifically for protected routes
+// Hook for protected routes
 export const useAuthenticatedUser = () => {
   return useCurrentUser({ enabled: true, refetchOnMount: true });
 };
 
-// Hook for optional authentication (public routes that can show user info if logged in)
+// Hook for optional authentication
 export const useOptionalAuth = () => {
   return useCurrentUser({ enabled: true, refetchOnMount: false });
 };

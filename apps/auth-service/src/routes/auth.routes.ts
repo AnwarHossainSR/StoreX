@@ -2,7 +2,9 @@ import { withAuth } from "@packages/middleware/isAuthenticated";
 import express from "express";
 import {
   cerateShop,
+  chnageUserPassword,
   createSellerAccount,
+  createShippingAddress,
   createStripeConnectAccount,
   getAuthenticatedSeller,
   getAuthenticatedUser,
@@ -12,6 +14,7 @@ import {
   refreshAccessToken,
   ResetUserForgotPassword,
   sellerLogin,
+  updateShippingAddress,
   userDetails,
   userForgotPassword,
   userRegistration,
@@ -32,6 +35,10 @@ router.post("/verify-forgot-password-user", verifyForgotPassword);
 router.post("/refresh-token", refreshAccessToken);
 router.get("/logged-in-user", withAuth("user"), getAuthenticatedUser);
 router.get("/user-details", withAuth("user"), userDetails);
+router.put("/change-password-user", withAuth("user"), chnageUserPassword);
+router.get("/shipping-address-user", withAuth("user"), getAuthenticatedUser);
+router.get("/shipping-address", withAuth("user"), createShippingAddress);
+router.put("/shipping-address/:id", withAuth("user"), updateShippingAddress);
 
 // seller
 router.post("/register-seller", createSellerAccount);

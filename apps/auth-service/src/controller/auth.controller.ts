@@ -122,7 +122,7 @@ export const loginUser = async (
       },
       process.env.JWT_SECRET_KEY!,
       {
-        expiresIn: "1m",
+        expiresIn: "1h",
       }
     );
 
@@ -296,15 +296,138 @@ export const logoutUser = async (
   }
 };
 
-export const logoutSeller = async (
+export const userDetails = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    res.clearCookie("refresh_seller_token");
-    res.clearCookie("access_seller_token");
-    res.status(200).json({ message: "User logged out successfully" });
+    // @ts-ignore
+    const userId = req.user.id;
+    const user = await prisma.users.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        avatar: true,
+      },
+    });
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const chnageUserPassword = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    const { id } = req.user;
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      throw next(new ValidationError("Missing required fields"));
+    }
+    const user = await prisma.users.findUnique({
+      where: {
+        id,
+      },
+    });
+    if (!user) {
+      throw next(new ValidationError("User not found"));
+    }
+    const isPasswordMatch = await bcrypt.compare(oldPassword, user.password!);
+    if (!isPasswordMatch) {
+      throw next(new ValidationError("Old password is incorrect"));
+    }
+    if (newPassword !== confirmPassword) {
+      throw next(
+        new ValidationError("New password and confirm password do not match")
+      );
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.users.update({
+      where: {
+        id,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const userShippingAddress = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const userId = req.user.id;
+    const user = await prisma.users.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        shippingAddresses: true,
+      },
+    });
+    res.status(200).json({ success: true, user });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const createShippingAddress = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // @ts-ignore
+    const userId = req.user.id;
+    const { shippingAddress } = req.body;
+    await prisma.users.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        shippingAddresses: {
+          create: shippingAddress,
+        },
+      },
+    });
+    res.status(200).json({ success: true, message: "Shipping address added" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const updateShippingAddress = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { shippingAddress } = req.body;
+    await prisma.shippingAddress.update({
+      where: {
+        id,
+      },
+      data: shippingAddress,
+    });
+    res
+      .status(200)
+      .json({ success: true, message: "Shipping address updated" });
   } catch (error: any) {
     return next(error);
   }
@@ -606,20 +729,15 @@ export const getAuthenticatedSeller = async (
   }
 };
 
-export const userDetails = async (
+export const logoutSeller = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // @ts-ignore
-    const userId = req.user.id;
-    const user = await prisma.users.findUnique({
-      where: {
-        id: userId,
-      },
-    });
-    res.status(200).json({ success: true, user });
+    res.clearCookie("refresh_seller_token");
+    res.clearCookie("access_seller_token");
+    res.status(200).json({ message: "User logged out successfully" });
   } catch (error: any) {
     return next(error);
   }
