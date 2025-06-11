@@ -50,6 +50,7 @@ type Service = {
 const services: Service[] = [
   { name: "auth-service", command: "serve" },
   { name: "@source/product-service", command: "serve" },
+  { name: "@source/order-service", command: "serve" },
   { name: "@./api-gateway", command: "serve" },
   { name: "@source/user-ui", command: "dev" },
   { name: "@source/seller-ui", command: "dev" },
@@ -72,14 +73,7 @@ function runNxTarget(
       reject(err);
     });
 
-    proc.on("close", (code) => {
-      if (code === 0) {
-        console.log(`✅ ${project} started.`);
-        resolve();
-      } else {
-        reject(new Error(`❌ ${project} failed with code ${code}`));
-      }
-    });
+    resolve();
   });
 }
 
@@ -116,7 +110,7 @@ async function resetNxCache(): Promise<void> {
       console.log(`🔧 Starting ${service.name} (${service.command})...`);
 
       const env: Record<string, string> =
-        service.name === "@source/seller-ui" ? { PORT: "3001" } : {};
+        service.name === "@source/seller-ui" ? { PORT: "6003" } : {};
 
       await runNxTarget(service.name, service.command, env);
       await new Promise((res) => setTimeout(res, 1000)); // Delay for stability
