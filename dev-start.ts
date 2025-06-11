@@ -50,6 +50,7 @@ type Service = {
 const services: Service[] = [
   { name: "auth-service", command: "serve" },
   { name: "@source/product-service", command: "serve" },
+  { name: "@source/order-service", command: "serve" },
   { name: "@./api-gateway", command: "serve" },
   { name: "@source/user-ui", command: "dev" },
   { name: "@source/seller-ui", command: "dev" },
@@ -76,15 +77,40 @@ function runNxTarget(
   });
 }
 
+async function resetNxCache(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log("🧹 Resetting Nx cache...");
+    const proc = spawn("npx", ["nx", "reset", "cache"], {
+      stdio: "inherit",
+      shell: true,
+    });
+
+    proc.on("error", (err) => {
+      console.log(`❌ Failed to reset Nx cache.`, err);
+      reject(err);
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        console.log("✅ Nx cache reset complete.");
+        resolve();
+      } else {
+        reject(new Error(`❌ Nx cache reset failed with code ${code}`));
+      }
+    });
+  });
+}
+
 (async () => {
   try {
     await ensureKafkaRunning(); // 👈 First check/start Docker
+    await resetNxCache(); // 👈 Then reset Nx cache
 
     for (const service of services) {
       console.log(`🔧 Starting ${service.name} (${service.command})...`);
 
       const env: Record<string, string> =
-        service.name === "@source/seller-ui" ? { PORT: "3001" } : {};
+        service.name === "@source/seller-ui" ? { PORT: "6003" } : {};
 
       await runNxTarget(service.name, service.command, env);
       await new Promise((res) => setTimeout(res, 1000)); // Delay for stability

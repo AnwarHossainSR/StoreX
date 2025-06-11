@@ -38,7 +38,8 @@ app.use(
 
 // Route-specific proxying
 app.use("/api/auth", proxy("http://localhost:6001/api"));
-app.use("/api/products", proxy("http://localhost:6002/api")); // Proxy product requests to Product Service
+app.use("/api/products", proxy("http://localhost:6002/api"));
+app.use("/api/orders", proxy("http://localhost:6004/api"));
 app.use("/api/auth/api-docs", proxy("http://localhost:6001/api-docs"));
 app.use("/api/auth/docs-json", proxy("http://localhost:6001/docs-json"));
 app.use("/api/products/api-docs", proxy("http://localhost:6002/api-docs"));
