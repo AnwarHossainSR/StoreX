@@ -6,6 +6,7 @@ import {
   createSellerAccount,
   createShippingAddress,
   createStripeConnectAccount,
+  deleteShippingAddress,
   getAuthenticatedSeller,
   getAuthenticatedUser,
   loginUser,
@@ -18,6 +19,7 @@ import {
   userDetails,
   userForgotPassword,
   userRegistration,
+  userShippingAddress,
   verifyForgotPassword,
   VerifySellerOtp,
   verifyUserOtp,
@@ -36,9 +38,10 @@ router.post("/refresh-token", refreshAccessToken);
 router.get("/logged-in-user", withAuth("user"), getAuthenticatedUser);
 router.get("/user-details", withAuth("user"), userDetails);
 router.put("/change-password-user", withAuth("user"), chnageUserPassword);
-router.get("/shipping-address-user", withAuth("user"), getAuthenticatedUser);
-router.get("/shipping-address", withAuth("user"), createShippingAddress);
+router.get("/shipping-address-user", withAuth("user"), userShippingAddress);
+router.post("/shipping-address", withAuth("user"), createShippingAddress);
 router.put("/shipping-address/:id", withAuth("user"), updateShippingAddress);
+router.delete("/shipping-address/:id", withAuth("user"), deleteShippingAddress);
 
 // seller
 router.post("/register-seller", createSellerAccount);

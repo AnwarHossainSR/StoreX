@@ -29,11 +29,11 @@ export interface ShippingAddress {
   city: string;
   state: string;
   country: string;
-  pincode: string;
+  postalCode: string;
   phone: string;
   createdAt: string;
   updatedAt: string;
-  isDefault?: boolean;
+  isDefault: boolean;
 }
 
 export interface BackendErrorResponse {
@@ -252,7 +252,6 @@ export const authService = {
       const response = await apiClient.get<ApiResponse<UserWithAddresses>>(
         `${API_BASE_URL}/shipping-address-user`
       );
-      console.log(response.data);
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;

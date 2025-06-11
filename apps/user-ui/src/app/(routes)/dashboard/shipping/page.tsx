@@ -21,11 +21,11 @@ export default function ShippingAddressPage() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedAddress, setSelectedAddress] =
     useState<ShippingAddress | null>(null);
-  console.log("addresses", addresses);
   const handleCreateAddress = async (
     newAddress: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">
   ) => {
     try {
+      console.log("Creating address:", newAddress);
       await createShippingAddress(newAddress);
       setIsCreateModalOpen(false);
     } catch (error) {
@@ -41,8 +41,9 @@ export default function ShippingAddressPage() {
         city: updatedAddress.city,
         state: updatedAddress.state,
         country: updatedAddress.country,
-        pincode: updatedAddress.pincode,
+        postalCode: updatedAddress.postalCode,
         phone: updatedAddress.phone,
+        isDefault: updatedAddress.isDefault,
       });
       setIsUpdateModalOpen(false);
       setSelectedAddress(null);
@@ -90,6 +91,11 @@ export default function ShippingAddressPage() {
               key={address.id}
               className="bg-white rounded-lg shadow-sm p-6 border relative"
             >
+              {address.isDefault && (
+                <span className="absolute top-4 right-4 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                  Default
+                </span>
+              )}
               <div className="flex items-start mb-4">
                 <div className="bg-blue-100 p-2 rounded-full mr-3">
                   <MapPin size={20} className="text-blue-500" />
@@ -101,7 +107,7 @@ export default function ShippingAddressPage() {
 
               <div className="text-gray-600 space-y-1 mb-6">
                 <p>{address.address}</p>
-                <p>{`${address.city}, ${address.state} ${address.pincode}`}</p>
+                <p>{`${address.city}, ${address.state} ${address.postalCode}`}</p>
                 <p>{address.country}</p>
                 <p className="mt-2">{address.phone}</p>
               </div>
