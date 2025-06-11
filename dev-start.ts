@@ -72,38 +72,13 @@ function runNxTarget(
       reject(err);
     });
 
-    proc.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`❌ ${project} exited with code ${code}`));
-    });
-  });
-}
-
-function runNpmCache(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    console.log("🧹 Running npm run cache...");
-    const proc = spawn("npm", ["run", "cache"], {
-      stdio: "inherit",
-      shell: true,
-    });
-
-    proc.on("close", (code) => {
-      if (code === 0) {
-        console.log("✅ npm run cache completed.");
-        resolve();
-      } else {
-        reject(new Error("❌ npm run cache failed."));
-      }
-    });
-
-    proc.on("error", (err) => reject(err));
+    resolve();
   });
 }
 
 (async () => {
   try {
-    await runNpmCache(); // 👈 Run this FIRST
-    await ensureKafkaRunning(); // 👈 Then check/start Docker
+    await ensureKafkaRunning(); // 👈 First check/start Docker
 
     for (const service of services) {
       console.log(`🔧 Starting ${service.name} (${service.command})...`);
