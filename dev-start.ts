@@ -72,13 +72,45 @@ function runNxTarget(
       reject(err);
     });
 
-    resolve();
+    proc.on("close", (code) => {
+      if (code === 0) {
+        console.log(`✅ ${project} started.`);
+        resolve();
+      } else {
+        reject(new Error(`❌ ${project} failed with code ${code}`));
+      }
+    });
+  });
+}
+
+async function resetNxCache(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log("🧹 Resetting Nx cache...");
+    const proc = spawn("npx", ["nx", "reset", "cache"], {
+      stdio: "inherit",
+      shell: true,
+    });
+
+    proc.on("error", (err) => {
+      console.log(`❌ Failed to reset Nx cache.`, err);
+      reject(err);
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        console.log("✅ Nx cache reset complete.");
+        resolve();
+      } else {
+        reject(new Error(`❌ Nx cache reset failed with code ${code}`));
+      }
+    });
   });
 }
 
 (async () => {
   try {
     await ensureKafkaRunning(); // 👈 First check/start Docker
+    await resetNxCache(); // 👈 Then reset Nx cache
 
     for (const service of services) {
       console.log(`🔧 Starting ${service.name} (${service.command})...`);
