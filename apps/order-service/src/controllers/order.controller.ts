@@ -1,9 +1,9 @@
 import prisma from "@packages/libs/prisma";
 import redis from "@packages/libs/redis";
+import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { NextFunction, Response } from "express";
 import Stripe from "stripe";
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
 });
@@ -68,7 +68,7 @@ export const createPaymentSession = async (
           shopId: item.shopId,
           selectedOptions: item.selectedOptions || {},
         }))
-        .sort((a, b) => a.id.localCompare(b.id))
+        .sort((a, b) => a.id.localeCompare(b.id)) // Fixed typo: localCompare -> localeCompare
     );
 
     const keys = await redis.keys("payment-session:*");
@@ -87,7 +87,7 @@ export const createPaymentSession = async (
                 shopId: item.shopId,
                 selectedOptions: item.selectedOptions || {},
               }))
-              .sort((a: any, b: any) => a.id.localCompare(b.id))
+              .sort((a: any, b: any) => a.id.localeCompare(b.id))
           );
 
           if (existingCart === normalizedCart) {
@@ -129,8 +129,47 @@ export const createPaymentSession = async (
       0
     );
 
-    // create session
+    // Create pending orders in a transaction to ensure inventory and order consistency
     const sessionId = randomUUID();
+    const pendingOrders = await prisma.$transaction(async (tx) => {
+      const orders = await Promise.all(
+        uniqueShopIds.map(async (shopId) => {
+          const shopCart = cart.filter((item: any) => item.shopId === shopId);
+          const orderItems = shopCart.map((item: any) => ({
+            productId: item.id,
+            quantity: item.quantity,
+            price: item.sale_price,
+            selectedOptions: item.selectedOptions,
+          }));
+
+          // Reserve inventory
+          await Promise.all(
+            shopCart.map((item: any) =>
+              tx.product.update({
+                where: { id: item.id },
+                data: { stock: { decrement: item.quantity } },
+              })
+            )
+          );
+
+          return tx.order.create({
+            data: {
+              userId,
+              shopId,
+              total: totalAmount, // Will be recalculated in createOrder
+              status: "Pending",
+              shippingAddressId: selectedAddressId || null,
+              couponCode: coupon?.code || null,
+              discountAmount: coupon?.discountAmount || 0,
+              items: {
+                create: orderItems,
+              },
+            },
+          });
+        })
+      );
+      return orders;
+    });
 
     const sessionData = {
       userId,
@@ -139,11 +178,12 @@ export const createPaymentSession = async (
       totalAmount,
       shippingAddressId: selectedAddressId,
       coupon: coupon || null,
+      orderIds: pendingOrders.map((order) => order.id),
     };
 
     await redis.setex(
       `payment-session:${sessionId}`,
-      600,
+      3600, // Increased to 1 hour to reduce expiry risk
       JSON.stringify(sessionData)
     );
 
@@ -175,13 +215,17 @@ export const verifyPaymentSession = async (
     }
 
     const session = JSON.parse(sessionData);
-    return res.status(200).json({ success: true, session });
+    const orders = await prisma.order.findMany({
+      where: { id: { in: session.orderIds }, status: "Pending" },
+    });
+
+    return res.status(200).json({ success: true, session, orders });
   } catch (error) {
     return next(error);
   }
 };
 
-// create order
+// create order (update existing pending order)
 export const createOrder = async (
   req: any,
   res: Response,
@@ -211,7 +255,7 @@ export const createOrder = async (
     if (event.type === "payment_intent.succeeded") {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       const sessionId = paymentIntent.metadata.sessionId;
-      const userId = paymentIntent.metadata.userId;
+      // const userId = paymentIntent.metadata.userId;
 
       const sessionKey = `payment-session:${sessionId}`;
       const sessionData = await redis.get(sessionKey);
@@ -223,12 +267,8 @@ export const createOrder = async (
           .send("No session found, skipping order creation");
       }
 
-      const { cart, totalAmount, shippingAddressId, coupon } =
+      const { cart, shippingAddressId, coupon, orderIds } =
         JSON.parse(sessionData);
-
-      const user = await prisma.users.findUnique({ where: { id: userId } });
-      const name = user?.name;
-      const email = user?.email;
 
       const shopGrouped = cart.reduce((acc: any, item: any) => {
         if (!acc[item.shopId]) acc[item.shopId] = [];
@@ -236,54 +276,74 @@ export const createOrder = async (
         return acc;
       }, {});
 
-      for (const shopId in shopGrouped) {
-        const orderItems = shopGrouped[shopId];
-        let orderTotal = orderItems.reduce(
-          (sum: number, p: any) => sum + p.quantity * p.sale_price,
-          0
-        );
+      await prisma.$transaction(async (tx) => {
+        for (const shopId in shopGrouped) {
+          const orderId = orderIds.find(async (id: string) => {
+            const order = (await tx.order.findUnique({
+              where: { id },
+              include: { shop: true, items: true },
+            })) as Prisma.OrderGetPayload<{
+              include: { shop: true; items: true };
+            }> | null;
+            return order?.shopId === shopId;
+          });
+          if (!orderId) continue;
 
-        // Apply discount if applicable
-        if (
-          coupon &&
-          coupon.discountedProductId &&
-          orderItems.some((item: any) => item.id === coupon.discountedProductId)
-        ) {
-          const discountedItem = orderItems.find(
-            (item: any) => item.id === coupon.discountedProductId
+          const orderItems = shopGrouped[shopId];
+          let orderTotal = orderItems.reduce(
+            (sum: number, p: any) => sum + p.quantity * p.sale_price,
+            0
           );
-          if (discountedItem) {
-            const discount =
-              coupon.discountPercent > 0
-                ? (discountedItem.sale_price *
-                    discountedItem.quantity *
-                    coupon.discountPercent) /
-                  100
-                : coupon.discountAmount;
-            orderTotal -= discount;
-          }
-        }
 
-        await prisma.order.create({
-          data: {
-            userId,
-            shopId,
-            total: orderTotal,
-            status: "Paid",
-            shippingAddressId: shippingAddressId || null,
-            couponCode: coupon?.code || null,
-            discountAmount: coupon?.discountAmount || 0,
-            items: {
-              create: orderItems.map((item: any) => ({
-                productId: item.id,
-                quantity: item.quantity,
-                price: item.sale_price,
-                selectedOptions: item.selectedOptions,
-              })),
+          // Apply discount if applicable
+          if (
+            coupon &&
+            coupon.discountedProductId &&
+            orderItems.some(
+              (item: any) => item.id === coupon.discountedProductId
+            )
+          ) {
+            const discountedItem = orderItems.find(
+              (item: any) => item.id === coupon.discountedProductId
+            );
+            if (discountedItem) {
+              const discount =
+                coupon.discountPercent > 0
+                  ? (discountedItem.sale_price *
+                      discountedItem.quantity *
+                      coupon.discountPercent) /
+                    100
+                  : coupon.discountAmount;
+              orderTotal -= discount;
+            }
+          }
+
+          // Update order and decrease product stock
+          await tx.order.update({
+            where: { id: orderId },
+            data: {
+              total: orderTotal,
+              status: "Paid",
+              shippingAddressId: shippingAddressId || null,
+              couponCode: coupon?.code || null,
+              discountAmount: coupon?.discountAmount || 0,
             },
-          },
-        });
-      }
+          });
+
+          // Decrease product stock for each item in the order
+          await Promise.all(
+            orderItems.map((item: any) =>
+              tx.product.update({
+                where: { id: item.id },
+                data: { stock: { decrement: item.quantity } },
+              })
+            )
+          );
+        }
+      });
+
+      // Cleanup Redis session
+      await redis.del(sessionKey);
     }
   } catch (error) {
     return next(error);
