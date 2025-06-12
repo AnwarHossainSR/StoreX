@@ -27,6 +27,7 @@ export interface PaymentIntentResponse {
 
 export interface VerifySessionResponse {
   success: boolean;
+  message?: string;
   session: {
     userId: string;
     cart: CartItem[];
@@ -40,7 +41,7 @@ export interface VerifySessionResponse {
     shippingAddressId: string;
     coupon: Coupon | null;
     orderIds: string[];
-    createdAt: number;
+    // createdAt: number;
   };
   orders: {
     id: string;

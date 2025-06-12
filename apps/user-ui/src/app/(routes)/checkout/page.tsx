@@ -142,6 +142,7 @@ export default function CheckoutPage() {
               couponCode ? { code: couponCode } : undefined
             );
             console.log("Created session in handleSubmit:", activeSessionId);
+            setCurrentSessionId(activeSessionId);
           } catch (sessionError: any) {
             throw new Error(
               `Failed to create payment session: ${sessionError.message}`
@@ -153,9 +154,7 @@ export default function CheckoutPage() {
           throw new Error("No session ID returned after creation");
         }
 
-        setCurrentSessionId(activeSessionId);
-
-        const sessionData = await verifySession();
+        const sessionData = await verifySession(activeSessionId);
         if (!sessionData?.success) {
           throw new Error("Session verification failed");
         }

@@ -22,7 +22,7 @@ export interface UseOrderReturn {
     sellerStripeAccountId: string,
     amount: number
   ) => Promise<any>;
-  verifySession: () => Promise<VerifySessionResponse | null>;
+  verifySession: (sessionId: string) => Promise<VerifySessionResponse | null>;
   placeOrder: () => void;
   formData: {
     email: string;
@@ -151,9 +151,12 @@ export const useOrder = (): UseOrderReturn => {
     retry: 1,
   });
 
-  const verifySession =
-    useCallback(async (): Promise<VerifySessionResponse | null> => {
-      if (!sessionId) {
+  const verifySession = useCallback(
+    async (
+      providedSessionId?: string
+    ): Promise<VerifySessionResponse | null> => {
+      const currentSessionId = providedSessionId || sessionId;
+      if (!currentSessionId) {
         throw new Error("No session ID available");
       }
 
@@ -164,7 +167,9 @@ export const useOrder = (): UseOrderReturn => {
         console.error("Session verification failed:", error);
         throw error;
       }
-    }, [sessionId, verifySessionRefetch]);
+    },
+    [sessionId, verifySessionRefetch]
+  );
 
   const placeOrder = useCallback(() => {
     toast.success("Order placed successfully! Confirmation will be sent soon.");
