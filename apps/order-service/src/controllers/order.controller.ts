@@ -1,14 +1,47 @@
 import prisma from "@packages/libs/prisma";
 import redis from "@packages/libs/redis";
 import { randomUUID } from "crypto";
-import { NextFunction, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
 });
 
-// create payment intent
+interface CartItem {
+  id: string;
+  quantity: number;
+  sale_price: number;
+  shopId: string;
+  selectedOptions?: Record<string, string>;
+}
+
+interface Coupon {
+  code: string;
+  discountPercent?: number;
+  discountAmount?: number;
+  discountedProductId?: string;
+}
+
+interface SellerData {
+  shopId: string;
+  sellerId: string;
+  stripeAccountId: string;
+}
+
+interface SessionData {
+  userId: string;
+  cart: CartItem[];
+  sellers: SellerData[];
+  shopTotals: Record<string, number>;
+  totalAmount: number;
+  shippingAddressId: string;
+  coupon: Coupon | null;
+  orderIds: string[];
+  createdAt: number;
+}
+
+// Create payment intent
 export const createPaymentIntent = async (
   req: any,
   res: Response,
@@ -16,16 +49,16 @@ export const createPaymentIntent = async (
 ) => {
   try {
     const { amount, sellerStripeAccountId, sessionId } = req.body;
+    const userId = req.user?.id;
 
-    if (!amount || !sellerStripeAccountId || !sessionId) {
+    if (!amount || !sellerStripeAccountId || !sessionId || !userId) {
       return res.status(400).json({
         success: false,
         message:
-          "Missing required fields: amount, sellerStripeAccountId, sessionId",
+          "Missing required fields: amount, sellerStripeAccountId, sessionId, or userId",
       });
     }
 
-    // Verify session exists
     const sessionData = await redis.get(`payment-session:${sessionId}`);
     if (!sessionData) {
       return res.status(404).json({
@@ -34,11 +67,16 @@ export const createPaymentIntent = async (
       });
     }
 
-    const session = JSON.parse(sessionData);
+    const session: SessionData = JSON.parse(sessionData);
+    if (session.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access to session",
+      });
+    }
 
-    // Verify the seller exists in the session
     const seller = session.sellers.find(
-      (s: any) => s.stripeAccountId === sellerStripeAccountId
+      (s) => s.stripeAccountId === sellerStripeAccountId
     );
     if (!seller) {
       return res.status(400).json({
@@ -47,11 +85,9 @@ export const createPaymentIntent = async (
       });
     }
 
-    // Convert amount to cents (amount is received in dollars)
     const amountInCents = Math.round(amount * 100);
-    const platformFee = Math.round(amountInCents * 0.05); // 5% platform fee
+    const platformFee = Math.round(amountInCents * 0.05);
 
-    // Validate minimum amount (Stripe requires at least $0.50)
     if (amountInCents < 50) {
       return res.status(400).json({
         success: false,
@@ -69,7 +105,7 @@ export const createPaymentIntent = async (
       },
       metadata: {
         sessionId,
-        userId: req.user.id,
+        userId,
         sellerStripeAccountId,
         shopId: seller.shopId,
         originalAmount: amount.toString(),
@@ -78,7 +114,7 @@ export const createPaymentIntent = async (
     });
 
     console.log(
-      `Payment intent created: ${paymentIntent.id} for seller: ${seller.shopId}`
+      `Payment intent created: ${paymentIntent.id} for shop: ${seller.shopId}`
     );
 
     return res.status(200).json({
@@ -87,21 +123,18 @@ export const createPaymentIntent = async (
       paymentIntentId: paymentIntent.id,
     });
   } catch (error: any) {
-    console.error("Create payment intent error:", error);
-
-    // Handle specific Stripe errors
+    console.error("Create payment intent error:", error.message);
     if (error.type === "StripeCardError") {
       return res.status(400).json({
         success: false,
         message: error.message,
       });
     }
-
     return next(error);
   }
 };
 
-// create payment session
+// Create payment session
 export const createPaymentSession = async (
   req: any,
   res: Response,
@@ -109,12 +142,22 @@ export const createPaymentSession = async (
 ) => {
   try {
     const { cart, selectedAddressId, coupon } = req.body;
-    const userId = req.user.id;
+    const userId = req.user?.id;
 
-    if (!cart || !selectedAddressId) {
+    if (!cart || !selectedAddressId || !userId) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: cart, selectedAddressId",
+        message: "Missing required fields: cart, selectedAddressId, or userId",
+      });
+    }
+
+    const address = await prisma.shippingAddress.findFirst({
+      where: { id: selectedAddressId, userId },
+    });
+    if (!address) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or unauthorized shipping address",
       });
     }
 
@@ -125,7 +168,6 @@ export const createPaymentSession = async (
       });
     }
 
-    // Validate cart items
     for (const item of cart) {
       if (!item.id || !item.quantity || !item.sale_price || !item.shopId) {
         return res.status(400).json({
@@ -141,7 +183,19 @@ export const createPaymentSession = async (
       }
     }
 
-    // Normalize cart for comparison
+    // Validate coupon if provided
+    if (coupon?.code) {
+      const discountCode = await prisma.discountCode.findUnique({
+        where: { discountCode: coupon.code },
+      });
+      if (!discountCode) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid coupon code",
+        });
+      }
+    }
+
     const normalizedCart = JSON.stringify(
       cart
         .map((item) => ({
@@ -154,32 +208,30 @@ export const createPaymentSession = async (
         .sort((a, b) => a.id.localeCompare(b.id))
     );
 
-    // Check for existing sessions for this user
     const keys = await redis.keys("payment-session:*");
     for (const key of keys) {
       const data = await redis.get(key);
       if (data) {
-        const session = JSON.parse(data);
+        const session: SessionData = JSON.parse(data);
         if (session.userId === userId) {
           const existingCart = JSON.stringify(
             session.cart
-              .map((item: any) => ({
+              .map((item) => ({
                 id: item.id,
                 quantity: item.quantity,
                 sale_price: item.sale_price,
                 shopId: item.shopId,
                 selectedOptions: item.selectedOptions || {},
               }))
-              .sort((a: any, b: any) => a.id.localeCompare(b.id))
+              .sort((a, b) => a.id.localeCompare(b.id))
           );
 
           if (existingCart === normalizedCart) {
             console.log(`Reusing existing session: ${key.split(":")[1]}`);
             return res.status(200).json({ sessionId: key.split(":")[1] });
           } else {
-            // Clean up old session
             await redis.del(key);
-            if (session.orderIds && session.orderIds.length > 0) {
+            if (session.orderIds?.length > 0) {
               await releaseInventoryForOrders(session.orderIds);
             }
           }
@@ -187,10 +239,8 @@ export const createPaymentSession = async (
       }
     }
 
-    // Get unique shop IDs from cart
-    const uniqueShopIds = [...new Set(cart.map((item: any) => item.shopId))];
+    const uniqueShopIds = [...new Set(cart.map((item) => item.shopId))];
 
-    // Fetch shop and seller information
     const shops = await prisma.shops.findMany({
       where: { id: { in: uniqueShopIds } },
       select: {
@@ -205,7 +255,6 @@ export const createPaymentSession = async (
       },
     });
 
-    // Validate that all shops exist
     const foundShopIds = shops.map((shop) => shop.id);
     const missingShops = uniqueShopIds.filter(
       (id) => !foundShopIds.includes(id)
@@ -213,35 +262,32 @@ export const createPaymentSession = async (
     if (missingShops.length > 0) {
       return res.status(400).json({
         success: false,
-        message: `Some shops not found: ${missingShops.join(", ")}`,
+        message: `Shops not found: ${missingShops.join(", ")}`,
       });
     }
 
-    // Validate that all shops have Stripe accounts
     const missingStripeAccounts = shops.filter(
       (shop) => !shop.sellers?.stripeId
     );
     if (missingStripeAccounts.length > 0) {
       return res.status(400).json({
         success: false,
-        message: `Some sellers don't have Stripe accounts configured: ${missingStripeAccounts
+        message: `Some sellers lack Stripe accounts: ${missingStripeAccounts
           .map((s) => s.id)
           .join(", ")}`,
       });
     }
 
-    // Create seller data mapping
     const sellerData = shops.reduce((acc, shop) => {
       acc[shop.id] = {
         shopId: shop.id,
         sellerId: shop.sellerId,
-        stripeAccountId: shop.sellers?.stripeId,
+        stripeAccountId: shop.sellers!.stripeId!,
       };
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, SellerData>);
 
-    // Group cart items by shop
-    const shopGrouped = cart.reduce((acc: any, item: any) => {
+    const shopGrouped = cart.reduce((acc: Record<string, CartItem[]>, item) => {
       if (!acc[item.shopId]) acc[item.shopId] = [];
       acc[item.shopId].push(item);
       return acc;
@@ -249,18 +295,34 @@ export const createPaymentSession = async (
 
     const sessionId = randomUUID();
 
-    // Create pending orders with inventory reservation
     const pendingOrders = await prisma.$transaction(async (tx) => {
       const orders = [];
 
       for (const shopId of uniqueShopIds) {
         const shopCart = shopGrouped[shopId];
-        const shopTotal = shopCart.reduce(
-          (sum: number, item: any) => sum + item.quantity * item.sale_price,
+        let shopTotal = shopCart.reduce(
+          (sum: number, item: CartItem) =>
+            sum + item.quantity * item.sale_price,
           0
         );
 
-        // Check and reserve inventory
+        let discountAmount = 0;
+        if (coupon?.discountedProductId) {
+          const discountedItem = shopCart.find(
+            (item) => item.id === coupon.discountedProductId
+          );
+          if (discountedItem) {
+            discountAmount =
+              coupon?.discountPercent > 0
+                ? (discountedItem.sale_price *
+                    discountedItem.quantity *
+                    coupon.discountPercent) /
+                  100
+                : coupon.discountAmount || 0;
+            shopTotal = Math.max(0, shopTotal - discountAmount);
+          }
+        }
+
         for (const item of shopCart) {
           const product = await tx.product.findUnique({
             where: { id: item.id },
@@ -277,22 +339,19 @@ export const createPaymentSession = async (
             );
           }
 
-          // Reserve inventory
           await tx.product.update({
             where: { id: item.id },
             data: { stock: { decrement: item.quantity } },
           });
         }
 
-        // Create order items
-        const orderItems = shopCart.map((item: any) => ({
+        const orderItems = shopCart.map((item: CartItem) => ({
           productId: item.id,
           quantity: item.quantity,
           price: item.sale_price,
           selectedOptions: item.selectedOptions || {},
         }));
 
-        // Create pending order
         const order = await tx.order.create({
           data: {
             userId,
@@ -301,7 +360,7 @@ export const createPaymentSession = async (
             status: "Pending",
             shippingAddressId: selectedAddressId,
             couponCode: coupon?.code || null,
-            discountAmount: coupon?.discountAmount || 0,
+            discountAmount,
             items: { create: orderItems },
           },
         });
@@ -312,26 +371,41 @@ export const createPaymentSession = async (
       return orders;
     });
 
-    // Calculate shop totals
     const shopTotals = Object.entries(shopGrouped).reduce(
-      (acc, [shopId, items]) => {
-        acc[shopId] = (items as any[]).reduce(
+      (acc, [shopId, items]: [string, CartItem[]]) => {
+        let total = items.reduce(
           (sum, item) => sum + item.quantity * item.sale_price,
           0
         );
+        if (coupon?.discountedProductId) {
+          const shopCart = items.filter((item) => item.shopId === shopId);
+          const discountedItem = shopCart.find(
+            (item) => item.id === coupon.discountedProductId
+          );
+          if (discountedItem) {
+            const discount =
+              coupon.discountPercent > 0
+                ? (discountedItem.sale_price *
+                    discountedItem.quantity *
+                    coupon.discountPercent) /
+                  100
+                : coupon.discountAmount || 0;
+            total = Math.max(0, total - discount);
+          }
+        }
+        acc[shopId] = total;
         return acc;
       },
       {} as Record<string, number>
     );
 
-    // Create session data
-    const sessionData = {
+    const sessionData: SessionData = {
       userId,
       cart,
       sellers: Object.values(sellerData),
       shopTotals,
-      totalAmount: cart.reduce(
-        (total, item) => total + item.quantity * item.sale_price,
+      totalAmount: Object.values(shopTotals).reduce(
+        (sum: number, val: number) => sum + val,
         0
       ),
       shippingAddressId: selectedAddressId,
@@ -340,7 +414,6 @@ export const createPaymentSession = async (
       createdAt: Date.now(),
     };
 
-    // Store session in Redis with 1 hour expiration
     await redis.setex(
       `payment-session:${sessionId}`,
       3600,
@@ -351,21 +424,18 @@ export const createPaymentSession = async (
 
     return res.status(200).json({ sessionId });
   } catch (error: any) {
-    console.error("Create payment session error:", error);
-
-    // Handle specific database errors
+    console.error("Create payment session error:", error.message);
     if (error.code === "P2025") {
       return res.status(404).json({
         success: false,
         message: "One or more items not found",
       });
     }
-
     return next(error);
   }
 };
 
-// verify payment session
+// Verify payment session
 export const verifyPaymentSession = async (
   req: any,
   res: Response,
@@ -373,11 +443,12 @@ export const verifyPaymentSession = async (
 ) => {
   try {
     const sessionId = req.query.sessionId as string;
+    const userId = req.user?.id;
 
-    if (!sessionId) {
+    if (!sessionId || !userId) {
       return res.status(400).json({
         success: false,
-        message: "Session ID is required",
+        message: "Session ID and user ID are required",
       });
     }
 
@@ -391,21 +462,19 @@ export const verifyPaymentSession = async (
       });
     }
 
-    const session = JSON.parse(sessionData);
+    const session: SessionData = JSON.parse(sessionData);
 
-    // Verify session belongs to current user
-    if (session.userId !== req.user.id) {
+    if (session.userId !== userId) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized access to session",
       });
     }
 
-    // Get current orders status
     const orders = await prisma.order.findMany({
       where: {
         id: { in: session.orderIds },
-        userId: req.user.id,
+        userId,
       },
       include: {
         items: {
@@ -418,10 +487,14 @@ export const verifyPaymentSession = async (
             },
           },
         },
+        shop: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
 
-    // Check if any orders are missing
     if (orders.length !== session.orderIds.length) {
       console.warn(`Some orders missing for session: ${sessionId}`);
     }
@@ -431,27 +504,26 @@ export const verifyPaymentSession = async (
       session,
       orders,
     });
-  } catch (error) {
-    console.error("Verify payment session error:", error);
+  } catch (error: any) {
+    console.error("Verify payment session error:", error.message);
     return next(error);
   }
 };
 
 // Webhook handler for completed payments
 export const createOrder = async (
-  req: any,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
     const stripeSignature = req.headers["stripe-signature"];
-
     if (!stripeSignature) {
       return res.status(400).send("Missing Stripe signature");
     }
 
     const rawBody = (req as any).rawBody;
-    let event;
+    let event: Stripe.Event;
 
     try {
       event = stripe.webhooks.constructEvent(
@@ -478,47 +550,45 @@ export const createOrder = async (
       const sessionData = await redis.get(sessionKey);
 
       if (!sessionData) {
-        console.warn("Session data expired or missing for", sessionId);
+        console.warn(`Session data expired or missing for ${sessionId}`);
         return res.status(200).send("Session not found");
       }
 
-      const session = JSON.parse(sessionData);
+      const session: SessionData = JSON.parse(sessionData);
 
       await prisma.$transaction(async (tx) => {
-        // Find orders for this specific shop
         const orders = await tx.order.findMany({
           where: {
             id: { in: session.orderIds },
-            shopId: shopId,
+            shopId,
             status: "Pending",
           },
         });
 
         for (const order of orders) {
-          // Apply coupon discount if applicable
           let finalTotal = session.shopTotals[shopId];
 
-          if (session.coupon && session.coupon.discountedProductId) {
+          if (session?.coupon?.discountedProductId) {
             const shopCart = session.cart.filter(
-              (item: any) => item.shopId === shopId
+              (item) => item.shopId === shopId
             );
             const discountedItem = shopCart.find(
-              (item: any) => item.id === session.coupon.discountedProductId
+              (item) => item.id === session?.coupon?.discountedProductId
             );
 
             if (discountedItem) {
               const discount =
-                session.coupon.discountPercent > 0
+                session?.coupon?.discountPercent &&
+                session?.coupon?.discountPercent > 0
                   ? (discountedItem.sale_price *
                       discountedItem.quantity *
                       session.coupon.discountPercent) /
                     100
-                  : session.coupon.discountAmount;
+                  : session.coupon.discountAmount || 0;
               finalTotal = Math.max(0, finalTotal - discount);
             }
           }
 
-          // Update order to paid status
           await tx.order.update({
             where: { id: order.id },
             data: {
@@ -529,11 +599,24 @@ export const createOrder = async (
             },
           });
 
-          console.log(`Order ${order.id} marked as paid`);
+          await tx.paymentDistribution.create({
+            data: {
+              orderId: order.id,
+              shopId,
+              sellerId: session.sellers.find((s) => s.shopId === shopId)!
+                .sellerId,
+              amount: finalTotal,
+              platformFee: finalTotal * 0.05,
+              paymentIntentId: paymentIntent.id,
+              status: "Completed",
+              createdAt: new Date(),
+            },
+          });
+
+          console.log(`Order ${order.id} marked as paid for shop ${shopId}`);
         }
       });
 
-      // Check if all orders in this session are now paid
       const remainingPendingOrders = await prisma.order.count({
         where: {
           id: { in: session.orderIds },
@@ -541,7 +624,6 @@ export const createOrder = async (
         },
       });
 
-      // Clean up session if all orders are processed
       if (remainingPendingOrders === 0) {
         await redis.del(sessionKey);
         console.log(`Session ${sessionId} completed and cleaned up`);
@@ -549,13 +631,13 @@ export const createOrder = async (
     }
 
     return res.status(200).send("OK");
-  } catch (error) {
-    console.error("Webhook error:", error);
+  } catch (error: any) {
+    console.error("Webhook error:", error.message);
     return next(error);
   }
 };
 
-// Helper function to release inventory for failed/expired orders
+// Release inventory for failed/expired orders
 export const releaseInventoryForOrders = async (orderIds: string[]) => {
   try {
     await prisma.$transaction(async (tx) => {
@@ -570,7 +652,6 @@ export const releaseInventoryForOrders = async (orderIds: string[]) => {
       });
 
       for (const order of orders) {
-        // Release inventory for each item
         for (const item of order.items) {
           await tx.product.update({
             where: { id: item.productId },
@@ -579,7 +660,6 @@ export const releaseInventoryForOrders = async (orderIds: string[]) => {
         }
       }
 
-      // Delete the pending orders
       await tx.order.deleteMany({
         where: {
           id: { in: orderIds },
@@ -589,12 +669,12 @@ export const releaseInventoryForOrders = async (orderIds: string[]) => {
     });
 
     console.log(`Released inventory for orders: ${orderIds.join(", ")}`);
-  } catch (error) {
-    console.error("Error releasing inventory:", error);
+  } catch (error: any) {
+    console.error("Error releasing inventory:", error.message);
   }
 };
 
-// Cleanup expired sessions (call this periodically)
+// Cleanup expired sessions
 export const cleanupExpiredSessions = async () => {
   try {
     const keys = await redis.keys("payment-session:*");
@@ -604,9 +684,8 @@ export const cleanupExpiredSessions = async () => {
     for (const key of keys) {
       const data = await redis.get(key);
       if (data) {
-        const session = JSON.parse(data);
-        // If session is older than 1 hour, clean it up
-        if (currentTime - session.createdAt > 3600000) {
+        const session: SessionData = JSON.parse(data);
+        if (currentTime - session.createdAt > 3600 * 1000) {
           await releaseInventoryForOrders(session.orderIds);
           await redis.del(key);
           cleanedCount++;
@@ -615,7 +694,7 @@ export const cleanupExpiredSessions = async () => {
     }
 
     console.log(`Cleaned up ${cleanedCount} expired sessions`);
-  } catch (error) {
-    console.error("Error cleaning up expired sessions:", error);
+  } catch (error: any) {
+    console.error("Error cleaning up expired sessions:", error.message);
   }
 };

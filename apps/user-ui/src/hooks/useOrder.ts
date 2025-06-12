@@ -1,4 +1,3 @@
-// src/hooks/useOrder.ts
 import {
   CartItem,
   Coupon,
@@ -7,7 +6,7 @@ import {
 } from "@/services/orderService";
 import { useCartStore } from "@/stores/cartStore";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useCurrentUser } from "./useCurrentUser";
 
@@ -15,7 +14,10 @@ export interface UseOrderReturn {
   sessionId: string | null;
   isLoading: boolean;
   error: string | null;
-  createSession: (selectedAddressId: string, coupon?: Coupon) => Promise<void>;
+  createSession: (
+    selectedAddressId: string,
+    coupon?: Coupon
+  ) => Promise<string>;
   createPaymentIntent: (
     sellerStripeAccountId: string,
     amount: number
@@ -24,18 +26,6 @@ export interface UseOrderReturn {
   placeOrder: () => void;
   formData: {
     email: string;
-    name: string;
-    address: string;
-    apartment: string;
-    city: string;
-    country: string;
-    state: string;
-    zipCode: string;
-    phone: string;
-    cardNumber: string;
-    cardName: string;
-    expiryDate: string;
-    cvv: string;
   };
   setFormData: (
     data:
@@ -53,32 +43,24 @@ export interface UseOrderReturn {
 
 export const useOrder = (): UseOrderReturn => {
   const { items, getTotalPrice } = useCartStore();
-  const { shippingAddress, user } = useCurrentUser({ enabled: true });
-  const defaultShippingAddress = shippingAddress?.find(
-    (addr) => addr.isDefault
-  );
+  const { user } = useCurrentUser({ enabled: true });
 
   const [formData, setFormData] = useState({
     email: user?.email || "",
-    name: defaultShippingAddress?.name || "",
-    address: defaultShippingAddress?.address || "",
-    apartment: "",
-    city: defaultShippingAddress?.city || "",
-    country: defaultShippingAddress?.country || "",
-    state: defaultShippingAddress?.state || "",
-    zipCode: defaultShippingAddress?.postalCode || "",
-    phone: defaultShippingAddress?.phone || "",
-    cardNumber: "",
-    cardName: "",
-    expiryDate: "",
-    cvv: "",
   });
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [couponError, setCouponError] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
 
-  const { mutate: createSessionMutate, isPending: isCreatingSession } =
+  // Sync formData.email with user.email when user changes
+  useEffect(() => {
+    if (user?.email && formData.email !== user.email) {
+      setFormData((prev) => ({ ...prev, email: user.email }));
+    }
+  }, [user?.email]);
+
+  const { mutateAsync: createSessionMutate, isPending: isCreatingSession } =
     useMutation({
       mutationFn: (data: {
         cart: CartItem[];
@@ -87,17 +69,18 @@ export const useOrder = (): UseOrderReturn => {
       }) => orderService.createPaymentSession(data),
       onSuccess: (data) => {
         setSessionId(data.sessionId);
-        console.log("Session created:", data.sessionId);
+        console.log("Session created in useOrder:", data.sessionId);
       },
       onError: (error: any) => {
         const errorMessage = error.message || "Failed to create session";
         setCouponError(errorMessage);
         toast.error("Session Error", { description: errorMessage });
+        throw error; // Ensure error propagates to caller
       },
     });
 
   const createSession = useCallback(
-    async (selectedAddressId: string, coupon?: Coupon) => {
+    async (selectedAddressId: string, coupon?: Coupon): Promise<string> => {
       const cartItems: CartItem[] = items.map((item: any) => ({
         id: item.product.id,
         quantity: item.quantity,
@@ -106,15 +89,17 @@ export const useOrder = (): UseOrderReturn => {
         selectedOptions: item.selectedOptions || {},
       }));
 
-      return new Promise<void>((resolve, reject) => {
-        createSessionMutate(
-          { cart: cartItems, selectedAddressId, coupon },
-          {
-            onSuccess: () => resolve(),
-            onError: (error) => reject(error),
-          }
-        );
-      });
+      try {
+        const response = await createSessionMutate({
+          cart: cartItems,
+          selectedAddressId,
+          coupon,
+        });
+        return response.sessionId;
+      } catch (error) {
+        console.error("Create session failed in useOrder:", error);
+        throw error;
+      }
     },
     [items, createSessionMutate]
   );
@@ -144,7 +129,7 @@ export const useOrder = (): UseOrderReturn => {
       try {
         const response = await createPaymentIntentMutate({
           sellerStripeAccountId,
-          amount: amount, // Pass amount in dollars, backend will convert to cents
+          amount,
           sessionId,
         });
         return response;
@@ -162,7 +147,7 @@ export const useOrder = (): UseOrderReturn => {
       sessionId
         ? orderService.verifyPaymentSession(sessionId)
         : Promise.resolve(null),
-    enabled: false, // Only call manually
+    enabled: false,
     retry: 1,
   });
 
@@ -186,23 +171,11 @@ export const useOrder = (): UseOrderReturn => {
     setSessionId(null);
     setFormData({
       email: user?.email || "",
-      name: defaultShippingAddress?.name || "",
-      address: defaultShippingAddress?.address || "",
-      apartment: "",
-      city: defaultShippingAddress?.city || "",
-      country: defaultShippingAddress?.country || "",
-      state: defaultShippingAddress?.state || "",
-      zipCode: defaultShippingAddress?.postalCode || "",
-      phone: defaultShippingAddress?.phone || "",
-      cardNumber: "",
-      cardName: "",
-      expiryDate: "",
-      cvv: "",
     });
     setCouponCode("");
     setDiscount(0);
     setCouponError("");
-  }, [user, defaultShippingAddress]);
+  }, [user]);
 
   const { mutateAsync: validateCouponMutate, isPending: isValidatingCoupon } =
     useMutation({

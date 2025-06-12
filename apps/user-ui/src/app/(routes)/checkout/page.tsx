@@ -1,7 +1,7 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useOrder, UseOrderReturn } from "@/hooks/useOrder";
+import { useOrder } from "@/hooks/useOrder";
 import { useCartStore } from "@/stores/cartStore";
 import { loadStripe, StripeElements } from "@stripe/stripe-js";
 import { ChevronRight, Lock } from "lucide-react";
@@ -20,10 +20,6 @@ export default function CheckoutPage() {
     enabled: true,
     refetchOnMount: true,
   });
-  const defaultShippingAddress = shippingAddress?.find(
-    (addr) => addr.isDefault
-  );
-
   const {
     sessionId,
     isLoading,
@@ -33,7 +29,6 @@ export default function CheckoutPage() {
     verifySession,
     placeOrder,
     formData,
-    setFormData,
     couponCode,
     setCouponCode,
     discount,
@@ -46,28 +41,11 @@ export default function CheckoutPage() {
   const [elements, setElements] = useState<StripeElements | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null
+  );
 
-  useEffect(() => {
-    if (defaultShippingAddress) {
-      setFormData({
-        email: formData.email || user?.email || "",
-        name: defaultShippingAddress.name || formData.name,
-        address: defaultShippingAddress.address || formData.address,
-        apartment: formData.apartment,
-        city: defaultShippingAddress.city || formData.city,
-        country: defaultShippingAddress.country || formData.country,
-        state: defaultShippingAddress.state || formData.state,
-        zipCode: defaultShippingAddress.postalCode || formData.zipCode,
-        phone: defaultShippingAddress.phone || formData.phone,
-        cardNumber: formData.cardNumber,
-        cardName: formData.cardName,
-        expiryDate: formData.expiryDate,
-        cvv: formData.cvv,
-      });
-    }
-  }, [defaultShippingAddress, user, setFormData]);
-
-  // Initialize Stripe Elements only once
+  // Initialize Stripe Elements
   useEffect(() => {
     let mounted = true;
 
@@ -93,20 +71,30 @@ export default function CheckoutPage() {
     };
   }, [elements]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(
-      (prev) =>
-        ({
-          ...prev,
-          [name]: value,
-        } as UseOrderReturn["formData"])
-    );
-  };
+  console.log("currentSessionId", currentSessionId);
+
+  // Set default address as selected on mount
+  useEffect(() => {
+    if (shippingAddress?.length && !selectedAddressId) {
+      const defaultAddress = shippingAddress.find((addr) => addr.isDefault);
+      if (defaultAddress) {
+        setSelectedAddressId(defaultAddress.id);
+      } else {
+        setSelectedAddressId(shippingAddress[0].id); // Fallback to first address if no default
+      }
+    }
+  }, [shippingAddress, selectedAddressId]);
+
+  // Sort addresses to show default first
+  const sortedAddresses = shippingAddress
+    ? [...shippingAddress].sort((a, b) =>
+        a.isDefault ? -1 : b.isDefault ? 1 : 0
+      )
+    : [];
 
   const handleCouponChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCouponCode(e.target.value);
-    setCouponError(""); // Clear error on input change
+    setCouponError("");
   };
 
   const applyCoupon = useCallback(async () => {
@@ -117,20 +105,19 @@ export default function CheckoutPage() {
 
     try {
       await validateCoupon(couponCode);
-    } catch (err) {
-      // Error is handled in the mutation's onError
-    }
+    } catch (err) {}
   }, [validateCoupon, couponCode]);
 
-  // Fixed handleSubmit function for multi-vendor payments
+  console.log("sessionId", sessionId);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
 
       if (isProcessingPayment) return;
 
-      if (!defaultShippingAddress) {
-        toast.error("Please set a default shipping address");
+      if (!selectedAddressId) {
+        toast.error("Please select a shipping address");
         return;
       }
 
@@ -142,14 +129,13 @@ export default function CheckoutPage() {
       setIsProcessingPayment(true);
 
       try {
-        // Step 1: Create session if not exists
         let activeSessionId = sessionId;
         if (!activeSessionId) {
           await createSession(
-            defaultShippingAddress.id,
+            selectedAddressId,
             couponCode ? { code: couponCode } : undefined
           );
-          activeSessionId = sessionId; // This should be updated by createSession
+          activeSessionId = sessionId;
         }
 
         if (!activeSessionId) {
@@ -158,7 +144,6 @@ export default function CheckoutPage() {
 
         setCurrentSessionId(activeSessionId);
 
-        // Step 2: Verify session and get seller information
         const sessionData = await verifySession();
         if (!sessionData?.success) {
           throw new Error("Session verification failed");
@@ -169,16 +154,11 @@ export default function CheckoutPage() {
           throw new Error("Stripe not initialized");
         }
 
-        // Step 3: Process payments for each seller sequentially
-        // Note: In a real multi-vendor scenario, you might want to use separate payment forms
-        // or a different approach. This is a simplified version.
-
         const sellers = sessionData.session.sellers;
         let completedPayments = 0;
 
         for (const seller of sellers) {
           try {
-            // Calculate the amount for this specific seller
             const sellerItems = sessionData.session.cart.filter(
               (item: any) => item.shopId === seller.shopId
             );
@@ -196,7 +176,6 @@ export default function CheckoutPage() {
               );
             }
 
-            // Create payment intent for this seller
             const paymentIntentData = await createPaymentIntent(
               seller.stripeAccountId,
               sellerAmount
@@ -208,84 +187,31 @@ export default function CheckoutPage() {
               );
             }
 
-            // For the first seller, use the main payment element
-            // For subsequent sellers, you might need a different approach
-            // This is a simplified implementation
-            if (completedPayments === 0) {
-              // Create payment element for the first seller
-              const paymentElement = elements.create("payment");
-              await paymentElement.mount("#payment-element");
+            const paymentElement = elements.create("payment");
+            paymentElement.mount("#payment-element");
 
-              const { error } = await stripe.confirmPayment({
-                elements,
-                clientSecret: paymentIntentData.clientSecret,
-                confirmParams: {
-                  payment_method_data: {
-                    billing_details: {
-                      name: formData.cardName || formData.name,
-                      email: formData.email,
-                      address: {
-                        line1: formData.address,
-                        line2: formData.apartment || undefined,
-                        city: formData.city,
-                        state: formData.state,
-                        postal_code: formData.zipCode,
-                        country: formData.country,
-                      },
-                      phone: formData.phone,
-                    },
+            const { error } = await stripe.confirmPayment({
+              elements,
+              clientSecret: paymentIntentData.clientSecret,
+              confirmParams: {
+                payment_method_data: {
+                  billing_details: {
+                    name: user?.name || "Customer",
+                    email: user?.email,
                   },
-                  return_url: `${window.location.origin}/order-confirmation?session_id=${activeSessionId}`,
                 },
-                redirect: "if_required",
-              });
+                return_url: `${window.location.origin}/order-confirmation?session_id=${activeSessionId}`,
+              },
+              redirect: "if_required",
+            });
 
-              if (error) {
-                if (
-                  error.type === "card_error" ||
-                  error.type === "validation_error"
-                ) {
-                  throw new Error(error.message);
-                } else {
-                  throw new Error("An unexpected error occurred.");
-                }
-              }
-            } else {
-              // For subsequent sellers, use the same payment method
-              // This is a simplified approach - in reality, you might need to handle this differently
-              const { error } = await stripe.confirmPayment({
-                clientSecret: paymentIntentData.clientSecret,
-                confirmParams: {
-                  payment_method_data: {
-                    billing_details: {
-                      name: formData.cardName || formData.name,
-                      email: formData.email,
-                      address: {
-                        line1: formData.address,
-                        line2: formData.apartment || undefined,
-                        city: formData.city,
-                        state: formData.state,
-                        postal_code: formData.zipCode,
-                        country: formData.country,
-                      },
-                      phone: formData.phone,
-                    },
-                  },
-                  return_url: `${window.location.origin}/order-confirmation?session_id=${activeSessionId}`,
-                },
-                redirect: "if_required",
-              });
-
-              if (error) {
-                throw new Error(
-                  `Payment failed for seller ${seller.shopId}: ${error.message}`
-                );
-              }
+            if (error) {
+              throw new Error(error.message);
             }
 
             completedPayments++;
             toast.success(
-              `Payment ${completedPayments}/${sellers.length} completed`
+              `Payment for vendor ${completedPayments}/${sellers.length} completed`
             );
           } catch (sellerError: any) {
             console.error(
@@ -293,19 +219,14 @@ export default function CheckoutPage() {
               sellerError
             );
             throw new Error(
-              `Payment failed for one of the sellers: ${sellerError.message}`
+              `Payment failed for vendor ${seller.shopId}: ${sellerError.message}`
             );
           }
         }
 
-        // All payments successful
         toast.success("All payments processed successfully!");
-
-        // Clear cart and reset form
         clearCart(null, null);
         placeOrder();
-
-        // Redirect to confirmation page
         window.location.href = `/order-confirmation?session_id=${activeSessionId}`;
       } catch (err) {
         console.error("Payment error:", err);
@@ -319,7 +240,7 @@ export default function CheckoutPage() {
     },
     [
       isProcessingPayment,
-      defaultShippingAddress,
+      selectedAddressId,
       elements,
       sessionId,
       createSession,
@@ -327,8 +248,8 @@ export default function CheckoutPage() {
       createPaymentIntent,
       placeOrder,
       clearCart,
-      formData,
       couponCode,
+      user,
     ]
   );
 
@@ -374,7 +295,6 @@ export default function CheckoutPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Checkout Form */}
             <div className="flex-grow">
               <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-6">
@@ -392,7 +312,6 @@ export default function CheckoutPage() {
                     id="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                     disabled
@@ -404,142 +323,45 @@ export default function CheckoutPage() {
                 <h2 className="text-xl font-bold text-gray-800 mb-6">
                   Shipping Address
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label
-                      htmlFor="name"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label
-                      htmlFor="address"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label
-                      htmlFor="apartment"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Apartment, suite, etc. (optional)
-                    </label>
-                    <input
-                      type="text"
-                      id="apartment"
-                      name="apartment"
-                      value={formData.apartment}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="city"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="country"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      id="country"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="state"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      State / Province
-                    </label>
-                    <input
-                      type="text"
-                      id="state"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="zipCode"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      ZIP / Postal code
-                    </label>
-                    <input
-                      type="text"
-                      id="zipCode"
-                      name="zipCode"
-                      value={formData.zipCode}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label
-                      htmlFor="phone"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Phone number
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
+                <div className="space-y-4">
+                  {sortedAddresses.length ? (
+                    sortedAddresses.map((addr) => (
+                      <label
+                        key={addr.id}
+                        className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50"
+                      >
+                        <input
+                          type="radio"
+                          name="shippingAddress"
+                          value={addr.id}
+                          checked={selectedAddressId === addr.id}
+                          onChange={() => setSelectedAddressId(addr.id)}
+                          className="mr-4"
+                          required
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">
+                            {addr.name}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {addr.address}, {addr.city}, {addr.state}{" "}
+                            {addr.postalCode}, {addr.country}
+                          </p>
+                          <p className="text-sm text-gray-600">{addr.phone}</p>
+                          {addr.isDefault && (
+                            <span className="text-xs text-green-600">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-600">
+                      No shipping addresses found. Please add one in your
+                      account settings.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -567,14 +389,12 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Order Summary */}
             <div className="lg:w-96">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-6">
                   Order Summary
                 </h2>
 
-                {/* Cart Items */}
                 <div className="space-y-4 mb-6">
                   {items.map((item) => (
                     <div
@@ -620,7 +440,6 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {/* Coupon Input */}
                 <div className="mb-6">
                   <label
                     htmlFor="couponCode"
@@ -651,7 +470,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Totals */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Subtotal</span>
@@ -685,7 +503,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Place Order Button */}
                 <button
                   type="submit"
                   disabled={isLoading || isProcessingPayment || !elements}
@@ -701,7 +518,6 @@ export default function CheckoutPage() {
 
                 {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
-                {/* Security Notice */}
                 <p className="mt-4 text-xs text-center text-gray-500">
                   Your payment information is encrypted and secure. We never
                   store your credit card details.

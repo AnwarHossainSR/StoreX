@@ -1,4 +1,3 @@
-// src/services/orderService.ts
 import apiClient from "@/lib/apiClient";
 
 export interface CartItem {
@@ -23,6 +22,7 @@ export interface PaymentSessionResponse {
 export interface PaymentIntentResponse {
   success: boolean;
   clientSecret: string;
+  paymentIntentId: string;
 }
 
 export interface VerifySessionResponse {
@@ -30,13 +30,33 @@ export interface VerifySessionResponse {
   session: {
     userId: string;
     cart: CartItem[];
-    sellers: { shopId: string; sellerId: string; stripeAccountId: string }[];
+    sellers: {
+      shopId: string;
+      sellerId: string;
+      stripeAccountId: string;
+    }[];
+    shopTotals: Record<string, number>;
     totalAmount: number;
     shippingAddressId: string;
     coupon: Coupon | null;
     orderIds: string[];
+    createdAt: number;
   };
-  orders: any[]; // Adjust based on your Order model
+  orders: {
+    id: string;
+    shopId: string;
+    total: number;
+    status: string;
+    items: {
+      productId: string;
+      quantity: number;
+      price: number;
+      product: {
+        title: string;
+        images: { url: string }[];
+      };
+    }[];
+  }[];
 }
 
 export interface CouponValidationResponse {
