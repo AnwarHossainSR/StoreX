@@ -1,9 +1,9 @@
 import prisma from "@packages/libs/prisma";
 import redis from "@packages/libs/redis";
-import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { NextFunction, Response } from "express";
 import Stripe from "stripe";
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
 });
@@ -16,10 +16,51 @@ export const createPaymentIntent = async (
 ) => {
   try {
     const { amount, sellerStripeAccountId, sessionId } = req.body;
-    const cusAmount = Math.round(amount * 100);
-    const platformFee = Math.round(cusAmount * 0.05);
+
+    if (!amount || !sellerStripeAccountId || !sessionId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Missing required fields: amount, sellerStripeAccountId, sessionId",
+      });
+    }
+
+    // Verify session exists
+    const sessionData = await redis.get(`payment-session:${sessionId}`);
+    if (!sessionData) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found or expired",
+      });
+    }
+
+    const session = JSON.parse(sessionData);
+
+    // Verify the seller exists in the session
+    const seller = session.sellers.find(
+      (s: any) => s.stripeAccountId === sellerStripeAccountId
+    );
+    if (!seller) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid seller for this session",
+      });
+    }
+
+    // Convert amount to cents (amount is received in dollars)
+    const amountInCents = Math.round(amount * 100);
+    const platformFee = Math.round(amountInCents * 0.05); // 5% platform fee
+
+    // Validate minimum amount (Stripe requires at least $0.50)
+    if (amountInCents < 50) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be at least $0.50",
+      });
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: cusAmount,
+      amount: amountInCents,
       currency: "usd",
       payment_method_types: ["card"],
       application_fee_amount: platformFee,
@@ -29,12 +70,33 @@ export const createPaymentIntent = async (
       metadata: {
         sessionId,
         userId: req.user.id,
+        sellerStripeAccountId,
+        shopId: seller.shopId,
+        originalAmount: amount.toString(),
+        platformFee: (platformFee / 100).toString(),
       },
     });
-    return res
-      .status(200)
-      .json({ success: true, clientSecret: paymentIntent.client_secret });
-  } catch (error) {
+
+    console.log(
+      `Payment intent created: ${paymentIntent.id} for seller: ${seller.shopId}`
+    );
+
+    return res.status(200).json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (error: any) {
+    console.error("Create payment intent error:", error);
+
+    // Handle specific Stripe errors
+    if (error.type === "StripeCardError") {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     return next(error);
   }
 };
@@ -50,15 +112,36 @@ export const createPaymentSession = async (
     const userId = req.user.id;
 
     if (!cart || !selectedAddressId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing required fields" });
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: cart, selectedAddressId",
+      });
     }
 
     if (!Array.isArray(cart) || cart.length === 0) {
-      return res.status(400).json({ success: false, message: "Cart is empty" });
+      return res.status(400).json({
+        success: false,
+        message: "Cart is empty or invalid",
+      });
     }
 
+    // Validate cart items
+    for (const item of cart) {
+      if (!item.id || !item.quantity || !item.sale_price || !item.shopId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid cart item format",
+        });
+      }
+      if (item.quantity <= 0 || item.sale_price <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid quantity or price",
+        });
+      }
+    }
+
+    // Normalize cart for comparison
     const normalizedCart = JSON.stringify(
       cart
         .map((item) => ({
@@ -68,11 +151,11 @@ export const createPaymentSession = async (
           shopId: item.shopId,
           selectedOptions: item.selectedOptions || {},
         }))
-        .sort((a, b) => a.id.localeCompare(b.id)) // Fixed typo: localCompare -> localeCompare
+        .sort((a, b) => a.id.localeCompare(b.id))
     );
 
+    // Check for existing sessions for this user
     const keys = await redis.keys("payment-session:*");
-
     for (const key of keys) {
       const data = await redis.get(key);
       if (data) {
@@ -91,104 +174,193 @@ export const createPaymentSession = async (
           );
 
           if (existingCart === normalizedCart) {
+            console.log(`Reusing existing session: ${key.split(":")[1]}`);
             return res.status(200).json({ sessionId: key.split(":")[1] });
           } else {
+            // Clean up old session
             await redis.del(key);
+            if (session.orderIds && session.orderIds.length > 0) {
+              await releaseInventoryForOrders(session.orderIds);
+            }
           }
         }
       }
     }
 
-    // fetch sellers and their stripe accounts
+    // Get unique shop IDs from cart
     const uniqueShopIds = [...new Set(cart.map((item: any) => item.shopId))];
 
+    // Fetch shop and seller information
     const shops = await prisma.shops.findMany({
-      where: {
-        id: { in: uniqueShopIds },
-      },
+      where: { id: { in: uniqueShopIds } },
       select: {
         id: true,
         sellerId: true,
         sellers: {
           select: {
             stripeId: true,
+            id: true,
           },
         },
       },
     });
 
-    const sellerData = shops.map((shop) => ({
-      shopId: shop.id,
-      sellerId: shop.sellerId,
-      stripeAccountId: shop.sellers?.stripeId,
-    }));
-
-    // calculate total amount
-    const totalAmount = cart.reduce(
-      (total, item) => total + item.quantity * item.sale_price,
-      0
+    // Validate that all shops exist
+    const foundShopIds = shops.map((shop) => shop.id);
+    const missingShops = uniqueShopIds.filter(
+      (id) => !foundShopIds.includes(id)
     );
+    if (missingShops.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Some shops not found: ${missingShops.join(", ")}`,
+      });
+    }
 
-    // Create pending orders in a transaction to ensure inventory and order consistency
+    // Validate that all shops have Stripe accounts
+    const missingStripeAccounts = shops.filter(
+      (shop) => !shop.sellers?.stripeId
+    );
+    if (missingStripeAccounts.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Some sellers don't have Stripe accounts configured: ${missingStripeAccounts
+          .map((s) => s.id)
+          .join(", ")}`,
+      });
+    }
+
+    // Create seller data mapping
+    const sellerData = shops.reduce((acc, shop) => {
+      acc[shop.id] = {
+        shopId: shop.id,
+        sellerId: shop.sellerId,
+        stripeAccountId: shop.sellers?.stripeId,
+      };
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Group cart items by shop
+    const shopGrouped = cart.reduce((acc: any, item: any) => {
+      if (!acc[item.shopId]) acc[item.shopId] = [];
+      acc[item.shopId].push(item);
+      return acc;
+    }, {});
+
     const sessionId = randomUUID();
+
+    // Create pending orders with inventory reservation
     const pendingOrders = await prisma.$transaction(async (tx) => {
-      const orders = await Promise.all(
-        uniqueShopIds.map(async (shopId) => {
-          const shopCart = cart.filter((item: any) => item.shopId === shopId);
-          const orderItems = shopCart.map((item: any) => ({
-            productId: item.id,
-            quantity: item.quantity,
-            price: item.sale_price,
-            selectedOptions: item.selectedOptions,
-          }));
+      const orders = [];
+
+      for (const shopId of uniqueShopIds) {
+        const shopCart = shopGrouped[shopId];
+        const shopTotal = shopCart.reduce(
+          (sum: number, item: any) => sum + item.quantity * item.sale_price,
+          0
+        );
+
+        // Check and reserve inventory
+        for (const item of shopCart) {
+          const product = await tx.product.findUnique({
+            where: { id: item.id },
+            select: { stock: true, title: true },
+          });
+
+          if (!product) {
+            throw new Error(`Product not found: ${item.id}`);
+          }
+
+          if (product.stock < item.quantity) {
+            throw new Error(
+              `Insufficient stock for ${product.title}. Available: ${product.stock}, Requested: ${item.quantity}`
+            );
+          }
 
           // Reserve inventory
-          await Promise.all(
-            shopCart.map((item: any) =>
-              tx.product.update({
-                where: { id: item.id },
-                data: { stock: { decrement: item.quantity } },
-              })
-            )
-          );
-
-          return tx.order.create({
-            data: {
-              userId,
-              shopId,
-              total: totalAmount, // Will be recalculated in createOrder
-              status: "Pending",
-              shippingAddressId: selectedAddressId || null,
-              couponCode: coupon?.code || null,
-              discountAmount: coupon?.discountAmount || 0,
-              items: {
-                create: orderItems,
-              },
-            },
+          await tx.product.update({
+            where: { id: item.id },
+            data: { stock: { decrement: item.quantity } },
           });
-        })
-      );
+        }
+
+        // Create order items
+        const orderItems = shopCart.map((item: any) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          price: item.sale_price,
+          selectedOptions: item.selectedOptions || {},
+        }));
+
+        // Create pending order
+        const order = await tx.order.create({
+          data: {
+            userId,
+            shopId,
+            total: shopTotal,
+            status: "Pending",
+            shippingAddressId: selectedAddressId,
+            couponCode: coupon?.code || null,
+            discountAmount: coupon?.discountAmount || 0,
+            items: { create: orderItems },
+          },
+        });
+
+        orders.push(order);
+      }
+
       return orders;
     });
 
+    // Calculate shop totals
+    const shopTotals = Object.entries(shopGrouped).reduce(
+      (acc, [shopId, items]) => {
+        acc[shopId] = (items as any[]).reduce(
+          (sum, item) => sum + item.quantity * item.sale_price,
+          0
+        );
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    // Create session data
     const sessionData = {
       userId,
       cart,
-      sellers: sellerData,
-      totalAmount,
+      sellers: Object.values(sellerData),
+      shopTotals,
+      totalAmount: cart.reduce(
+        (total, item) => total + item.quantity * item.sale_price,
+        0
+      ),
       shippingAddressId: selectedAddressId,
       coupon: coupon || null,
       orderIds: pendingOrders.map((order) => order.id),
+      createdAt: Date.now(),
     };
 
+    // Store session in Redis with 1 hour expiration
     await redis.setex(
       `payment-session:${sessionId}`,
-      3600, // Increased to 1 hour to reduce expiry risk
+      3600,
       JSON.stringify(sessionData)
     );
 
+    console.log(`Session created: ${sessionId} for user: ${userId}`);
+
     return res.status(200).json({ sessionId });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Create payment session error:", error);
+
+    // Handle specific database errors
+    if (error.code === "P2025") {
+      return res.status(404).json({
+        success: false,
+        message: "One or more items not found",
+      });
+    }
+
     return next(error);
   }
 };
@@ -203,29 +375,69 @@ export const verifyPaymentSession = async (
     const sessionId = req.query.sessionId as string;
 
     if (!sessionId) {
-      return res.status(400).json({ error: "Session ID is required." });
+      return res.status(400).json({
+        success: false,
+        message: "Session ID is required",
+      });
     }
 
-    // Fetch session from Redis
     const sessionKey = `payment-session:${sessionId}`;
     const sessionData = await redis.get(sessionKey);
 
     if (!sessionData) {
-      return res.status(404).json({ error: "Session not found or expired." });
+      return res.status(404).json({
+        success: false,
+        message: "Session not found or expired",
+      });
     }
 
     const session = JSON.parse(sessionData);
+
+    // Verify session belongs to current user
+    if (session.userId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access to session",
+      });
+    }
+
+    // Get current orders status
     const orders = await prisma.order.findMany({
-      where: { id: { in: session.orderIds }, status: "Pending" },
+      where: {
+        id: { in: session.orderIds },
+        userId: req.user.id,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                title: true,
+                images: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    return res.status(200).json({ success: true, session, orders });
+    // Check if any orders are missing
+    if (orders.length !== session.orderIds.length) {
+      console.warn(`Some orders missing for session: ${sessionId}`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      session,
+      orders,
+    });
   } catch (error) {
+    console.error("Verify payment session error:", error);
     return next(error);
   }
 };
 
-// create order (update existing pending order)
+// Webhook handler for completed payments
 export const createOrder = async (
   req: any,
   res: Response,
@@ -254,98 +466,156 @@ export const createOrder = async (
 
     if (event.type === "payment_intent.succeeded") {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      const sessionId = paymentIntent.metadata.sessionId;
-      // const userId = paymentIntent.metadata.userId;
+      const { sessionId, sellerStripeAccountId, shopId } =
+        paymentIntent.metadata;
+
+      if (!sessionId || !sellerStripeAccountId || !shopId) {
+        console.error("Missing required metadata in payment intent");
+        return res.status(200).send("Missing metadata");
+      }
 
       const sessionKey = `payment-session:${sessionId}`;
       const sessionData = await redis.get(sessionKey);
 
       if (!sessionData) {
         console.warn("Session data expired or missing for", sessionId);
-        return res
-          .status(200)
-          .send("No session found, skipping order creation");
+        return res.status(200).send("Session not found");
       }
 
-      const { cart, shippingAddressId, coupon, orderIds } =
-        JSON.parse(sessionData);
-
-      const shopGrouped = cart.reduce((acc: any, item: any) => {
-        if (!acc[item.shopId]) acc[item.shopId] = [];
-        acc[item.shopId].push(item);
-        return acc;
-      }, {});
+      const session = JSON.parse(sessionData);
 
       await prisma.$transaction(async (tx) => {
-        for (const shopId in shopGrouped) {
-          const orderId = orderIds.find(async (id: string) => {
-            const order = (await tx.order.findUnique({
-              where: { id },
-              include: { shop: true, items: true },
-            })) as Prisma.OrderGetPayload<{
-              include: { shop: true; items: true };
-            }> | null;
-            return order?.shopId === shopId;
-          });
-          if (!orderId) continue;
+        // Find orders for this specific shop
+        const orders = await tx.order.findMany({
+          where: {
+            id: { in: session.orderIds },
+            shopId: shopId,
+            status: "Pending",
+          },
+        });
 
-          const orderItems = shopGrouped[shopId];
-          let orderTotal = orderItems.reduce(
-            (sum: number, p: any) => sum + p.quantity * p.sale_price,
-            0
-          );
+        for (const order of orders) {
+          // Apply coupon discount if applicable
+          let finalTotal = session.shopTotals[shopId];
 
-          // Apply discount if applicable
-          if (
-            coupon &&
-            coupon.discountedProductId &&
-            orderItems.some(
-              (item: any) => item.id === coupon.discountedProductId
-            )
-          ) {
-            const discountedItem = orderItems.find(
-              (item: any) => item.id === coupon.discountedProductId
+          if (session.coupon && session.coupon.discountedProductId) {
+            const shopCart = session.cart.filter(
+              (item: any) => item.shopId === shopId
             );
+            const discountedItem = shopCart.find(
+              (item: any) => item.id === session.coupon.discountedProductId
+            );
+
             if (discountedItem) {
               const discount =
-                coupon.discountPercent > 0
+                session.coupon.discountPercent > 0
                   ? (discountedItem.sale_price *
                       discountedItem.quantity *
-                      coupon.discountPercent) /
+                      session.coupon.discountPercent) /
                     100
-                  : coupon.discountAmount;
-              orderTotal -= discount;
+                  : session.coupon.discountAmount;
+              finalTotal = Math.max(0, finalTotal - discount);
             }
           }
 
-          // Update order and decrease product stock
+          // Update order to paid status
           await tx.order.update({
-            where: { id: orderId },
+            where: { id: order.id },
             data: {
-              total: orderTotal,
               status: "Paid",
-              shippingAddressId: shippingAddressId || null,
-              couponCode: coupon?.code || null,
-              discountAmount: coupon?.discountAmount || 0,
+              total: finalTotal,
+              paidAt: new Date(),
+              paymentIntentId: paymentIntent.id,
             },
           });
 
-          // Decrease product stock for each item in the order
-          await Promise.all(
-            orderItems.map((item: any) =>
-              tx.product.update({
-                where: { id: item.id },
-                data: { stock: { decrement: item.quantity } },
-              })
-            )
-          );
+          console.log(`Order ${order.id} marked as paid`);
         }
       });
 
-      // Cleanup Redis session
-      await redis.del(sessionKey);
+      // Check if all orders in this session are now paid
+      const remainingPendingOrders = await prisma.order.count({
+        where: {
+          id: { in: session.orderIds },
+          status: "Pending",
+        },
+      });
+
+      // Clean up session if all orders are processed
+      if (remainingPendingOrders === 0) {
+        await redis.del(sessionKey);
+        console.log(`Session ${sessionId} completed and cleaned up`);
+      }
     }
+
+    return res.status(200).send("OK");
   } catch (error) {
+    console.error("Webhook error:", error);
     return next(error);
+  }
+};
+
+// Helper function to release inventory for failed/expired orders
+export const releaseInventoryForOrders = async (orderIds: string[]) => {
+  try {
+    await prisma.$transaction(async (tx) => {
+      const orders = await tx.order.findMany({
+        where: {
+          id: { in: orderIds },
+          status: "Pending",
+        },
+        include: {
+          items: true,
+        },
+      });
+
+      for (const order of orders) {
+        // Release inventory for each item
+        for (const item of order.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      }
+
+      // Delete the pending orders
+      await tx.order.deleteMany({
+        where: {
+          id: { in: orderIds },
+          status: "Pending",
+        },
+      });
+    });
+
+    console.log(`Released inventory for orders: ${orderIds.join(", ")}`);
+  } catch (error) {
+    console.error("Error releasing inventory:", error);
+  }
+};
+
+// Cleanup expired sessions (call this periodically)
+export const cleanupExpiredSessions = async () => {
+  try {
+    const keys = await redis.keys("payment-session:*");
+    const currentTime = Date.now();
+    let cleanedCount = 0;
+
+    for (const key of keys) {
+      const data = await redis.get(key);
+      if (data) {
+        const session = JSON.parse(data);
+        // If session is older than 1 hour, clean it up
+        if (currentTime - session.createdAt > 3600000) {
+          await releaseInventoryForOrders(session.orderIds);
+          await redis.del(key);
+          cleanedCount++;
+        }
+      }
+    }
+
+    console.log(`Cleaned up ${cleanedCount} expired sessions`);
+  } catch (error) {
+    console.error("Error cleaning up expired sessions:", error);
   }
 };

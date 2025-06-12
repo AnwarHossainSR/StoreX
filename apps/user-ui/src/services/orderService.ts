@@ -39,6 +39,13 @@ export interface VerifySessionResponse {
   orders: any[]; // Adjust based on your Order model
 }
 
+export interface CouponValidationResponse {
+  success: boolean;
+  message?: string;
+  discountType?: "fixed" | "percentage";
+  discountValue?: number;
+}
+
 export interface BackendErrorResponse {
   status: "error";
   message: string;
@@ -100,6 +107,21 @@ export const orderService = {
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Failed to verify session", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async validateCoupon(code: string): Promise<CouponValidationResponse> {
+    try {
+      const response = await apiClient.post<CouponValidationResponse>(
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/coupons/validate`,
+        { code }
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to validate coupon", {
         cause: errorData,
       });
     }

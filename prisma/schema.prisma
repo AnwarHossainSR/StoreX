@@ -214,6 +214,8 @@ model Order {
   shippingAddressId String?          @db.ObjectId
   couponCode        String?
   discountAmount    Float            @default(0)
+  paymentIntentId   String?
+  paidAt            DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   user              users            @relation(fields: [userId], references: [id], onDelete: Cascade)
