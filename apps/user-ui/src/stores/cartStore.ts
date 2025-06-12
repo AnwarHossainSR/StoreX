@@ -211,12 +211,6 @@ export const useCartStore = create<CartState>()(
       clearCart: (userInfo, deviceInfo) =>
         set((state) => {
           if (state.items.length > 0) {
-            console.log(
-              "Clear Cart - User Info:",
-              userInfo,
-              "Device Info:",
-              deviceInfo
-            );
             toast.success("Cart Cleared", {
               description: "All items have been removed from your cart.",
             });
