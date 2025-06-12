@@ -1,5 +1,6 @@
 "use client";
 
+import Loading from "@/components/ui/loading";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useOrder } from "@/hooks/useOrder";
 import { useCartStore } from "@/stores/cartStore";
@@ -71,8 +72,6 @@ export default function CheckoutPage() {
     };
   }, [elements]);
 
-  console.log("currentSessionId", currentSessionId);
-
   // Set default address as selected on mount
   useEffect(() => {
     if (shippingAddress?.length && !selectedAddressId) {
@@ -80,7 +79,7 @@ export default function CheckoutPage() {
       if (defaultAddress) {
         setSelectedAddressId(defaultAddress.id);
       } else {
-        setSelectedAddressId(shippingAddress[0].id); // Fallback to first address if no default
+        setSelectedAddressId(shippingAddress[0].id);
       }
     }
   }, [shippingAddress, selectedAddressId]);
@@ -91,6 +90,12 @@ export default function CheckoutPage() {
         a.isDefault ? -1 : b.isDefault ? 1 : 0
       )
     : [];
+
+  // Log sessionId for debugging
+  useEffect(() => {
+    console.log("CheckoutPage sessionId:", sessionId);
+    console.log("CheckoutPage currentSessionId:", currentSessionId);
+  }, [sessionId, currentSessionId]);
 
   const handleCouponChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCouponCode(e.target.value);
@@ -105,10 +110,10 @@ export default function CheckoutPage() {
 
     try {
       await validateCoupon(couponCode);
-    } catch (err) {}
+    } catch (err) {
+      console.error("Coupon validation failed:", err);
+    }
   }, [validateCoupon, couponCode]);
-
-  console.log("sessionId", sessionId);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -131,15 +136,21 @@ export default function CheckoutPage() {
       try {
         let activeSessionId = sessionId;
         if (!activeSessionId) {
-          await createSession(
-            selectedAddressId,
-            couponCode ? { code: couponCode } : undefined
-          );
-          activeSessionId = sessionId;
+          try {
+            activeSessionId = await createSession(
+              selectedAddressId,
+              couponCode ? { code: couponCode } : undefined
+            );
+            console.log("Created session in handleSubmit:", activeSessionId);
+          } catch (sessionError: any) {
+            throw new Error(
+              `Failed to create payment session: ${sessionError.message}`
+            );
+          }
         }
 
         if (!activeSessionId) {
-          throw new Error("Failed to create payment session");
+          throw new Error("No session ID returned after creation");
         }
 
         setCurrentSessionId(activeSessionId);
@@ -197,7 +208,8 @@ export default function CheckoutPage() {
                 payment_method_data: {
                   billing_details: {
                     name: user?.name || "Customer",
-                    email: user?.email,
+                    email:
+                      user?.email || formData.email || "unknown@example.com",
                   },
                 },
                 return_url: `${window.location.origin}/order-confirmation?session_id=${activeSessionId}`,
@@ -250,6 +262,7 @@ export default function CheckoutPage() {
       clearCart,
       couponCode,
       user,
+      formData.email,
     ]
   );
 
@@ -259,7 +272,15 @@ export default function CheckoutPage() {
       ? 0
       : 10;
 
-  if (items.length === 0) {
+  if (isLoading)
+    return (
+      <Loading
+        size="lg"
+        className="h-screen flex items-center justify-center"
+      />
+    );
+
+  if (!isLoading && items.length === 0) {
     return (
       <div className="text-center py-12">
         <h3 className="text-lg font-medium text-gray-800 mb-2">
@@ -311,7 +332,7 @@ export default function CheckoutPage() {
                     type="email"
                     id="email"
                     name="email"
-                    value={formData.email}
+                    value={formData.email || user?.email || ""}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                     disabled
@@ -501,27 +522,29 @@ export default function CheckoutPage() {
                       </span>
                     </div>
                   </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || isProcessingPayment || !elements}
+                    className="mt-6 w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                  >
+                    <Lock size={20} className="mr-2" />
+                    {isProcessingPayment
+                      ? "Processing Payment..."
+                      : isLoading
+                      ? "Loading..."
+                      : "Place Order"}
+                  </button>
+
+                  {error && (
+                    <p className="mt-2 text-sm text-red-600">{error}</p>
+                  )}
+
+                  <p className="mt-4 text-xs text-center text-gray-500">
+                    Your payment information is encrypted and secure. We never
+                    store your credit card details.
+                  </p>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading || isProcessingPayment || !elements}
-                  className="mt-6 w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                >
-                  <Lock size={20} className="mr-2" />
-                  {isProcessingPayment
-                    ? "Processing Payment..."
-                    : isLoading
-                    ? "Loading..."
-                    : "Place Order"}
-                </button>
-
-                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-
-                <p className="mt-4 text-xs text-center text-gray-500">
-                  Your payment information is encrypted and secure. We never
-                  store your credit card details.
-                </p>
               </div>
             </div>
           </div>
