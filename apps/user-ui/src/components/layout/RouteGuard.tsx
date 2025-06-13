@@ -95,12 +95,8 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [isFetchingUser, isLoading, isAuthenticated, router]);
 
-  if (!isFetchingUser || isLoading) {
+  if (isFetchingUser || isLoading) {
     return <AuthLoading />;
-  }
-
-  if (isAuthenticated) {
-    return <>{children}</>;
   }
 
   return <>{children}</>;

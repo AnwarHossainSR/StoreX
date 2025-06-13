@@ -213,6 +213,36 @@ export const useAuth = () => {
     verifyForgotPasswordError: verifyForgotPasswordMutation.error?.message,
     resetPasswordError: resetPasswordMutation.error?.message,
     resendOtpError: resendOtpMutation.error?.message,
+    registerStatus: registerMutation.status,
+    registerErrorDetails: (
+      registerMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
+    verifyOtpStatus: verifyOtpMutation.status,
+    verifyOtpErrorDetails: (
+      verifyOtpMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
+    loginStatus: loginMutation.status,
+    loginErrorDetails: (
+      loginMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
+    forgotPasswordStatus: forgotPasswordMutation.status,
+    forgotPasswordErrorDetails: (
+      forgotPasswordMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
+    verifyForgotPasswordStatus: verifyForgotPasswordMutation.status,
+    verifyForgotPasswordErrorDetails: (
+      verifyForgotPasswordMutation.error?.cause as
+        | BackendErrorResponse
+        | undefined
+    )?.details,
+    resetPasswordStatus: resetPasswordMutation.status,
+    resetPasswordErrorDetails: (
+      resetPasswordMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
+    resendOtpStatus: resendOtpMutation.status,
+    resendOtpErrorDetails: (
+      resendOtpMutation.error?.cause as BackendErrorResponse | undefined
+    )?.details,
 
     // Reset functions
     resetLoginError: () => loginMutation.reset(),

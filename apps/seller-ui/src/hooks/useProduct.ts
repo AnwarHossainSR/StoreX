@@ -53,6 +53,8 @@ export const useProduct = () => {
   >({
     mutationFn: productService.createProduct,
     onSuccess: () => {
+      toast.success("Product created successfully");
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       router.push("/products");
     },
     onError: (error: Error) => {
@@ -192,7 +194,7 @@ export const useProduct = () => {
       categoriesQuery.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    discountCodes: discountCodesQuery.data?.data || [],
+    discountCodes: discountCodesQuery?.data || [],
     discountCodesStatus: discountCodesQuery.status,
     discountCodesError: discountCodesQuery.error?.message,
     discountCodesErrorDetails: (

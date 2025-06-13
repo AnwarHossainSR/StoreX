@@ -1,4 +1,4 @@
-import isAuthenticated from "@packages/middleware/isAuthenticated";
+import { withAuth } from "@packages/middleware/isAuthenticated";
 import express from "express";
 import {
   createDiscountCode,
@@ -19,17 +19,17 @@ import {
 const router = express.Router();
 
 router.get("/get-categories", getCategories);
-router.get("/discount-codes", isAuthenticated, getDiscountCodes);
-router.post("/discount-codes", isAuthenticated, createDiscountCode);
-router.delete("/discount-codes/:id", isAuthenticated, deleteDiscountCode);
+router.get("/discount-codes", withAuth("seller"), getDiscountCodes);
+router.post("/discount-codes", withAuth("seller"), createDiscountCode);
+router.delete("/discount-codes/:id", withAuth("seller"), deleteDiscountCode);
 router.get("/discount-codes/:code", validateDiscountCode);
 router.post("/upload-product-image", uploadProductImage);
 router.post("/delete-product-image", deleteProductImage);
-router.post("/create-product", isAuthenticated, createProduct);
-router.get("/seller", isAuthenticated, getSellerProducts);
-router.put("/seller/:id", isAuthenticated, updateProduct);
-router.delete("/seller/:id", isAuthenticated, deleteProduct);
-router.put("/seller/restore/:id", isAuthenticated, restoreProduct);
+router.post("/create-product", withAuth("seller"), createProduct);
+router.get("/seller", withAuth("seller"), getSellerProducts);
+router.put("/seller/:id", withAuth("seller"), updateProduct);
+router.delete("/seller/:id", withAuth("seller"), deleteProduct);
+router.put("/seller/restore/:id", withAuth("seller"), restoreProduct);
 router.get("/get-all-products", getAllProducts);
 router.get("/get-product/:slug", getProductBySlug);
 

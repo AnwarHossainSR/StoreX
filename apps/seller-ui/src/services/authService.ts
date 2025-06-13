@@ -9,6 +9,7 @@ export interface Seller {
   email: string;
   phone_number: string;
   country: string;
+  shop?: any;
 }
 
 export interface ApiResponse<T> {
