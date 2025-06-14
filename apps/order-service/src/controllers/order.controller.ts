@@ -193,7 +193,6 @@ export const processFullPayment = async (
         sessionId,
         userId,
       },
-      expand: ["charges"], // Expand charges to include in response
     });
 
     if (paymentIntent.status !== "succeeded") {
@@ -204,11 +203,61 @@ export const processFullPayment = async (
     }
     console.log("PaymentIntent created:", paymentIntent.id);
 
-    // Validate charge existence
-    if (!paymentIntent?.charges?.data?.[0]?.id) {
-      console.error(`No charge found for PaymentIntent: ${paymentIntent.id}`);
-      throw new Error("No charge associated with PaymentIntent");
-    }
+    // Function to get charge with retry logic
+    const getChargeWithRetry = async (
+      paymentIntentId: string,
+      maxRetries = 5,
+      delay = 1000
+    ): Promise<string> => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          // First, try to get the charge from the PaymentIntent
+          const updatedPaymentIntent: any =
+            await stripe.paymentIntents.retrieve(paymentIntentId, {
+              expand: ["charges"],
+            });
+
+          if (updatedPaymentIntent.charges?.data?.[0]?.id) {
+            return updatedPaymentIntent.charges.data[0].id;
+          }
+
+          // If no charge found, try listing charges for this PaymentIntent
+          const charges = await stripe.charges.list({
+            payment_intent: paymentIntentId,
+            limit: 1,
+          });
+
+          if (charges.data.length > 0) {
+            return charges.data[0].id;
+          }
+
+          if (attempt < maxRetries) {
+            console.log(
+              `Attempt ${attempt}: No charge found for PaymentIntent ${paymentIntentId}, retrying in ${delay}ms...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= 1.5; // Exponential backoff
+          }
+        } catch (error) {
+          console.error(
+            `Error retrieving charge on attempt ${attempt}:`,
+            error
+          );
+          if (attempt === maxRetries) throw error;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+
+      throw new Error(
+        `No charge found for PaymentIntent ${paymentIntentId} after ${maxRetries} attempts`
+      );
+    };
+
+    // Get the charge ID with retry logic
+    const chargeId = await getChargeWithRetry(paymentIntent.id);
+    console.log(
+      `Found charge: ${chargeId} for PaymentIntent: ${paymentIntent.id}`
+    );
 
     // Create Transfers for each seller
     await prisma.$transaction(async (tx) => {
@@ -251,7 +300,7 @@ export const processFullPayment = async (
             amount: transferAmount,
             currency: "usd",
             destination: seller.stripeAccountId,
-            source_transaction: paymentIntent.charges.data[0].id,
+            source_transaction: chargeId, // Use the charge ID we retrieved
             metadata: {
               sessionId,
               userId,
