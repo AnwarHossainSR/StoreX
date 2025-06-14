@@ -41,7 +41,6 @@ export interface VerifySessionResponse {
     shippingAddressId: string;
     coupon: Coupon | null;
     orderIds: string[];
-    // createdAt: number;
   };
   orders: {
     id: string;
@@ -125,10 +124,17 @@ export const orderService = {
         `${API_BASE_URL}/verify-payment-session?sessionId=${sessionId}`
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "Failed to verify session", {
-        cause: errorData,
+      const errorMessage =
+        errorData?.message || `Failed to verify session: ${error.message}`;
+      console.error("verifyPaymentSession error:", {
+        sessionId,
+        errorMessage,
+        errorData,
+      });
+      throw new Error(errorMessage, {
+        cause: errorData || error,
       });
     }
   },

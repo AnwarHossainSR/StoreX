@@ -3,6 +3,7 @@
 import Loading from "@/components/ui/loading";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useOrder } from "@/hooks/useOrder";
+import { VerifySessionResponse } from "@/services/orderService";
 import { useCartStore } from "@/stores/cartStore";
 import { loadStripe, StripeElements } from "@stripe/stripe-js";
 import { ChevronRight, Lock } from "lucide-react";
@@ -46,22 +47,34 @@ export default function CheckoutPage() {
     null
   );
 
-  // Initialize Stripe Elements
+  const [isStripeLoading, setIsStripeLoading] = useState(true);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
   useEffect(() => {
     let mounted = true;
 
     const initializeStripe = async () => {
-      const stripe = await stripePromise;
-      if (stripe && mounted && !elements) {
-        const newElements = stripe.elements({
-          appearance: {
-            theme: "stripe",
-            variables: {
-              colorPrimary: "#2563eb",
+      setIsStripeLoading(true);
+      setStripeError(null);
+      try {
+        const stripe = await stripePromise;
+        if (stripe && mounted && !elements) {
+          const newElements = stripe.elements({
+            appearance: {
+              theme: "stripe",
+              variables: {
+                colorPrimary: "#2563eb",
+              },
             },
-          },
-        });
-        setElements(newElements);
+          });
+          console.log("Stripe Elements initialized successfully");
+          setElements(newElements);
+        }
+      } catch (error: any) {
+        console.error("Failed to initialize Stripe Elements:", error);
+        setStripeError("Failed to load payment form. Please refresh the page.");
+      } finally {
+        setIsStripeLoading(false);
       }
     };
 
@@ -71,6 +84,30 @@ export default function CheckoutPage() {
       mounted = false;
     };
   }, [elements]);
+
+  useEffect(() => {
+    if (stripeError && !isStripeLoading) {
+      toast.error(stripeError, {
+        duration: 5000, // Show for 5 seconds to avoid spamming
+      });
+    }
+  }, [stripeError, isStripeLoading]);
+
+  useEffect(() => {
+    if (stripeError && !isStripeLoading) {
+      toast.error(stripeError, {
+        duration: 5000, // Show for 5 seconds to avoid spamming
+      });
+    }
+  }, [stripeError, isStripeLoading]);
+
+  useEffect(() => {
+    if (stripeError && !isStripeLoading) {
+      toast.error(stripeError, {
+        duration: 5000, // Show for 5 seconds to avoid spamming
+      });
+    }
+  }, [stripeError, isStripeLoading]);
 
   // Set default address as selected on mount
   useEffect(() => {
@@ -126,8 +163,11 @@ export default function CheckoutPage() {
         return;
       }
 
-      if (!elements) {
-        toast.error("Payment system not initialized. Please refresh the page.");
+      if (!elements || isStripeLoading) {
+        toast.error(
+          stripeError ||
+            "Payment system not initialized. Please refresh the page."
+        );
         return;
       }
 
@@ -136,27 +176,61 @@ export default function CheckoutPage() {
       try {
         let activeSessionId = sessionId;
         if (!activeSessionId) {
+          activeSessionId = await createSession(
+            selectedAddressId,
+            couponCode ? { code: couponCode } : undefined
+          );
+          console.log("Created session in handleSubmit:", activeSessionId);
+          setCurrentSessionId(activeSessionId);
+        }
+
+        const maxRetries = 2;
+        let sessionData: VerifySessionResponse | null = null;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
+            sessionData = await verifySession(activeSessionId);
+            if (!sessionData?.success) {
+              console.warn(
+                "Session verification failed:",
+                sessionData?.message
+              );
+              toast.error("Session verification failed", {
+                description:
+                  sessionData?.message ||
+                  "Please try again or contact support.",
+              });
+              throw new Error(
+                sessionData?.message || "Session verification failed"
+              );
+            }
+            break;
+          } catch (error: any) {
+            console.warn(
+              `Session verification attempt ${attempt} failed:`,
+              error.message
+            );
+            if (attempt === maxRetries) {
+              throw new Error("Session verification failed after retries");
+            }
             activeSessionId = await createSession(
               selectedAddressId,
               couponCode ? { code: couponCode } : undefined
             );
-            console.log("Created session in handleSubmit:", activeSessionId);
-            setCurrentSessionId(activeSessionId);
-          } catch (sessionError: any) {
-            throw new Error(
-              `Failed to create payment session: ${sessionError.message}`
+            console.log(
+              `Recreated session on attempt ${attempt}:`,
+              activeSessionId
             );
+            setCurrentSessionId(activeSessionId);
+            await new Promise((resolve) => setTimeout(resolve, 500));
           }
         }
 
-        if (!activeSessionId) {
-          throw new Error("No session ID returned after creation");
+        if (!sessionData) {
+          throw new Error("No session data after retries");
         }
 
-        const sessionData = await verifySession(activeSessionId);
-        if (!sessionData?.success) {
-          throw new Error("Session verification failed");
+        if (sessionData.session.userId !== user?.id) {
+          throw new Error("Session belongs to a different user");
         }
 
         const stripe = await stripePromise;
@@ -197,7 +271,11 @@ export default function CheckoutPage() {
               );
             }
 
-            const paymentElement = elements.create("payment");
+            // Create and mount payment element with clientSecret and amount
+            const paymentElement = elements.create("payment", {
+              clientSecret: paymentIntentData.clientSecret,
+              amount: Math.round(sellerAmount * 100), // Amount in cents
+            });
             paymentElement.mount("#payment-element");
 
             const { error } = await stripe.confirmPayment({
@@ -243,7 +321,9 @@ export default function CheckoutPage() {
         console.error("Payment error:", err);
         toast.error("Payment Error", {
           description:
-            err instanceof Error ? err.message : "An unexpected error occurred",
+            err instanceof Error
+              ? err.message
+              : "An unexpected error occurred. Please try again or contact support.",
         });
       } finally {
         setIsProcessingPayment(false);
@@ -253,6 +333,8 @@ export default function CheckoutPage() {
       isProcessingPayment,
       selectedAddressId,
       elements,
+      isStripeLoading,
+      stripeError,
       sessionId,
       createSession,
       verifySession,
@@ -264,7 +346,6 @@ export default function CheckoutPage() {
       formData.email,
     ]
   );
-
   const subtotal = getTotalPrice();
   const shipping =
     subtotal > 100 || (couponCode.toUpperCase() === "FREESHIP" && !couponError)
@@ -394,10 +475,23 @@ export default function CheckoutPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Card details
                     </label>
-                    <div
-                      id="payment-element"
-                      className="w-full border border-gray-300 rounded-md p-2 min-h-[40px]"
-                    ></div>
+                    {isStripeLoading ? (
+                      <div className="w-full border border-gray-300 rounded-md p-2 min-h-[160px] flex items-center justify-center">
+                        Loading payment form...
+                      </div>
+                    ) : stripeError ? (
+                      <div
+                        id="payment-element"
+                        className="w-full border border-gray-300 rounded-md p-2 min-h-[160px] flex items-center justify-center text-red-600"
+                      >
+                        {stripeError}
+                      </div>
+                    ) : (
+                      <div
+                        id="payment-element"
+                        className="w-full border border-gray-300 rounded-md p-2 min-h-[160px]"
+                      ></div>
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">
                     <p>

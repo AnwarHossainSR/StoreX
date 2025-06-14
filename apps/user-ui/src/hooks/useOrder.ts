@@ -79,6 +79,7 @@ export const useOrder = (): UseOrderReturn => {
       },
     });
 
+  // In useOrder.ts, update the createSession function
   const createSession = useCallback(
     async (selectedAddressId: string, coupon?: Coupon): Promise<string> => {
       const cartItems: CartItem[] = items.map((item: any) => ({
@@ -89,17 +90,31 @@ export const useOrder = (): UseOrderReturn => {
         selectedOptions: item.selectedOptions || {},
       }));
 
-      try {
-        const response = await createSessionMutate({
-          cart: cartItems,
-          selectedAddressId,
-          coupon,
-        });
-        return response.sessionId;
-      } catch (error) {
-        console.error("Create session failed in useOrder:", error);
-        throw error;
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await createSessionMutate({
+            cart: cartItems,
+            selectedAddressId,
+            coupon,
+          });
+          console.log(
+            `Session created on attempt ${attempt}: ${response.sessionId}`
+          );
+          return response.sessionId;
+        } catch (error: any) {
+          console.warn(
+            `Create session attempt ${attempt} failed:`,
+            error.message
+          );
+          if (attempt === maxRetries) {
+            console.error("Create session failed after retries:", error);
+            throw new Error(error.message || "Failed to create session");
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms before retry
+        }
       }
+      throw new Error("Failed to create session after retries");
     },
     [items, createSessionMutate]
   );
@@ -162,10 +177,21 @@ export const useOrder = (): UseOrderReturn => {
 
       try {
         const result = await verifySessionRefetch();
+        if (!result.data?.success) {
+          console.error("Session verification failed:", {
+            sessionId: currentSessionId,
+            response: result.data,
+          });
+          throw new Error(result.data?.message || "Failed to verify session");
+        }
         return result.data ?? null;
-      } catch (error) {
-        console.error("Session verification failed:", error);
-        throw error;
+      } catch (error: any) {
+        console.error("Session verification error:", {
+          message: error.message,
+          stack: error.stack,
+          sessionId: currentSessionId,
+        });
+        throw new Error(error.message || "Failed to verify session");
       }
     },
     [sessionId, verifySessionRefetch]

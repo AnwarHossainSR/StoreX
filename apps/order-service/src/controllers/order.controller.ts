@@ -41,7 +41,6 @@ interface SessionData {
   createdAt: number;
 }
 
-// Create payment intent
 export const createPaymentIntent = async (
   req: any,
   res: Response,
@@ -61,7 +60,7 @@ export const createPaymentIntent = async (
 
     const sessionData = await redis.get(`payment-session:${sessionId}`);
     if (!sessionData) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Session not found or expired",
       });
@@ -416,7 +415,7 @@ export const createPaymentSession = async (
 
     await redis.setex(
       `payment-session:${sessionId}`,
-      3600,
+      7200, //  Set TTL to 2 hours
       JSON.stringify(sessionData)
     );
 
@@ -445,7 +444,10 @@ export const verifyPaymentSession = async (
     const sessionId = req.query.sessionId as string;
     const userId = req.user?.id;
 
+    console.log("Verifying payment session:", { sessionId, userId });
+
     if (!sessionId || !userId) {
+      console.error("Missing sessionId or userId:", { sessionId, userId });
       return res.status(400).json({
         success: false,
         message: "Session ID and user ID are required",
@@ -456,7 +458,8 @@ export const verifyPaymentSession = async (
     const sessionData = await redis.get(sessionKey);
 
     if (!sessionData) {
-      return res.status(404).json({
+      console.error("Session not found or expired:", { sessionId });
+      return res.status(200).json({
         success: false,
         message: "Session not found or expired",
       });
@@ -465,7 +468,12 @@ export const verifyPaymentSession = async (
     const session: SessionData = JSON.parse(sessionData);
 
     if (session.userId !== userId) {
-      return res.status(403).json({
+      console.error("Unauthorized session access:", {
+        sessionId,
+        sessionUserId: session.userId,
+        requestingUserId: userId,
+      });
+      return res.status(200).json({
         success: false,
         message: "Unauthorized access to session",
       });
@@ -496,7 +504,10 @@ export const verifyPaymentSession = async (
     });
 
     if (orders.length !== session.orderIds.length) {
-      console.warn(`Some orders missing for session: ${sessionId}`);
+      console.warn(`Some orders missing for session: ${sessionId}`, {
+        expectedOrderIds: session.orderIds,
+        foundOrders: orders.map((o) => o.id),
+      });
     }
 
     return res.status(200).json({
@@ -505,7 +516,11 @@ export const verifyPaymentSession = async (
       orders,
     });
   } catch (error: any) {
-    console.error("Verify payment session error:", error.message);
+    console.error("Verify payment session error:", {
+      sessionId: req.query.sessionId,
+      error: error.message,
+      stack: error.stack,
+    });
     return next(error);
   }
 };
