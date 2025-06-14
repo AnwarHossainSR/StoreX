@@ -60,6 +60,7 @@ export const createPaymentIntent = async (
 
     const sessionData = await redis.get(`payment-session:${sessionId}`);
     if (!sessionData) {
+      console.error(`Session not found or expired for sessionId: ${sessionId}`);
       return res.status(400).json({
         success: false,
         message: "Session not found or expired",
@@ -67,7 +68,12 @@ export const createPaymentIntent = async (
     }
 
     const session: SessionData = JSON.parse(sessionData);
+
+    // Validate session userId matches request userId
     if (session.userId !== userId) {
+      console.error(
+        `Unauthorized access: session userId ${session.userId} does not match request userId ${userId}`
+      );
       return res.status(403).json({
         success: false,
         message: "Unauthorized access to session",
@@ -115,6 +121,8 @@ export const createPaymentIntent = async (
     console.log(
       `Payment intent created: ${paymentIntent.id} for shop: ${seller.shopId}`
     );
+
+    console.log("paymentIntent", paymentIntent);
 
     return res.status(200).json({
       success: true,

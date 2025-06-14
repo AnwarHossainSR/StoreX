@@ -6,7 +6,7 @@ import {
 } from "@/services/orderService";
 import { useCartStore } from "@/stores/cartStore";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useCurrentUser } from "./useCurrentUser";
 
@@ -22,7 +22,7 @@ export interface UseOrderReturn {
     sellerStripeAccountId: string,
     amount: number
   ) => Promise<any>;
-  verifySession: (sessionId: string) => Promise<VerifySessionResponse | null>;
+  verifySession: (sessionId?: string) => Promise<VerifySessionResponse | null>;
   placeOrder: () => void;
   formData: {
     email: string;
@@ -39,10 +39,11 @@ export interface UseOrderReturn {
   setCouponError: (error: string) => void;
   total: number;
   validateCoupon: (code: string) => Promise<void>;
+  resetSession: () => void;
 }
 
 export const useOrder = (): UseOrderReturn => {
-  const { items, getTotalPrice } = useCartStore();
+  const { items, getTotalPrice, clearCart } = useCartStore();
   const { user } = useCurrentUser({ enabled: true });
 
   const [formData, setFormData] = useState({
@@ -52,6 +53,7 @@ export const useOrder = (): UseOrderReturn => {
   const [discount, setDiscount] = useState(0);
   const [couponError, setCouponError] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Sync formData.email with user.email when user changes
   useEffect(() => {
@@ -59,6 +61,15 @@ export const useOrder = (): UseOrderReturn => {
       setFormData((prev) => ({ ...prev, email: user.email }));
     }
   }, [user?.email]);
+
+  // Reset session function
+  const resetSession = useCallback(() => {
+    setSessionId(null);
+    setError(null);
+    setCouponError("");
+    setDiscount(0);
+    setCouponCode("");
+  }, []);
 
   const { mutateAsync: createSessionMutate, isPending: isCreatingSession } =
     useMutation({
@@ -69,52 +80,72 @@ export const useOrder = (): UseOrderReturn => {
       }) => orderService.createPaymentSession(data),
       onSuccess: (data) => {
         setSessionId(data.sessionId);
-        console.log("Session created in useOrder:", data.sessionId);
+        setError(null);
+        console.log("Session created successfully:", data.sessionId);
       },
       onError: (error: any) => {
         const errorMessage = error.message || "Failed to create session";
+        setError(errorMessage);
         setCouponError(errorMessage);
-        toast.error("Session Error", { description: errorMessage });
-        throw error; // Ensure error propagates to caller
+        console.error("Session creation failed:", errorMessage);
+        throw error;
       },
     });
 
-  // In useOrder.ts, update the createSession function
   const createSession = useCallback(
     async (selectedAddressId: string, coupon?: Coupon): Promise<string> => {
-      const cartItems: CartItem[] = items.map((item: any) => ({
-        id: item.product.id,
-        quantity: item.quantity,
-        sale_price: item.product.sale_price,
-        shopId: item.product.shopId,
-        selectedOptions: item.selectedOptions || {},
-      }));
+      try {
+        setError(null);
 
-      const maxRetries = 3;
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          const response = await createSessionMutate({
-            cart: cartItems,
-            selectedAddressId,
-            coupon,
-          });
-          console.log(
-            `Session created on attempt ${attempt}: ${response.sessionId}`
-          );
-          return response.sessionId;
-        } catch (error: any) {
-          console.warn(
-            `Create session attempt ${attempt} failed:`,
-            error.message
-          );
-          if (attempt === maxRetries) {
-            console.error("Create session failed after retries:", error);
-            throw new Error(error.message || "Failed to create session");
-          }
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms before retry
+        const cartItems: CartItem[] = items.map((item: any) => ({
+          id: item.product.id,
+          quantity: item.quantity,
+          sale_price: item.product.sale_price,
+          shopId: item.product.shopId,
+          selectedOptions: item.selectedOptions || {},
+        }));
+
+        if (cartItems.length === 0) {
+          throw new Error("Cart is empty");
         }
+
+        const maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const response = await createSessionMutate({
+              cart: cartItems,
+              selectedAddressId,
+              coupon,
+            });
+
+            console.log(
+              `Session created on attempt ${attempt}:`,
+              response.sessionId
+            );
+            return response.sessionId;
+          } catch (error: any) {
+            console.warn(
+              `Create session attempt ${attempt} failed:`,
+              error.message
+            );
+
+            if (attempt === maxRetries) {
+              throw new Error(
+                error.message || "Failed to create session after retries"
+              );
+            }
+
+            // Wait before retry with exponential backoff
+            await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+          }
+        }
+
+        throw new Error("Failed to create session after retries");
+      } catch (error: any) {
+        console.error("Create session error:", error);
+        setError(error.message);
+        throw error;
       }
-      throw new Error("Failed to create session after retries");
     },
     [items, createSessionMutate]
   );
@@ -129,27 +160,60 @@ export const useOrder = (): UseOrderReturn => {
       sessionId: string;
     }) => orderService.createPaymentIntent(data),
     onError: (error: any) => {
+      const errorMessage = error.message || "Failed to create payment intent";
+      setError(errorMessage);
       toast.error("Payment Intent Error", {
-        description: error.message || "Failed to create payment intent",
+        description: errorMessage,
       });
     },
   });
 
   const createPaymentIntent = useCallback(
     async (sellerStripeAccountId: string, amount: number) => {
-      if (!sessionId) {
-        throw new Error("Session not created");
-      }
-
       try {
-        const response = await createPaymentIntentMutate({
-          sellerStripeAccountId,
-          amount,
-          sessionId,
-        });
-        return response;
-      } catch (error) {
-        console.error("Payment intent creation failed:", error);
+        if (!sessionId) {
+          throw new Error("Session not created");
+        }
+
+        if (amount <= 0) {
+          throw new Error("Invalid amount");
+        }
+
+        const maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const response = await createPaymentIntentMutate({
+              sellerStripeAccountId,
+              amount,
+              sessionId,
+            });
+
+            console.log(
+              `Payment intent created on attempt ${attempt}:`,
+              response
+            );
+            return response;
+          } catch (error: any) {
+            console.warn(
+              `Create payment intent attempt ${attempt} failed:`,
+              error.message
+            );
+
+            if (attempt === maxRetries) {
+              throw new Error(
+                error.message || "Failed to create payment intent after retries"
+              );
+            }
+
+            // Wait before retry with exponential backoff
+            await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+          }
+        }
+
+        throw new Error("Failed to create payment intent after retries");
+      } catch (error: any) {
+        console.error("Create payment intent error:", error);
+        setError(error.message);
         throw error;
       }
     },
@@ -163,71 +227,108 @@ export const useOrder = (): UseOrderReturn => {
         ? orderService.verifyPaymentSession(sessionId)
         : Promise.resolve(null),
     enabled: false,
-    retry: 1,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const verifySession = useCallback(
     async (
       providedSessionId?: string
     ): Promise<VerifySessionResponse | null> => {
-      const currentSessionId = providedSessionId || sessionId;
-      if (!currentSessionId) {
-        throw new Error("No session ID available");
-      }
-
       try {
+        const currentSessionId = providedSessionId || sessionId;
+
+        if (!currentSessionId) {
+          throw new Error("No session ID available");
+        }
+
+        console.log("Verifying session:", currentSessionId);
+
         const result = await verifySessionRefetch();
-        if (!result.data?.success) {
+
+        if (!result.data) {
+          throw new Error("No session data received");
+        } else {
+          setError(null);
+        }
+
+        if (!result.data.success) {
+          const errorMessage =
+            result.data.message || "Session verification failed";
           console.error("Session verification failed:", {
             sessionId: currentSessionId,
+            message: errorMessage,
             response: result.data,
           });
-          throw new Error(result.data?.message || "Failed to verify session");
+          throw new Error(errorMessage);
         }
-        return result.data ?? null;
+
+        console.log("Session verified successfully:", result.data);
+        return result.data;
       } catch (error: any) {
         console.error("Session verification error:", {
           message: error.message,
-          stack: error.stack,
-          sessionId: currentSessionId,
+          sessionId: providedSessionId || sessionId,
         });
-        throw new Error(error.message || "Failed to verify session");
+        setError(error.message || "Failed to verify session");
+        throw error;
       }
     },
     [sessionId, verifySessionRefetch]
   );
 
   const placeOrder = useCallback(() => {
-    toast.success("Order placed successfully! Confirmation will be sent soon.");
-    setSessionId(null);
-    setFormData({
-      email: user?.email || "",
-    });
-    setCouponCode("");
-    setDiscount(0);
-    setCouponError("");
-  }, [user]);
+    try {
+      toast.success(
+        "Order placed successfully! Confirmation will be sent soon."
+      );
+
+      // Clear cart and reset state
+      clearCart(null, null);
+      resetSession();
+
+      // Reset form data
+      setFormData({
+        email: user?.email || "",
+      });
+
+      console.log("Order placement completed successfully");
+    } catch (error: any) {
+      console.error("Error during order placement:", error);
+      toast.error("Error completing order placement");
+    }
+  }, [user, clearCart, resetSession]);
 
   const { mutateAsync: validateCouponMutate, isPending: isValidatingCoupon } =
     useMutation({
       mutationFn: (code: string) => orderService.validateCoupon(code),
       onSuccess: (data) => {
-        const subtotal = getTotalPrice();
-        let newDiscount = 0;
+        try {
+          const subtotal = getTotalPrice();
+          let newDiscount = 0;
 
-        if (data.discountType === "fixed") {
-          newDiscount = data.discountValue || 0;
-        } else if (data.discountType === "percentage") {
-          newDiscount = ((data.discountValue || 0) * subtotal) / 100;
+          if (data.discountType === "fixed") {
+            newDiscount = data.discountValue || 0;
+          } else if (data.discountType === "percentage") {
+            newDiscount = Math.min(
+              ((data.discountValue || 0) * subtotal) / 100,
+              subtotal // Ensure discount doesn't exceed subtotal
+            );
+          }
+
+          setDiscount(newDiscount);
+          setCouponError("");
+          setError(null);
+
+          toast.success("Coupon Applied", {
+            description: `Coupon ${couponCode} applied successfully! Discount: $${newDiscount.toFixed(
+              2
+            )}`,
+          });
+        } catch (error: any) {
+          console.error("Error processing coupon success:", error);
+          setCouponError("Error applying coupon");
         }
-
-        setDiscount(newDiscount);
-        setCouponError("");
-        toast.success("Coupon Applied", {
-          description: `Coupon ${couponCode} applied successfully! Discount: $${newDiscount.toFixed(
-            2
-          )}`,
-        });
       },
       onError: (error: any) => {
         const errorMessage = error.message || "Invalid coupon code";
@@ -239,28 +340,41 @@ export const useOrder = (): UseOrderReturn => {
 
   const validateCoupon = useCallback(
     async (code: string) => {
-      if (!code.trim()) {
-        setCouponError("Please enter a coupon code");
-        return;
+      try {
+        if (!code.trim()) {
+          setCouponError("Please enter a coupon code");
+          return;
+        }
+
+        setCouponError("");
+        await validateCouponMutate(code);
+      } catch (error: any) {
+        console.error("Coupon validation error:", error);
+        setCouponError(error.message || "Failed to validate coupon");
+        throw error;
       }
-      await validateCouponMutate(code);
     },
     [validateCouponMutate]
   );
 
+  // Calculate totals
   const subtotal = getTotalPrice();
-  const shipping =
-    subtotal > 100 || (couponCode.toUpperCase() === "FREESHIP" && !couponError)
+  const shipping = useMemo(() => {
+    return subtotal > 100 ||
+      (couponCode.toUpperCase() === "FREESHIP" && !couponError)
       ? 0
       : 10;
+  }, [subtotal, couponCode, couponError]);
+
   const total = Math.max(0, subtotal + shipping - discount);
+
   const isLoading =
     isCreatingSession || isCreatingPaymentIntent || isValidatingCoupon;
 
   return {
     sessionId,
     isLoading,
-    error: couponError,
+    error,
     createSession,
     createPaymentIntent,
     verifySession,
@@ -274,5 +388,6 @@ export const useOrder = (): UseOrderReturn => {
     setCouponError,
     total,
     validateCoupon,
+    resetSession,
   };
 };
