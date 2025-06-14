@@ -4,7 +4,7 @@ import Loading from "@/components/ui/loading";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useOrder } from "@/hooks/useOrder";
 import { useCartStore } from "@/stores/cartStore";
-import { useCheckoutStore } from "@/stores/checkoutStore"; // Import the new store
+import { useCheckoutStore } from "@/stores/checkoutStore";
 import { loadStripe, StripeElements } from "@stripe/stripe-js";
 import { ChevronRight, Lock } from "lucide-react";
 import Image from "next/image";
@@ -26,7 +26,6 @@ export default function CheckoutPage() {
     sessionId,
     isLoading,
     createSession,
-    createPaymentIntent,
     verifySession,
     placeOrder,
     formData,
@@ -37,6 +36,7 @@ export default function CheckoutPage() {
     setCouponError,
     total,
     validateCoupon,
+    processFullPayment,
   } = useOrder();
   const {
     activeTab,
@@ -44,7 +44,7 @@ export default function CheckoutPage() {
     sessionCreated,
     triggerSessionCreation,
     resetCheckout,
-  } = useCheckoutStore(); // Use checkout store
+  } = useCheckoutStore();
 
   const [elements, setElements] = useState<StripeElements | null>(null);
   const [paymentElement, setPaymentElement] = useState<any>(null);
@@ -69,12 +69,12 @@ export default function CheckoutPage() {
     }
   }, [shippingAddress, selectedAddressId]);
 
-  // Initialize Stripe Elements only after session is created (triggered by Place Order)
+  // Initialize Stripe Elements after session creation
   useEffect(() => {
     let mounted = true;
 
     const initializeStripe = async () => {
-      if (!sessionCreated || !selectedAddressId) return; // Only run if session is created
+      if (!sessionCreated || !selectedAddressId) return;
 
       setIsStripeLoading(true);
       setStripeError(null);
@@ -82,7 +82,6 @@ export default function CheckoutPage() {
         const stripe = await stripePromise;
         if (!stripe || !mounted) return;
 
-        // Create session if not already created
         let activeSessionId = sessionId || currentSessionId;
         if (!activeSessionId) {
           activeSessionId = await createSession(
@@ -92,39 +91,11 @@ export default function CheckoutPage() {
           setCurrentSessionId(activeSessionId);
         }
 
-        // Verify session and get seller data
-        const sessionData = await verifySession(activeSessionId);
-        if (!sessionData?.success || !mounted) {
-          throw new Error("Session verification failed");
-        }
-
-        // Get the first seller’s PaymentIntent
-        const firstSeller = sessionData.session.sellers[0];
-        if (!firstSeller?.stripeAccountId) {
-          throw new Error("Seller has no Stripe account configured");
-        }
-
-        const sellerItems = sessionData.session.cart.filter(
-          (item: any) => item.shopId === firstSeller.shopId
-        );
-        const sellerAmount = sellerItems.reduce(
-          (sum: number, item: any) => sum + item.quantity * item.sale_price,
-          0
-        );
-
-        // Create PaymentIntent for the first seller
-        const paymentIntentData = await createPaymentIntent(
-          firstSeller.stripeAccountId,
-          sellerAmount
-        );
-
-        if (!paymentIntentData?.clientSecret) {
-          throw new Error("Failed to create PaymentIntent");
-        }
-
-        // Initialize Stripe Elements
         const newElements = stripe.elements({
-          clientSecret: paymentIntentData.clientSecret,
+          mode: "payment",
+          currency: "usd",
+          amount: Math.round(total * 100),
+          paymentMethodCreation: "manual",
           appearance: {
             theme: "stripe",
             variables: { colorPrimary: "#2563eb" },
@@ -149,13 +120,12 @@ export default function CheckoutPage() {
     selectedAddressId,
     couponCode,
     createSession,
-    verifySession,
-    createPaymentIntent,
     sessionId,
     currentSessionId,
+    total,
   ]);
 
-  // Mount payment element when elements are ready
+  // Mount payment element
   useEffect(() => {
     if (
       elements &&
@@ -190,14 +160,13 @@ export default function CheckoutPage() {
     };
   }, [elements, isStripeLoading, activeTab, paymentElement]);
 
-  // Show Stripe error only once
+  // Show Stripe error
   useEffect(() => {
     if (stripeError && !isStripeLoading) {
       toast.error(stripeError, { duration: 5000 });
     }
   }, [stripeError, isStripeLoading]);
 
-  // Sort addresses to show default first
   const sortedAddresses = shippingAddress
     ? [...shippingAddress].sort((a, b) =>
         a.isDefault ? -1 : b.isDefault ? 1 : 0
@@ -226,8 +195,8 @@ export default function CheckoutPage() {
       toast.error("Please select a shipping address");
       return;
     }
-    triggerSessionCreation(); // Trigger session creation
-    setActiveTab(3); // Move to Payment tab
+    triggerSessionCreation();
+    setActiveTab(3);
   }, [selectedAddressId, triggerSessionCreation, setActiveTab]);
 
   const handlePaymentSubmit = useCallback(
@@ -242,6 +211,16 @@ export default function CheckoutPage() {
 
       setIsProcessingPayment(true);
       try {
+        const stripe = await stripePromise;
+        if (!stripe) throw new Error("Stripe not initialized");
+
+        // Submit the payment form data
+        const submitResult = await elements.submit();
+        if (submitResult.error) {
+          throw new Error(submitResult.error.message);
+        }
+
+        // Verify session after form submission
         let activeSessionId = sessionId || currentSessionId;
         const sessionData = await verifySession(activeSessionId!);
         if (!sessionData?.success) {
@@ -254,71 +233,24 @@ export default function CheckoutPage() {
           throw new Error("Session belongs to a different user");
         }
 
-        const stripe = await stripePromise;
-        if (!stripe) throw new Error("Stripe not initialized");
-
-        const sellers = sessionData.session.sellers;
-        for (let i = 0; i < sellers.length; i++) {
-          const seller = sellers[i];
-          const sellerItems = sessionData.session.cart.filter(
-            (item: any) => item.shopId === seller.shopId
-          );
-
-          if (sellerItems.length === 0) continue;
-
-          const sellerAmount = sellerItems.reduce(
-            (sum: number, item: any) => sum + item.quantity * item.sale_price,
-            0
-          );
-
-          if (!seller.stripeAccountId) {
-            throw new Error(
-              `Seller ${seller.shopId} doesn't have Stripe account`
-            );
-          }
-
-          const paymentIntentData = await createPaymentIntent(
-            seller.stripeAccountId,
-            sellerAmount
-          );
-
-          if (!paymentIntentData?.clientSecret) {
-            throw new Error(
-              `Failed to create payment intent for seller ${seller.shopId}`
-            );
-          }
-
-          elements.update({ clientSecret: paymentIntentData.clientSecret });
-          const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-              payment_method_data: {
-                billing_details: {
-                  name: user?.name || "Customer",
-                  email: user?.email || formData.email || "unknown@example.com",
-                },
-              },
-              return_url: `${window.location.origin}/checkout?tab=complete&session_id=${activeSessionId}`,
+        // Create payment method after successful form submission
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          elements,
+          params: {
+            billing_details: {
+              name: user?.name || "Customer",
+              email: user?.email || formData.email || "unknown@example.com",
             },
-            redirect: "if_required",
-          });
+          },
+        });
 
-          if (error) {
-            throw new Error(
-              `Payment failed for seller ${seller.shopId}: ${error.message}`
-            );
-          }
-
-          toast.success(
-            `Payment for vendor ${i + 1}/${sellers.length} completed`
-          );
+        if (error) {
+          throw new Error(error.message);
         }
 
-        toast.success("All payments processed successfully!");
-        clearCart(null, null);
-        placeOrder();
+        processFullPayment(paymentMethod.id);
         setPaymentStatus("success");
-        setActiveTab(4); // Move to Complete tab
+        setActiveTab(4);
       } catch (err) {
         console.error("Payment error:", err);
         toast.error("Payment Error", {
@@ -328,7 +260,7 @@ export default function CheckoutPage() {
               : "An unexpected error occurred.",
         });
         setPaymentStatus("failed");
-        setActiveTab(4); // Move to Complete tab
+        setActiveTab(4);
       } finally {
         setIsProcessingPayment(false);
       }
@@ -342,7 +274,6 @@ export default function CheckoutPage() {
       sessionId,
       currentSessionId,
       verifySession,
-      createPaymentIntent,
       placeOrder,
       clearCart,
       user,
@@ -399,7 +330,6 @@ export default function CheckoutPage() {
           <span className="text-gray-800">Checkout</span>
         </div>
 
-        {/* Tab Navigation */}
         <div className="flex border-b border-gray-200 mb-6">
           {[
             { id: 1, name: "Personal & Address" },
@@ -424,7 +354,6 @@ export default function CheckoutPage() {
           ))}
         </div>
 
-        {/* Tab Content */}
         {activeTab === 1 && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <h2 className="text-xl font-bold text-gray-800 mb-6">
@@ -661,8 +590,8 @@ export default function CheckoutPage() {
                 </div>
                 <div className="text-sm text-gray-600">
                   <p>
-                    💡 Note: This will process separate payments for each vendor
-                    in your cart.
+                    💡 Note: You will be charged once for the total amount,
+                    which will be distributed to the respective vendors.
                   </p>
                 </div>
               </div>

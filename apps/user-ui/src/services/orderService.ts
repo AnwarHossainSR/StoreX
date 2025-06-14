@@ -19,10 +19,10 @@ export interface PaymentSessionResponse {
   sessionId: string;
 }
 
-export interface PaymentIntentResponse {
+export interface ProcessPaymentResponse {
   success: boolean;
-  clientSecret: string;
   paymentIntentId: string;
+  message?: string;
 }
 
 export interface VerifySessionResponse {
@@ -97,20 +97,19 @@ export const orderService = {
     }
   },
 
-  async createPaymentIntent(data: {
-    amount: number;
-    sellerStripeAccountId: string;
+  async processFullPayment(data: {
+    paymentMethodId: string;
     sessionId: string;
-  }): Promise<PaymentIntentResponse> {
+  }): Promise<ProcessPaymentResponse> {
     try {
-      const response = await apiClient.post<PaymentIntentResponse>(
-        `${API_BASE_URL}/create-payment-intent`,
+      const response = await apiClient.post<ProcessPaymentResponse>(
+        `${API_BASE_URL}/process-full-payment`,
         data
       );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "Failed to create payment intent", {
+      throw new Error(errorData?.message || "Failed to process payment", {
         cause: errorData,
       });
     }

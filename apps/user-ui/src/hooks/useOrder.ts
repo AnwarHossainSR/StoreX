@@ -18,10 +18,7 @@ export interface UseOrderReturn {
     selectedAddressId: string,
     coupon?: Coupon
   ) => Promise<string>;
-  createPaymentIntent: (
-    sellerStripeAccountId: string,
-    amount: number
-  ) => Promise<any>;
+  processFullPayment: (paymentMethodId: string) => Promise<any>;
   verifySession: (sessionId?: string) => Promise<VerifySessionResponse | null>;
   placeOrder: () => void;
   formData: {
@@ -55,14 +52,12 @@ export const useOrder = (): UseOrderReturn => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync formData.email with user.email when user changes
   useEffect(() => {
     if (user?.email && formData.email !== user.email) {
       setFormData((prev) => ({ ...prev, email: user.email }));
     }
   }, [user?.email]);
 
-  // Reset session function
   const resetSession = useCallback(() => {
     setSessionId(null);
     setError(null);
@@ -135,7 +130,6 @@ export const useOrder = (): UseOrderReturn => {
               );
             }
 
-            // Wait before retry with exponential backoff
             await new Promise((resolve) => setTimeout(resolve, attempt * 500));
           }
         }
@@ -151,73 +145,65 @@ export const useOrder = (): UseOrderReturn => {
   );
 
   const {
-    mutateAsync: createPaymentIntentMutate,
-    isPending: isCreatingPaymentIntent,
+    mutateAsync: processFullPaymentMutate,
+    isPending: isProcessingPayment,
   } = useMutation({
-    mutationFn: (data: {
-      sellerStripeAccountId: string;
-      amount: number;
-      sessionId: string;
-    }) => orderService.createPaymentIntent(data),
+    mutationFn: (data: { paymentMethodId: string; sessionId: string }) =>
+      orderService.processFullPayment(data),
     onError: (error: any) => {
-      const errorMessage = error.message || "Failed to create payment intent";
+      const errorMessage = error.message || "Failed to process payment";
       setError(errorMessage);
-      toast.error("Payment Intent Error", {
+      toast.error("Payment Error", {
         description: errorMessage,
       });
     },
+    onSuccess: () => {
+      clearCart(null, null);
+      placeOrder();
+    },
   });
 
-  const createPaymentIntent = useCallback(
-    async (sellerStripeAccountId: string, amount: number) => {
+  const processFullPayment = useCallback(
+    async (paymentMethodId: string) => {
       try {
         if (!sessionId) {
           throw new Error("Session not created");
         }
 
-        if (amount <= 0) {
-          throw new Error("Invalid amount");
-        }
-
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-            const response = await createPaymentIntentMutate({
-              sellerStripeAccountId,
-              amount,
+            const response = await processFullPaymentMutate({
+              paymentMethodId,
               sessionId,
             });
 
-            console.log(
-              `Payment intent created on attempt ${attempt}:`,
-              response
-            );
+            console.log(`Payment processed on attempt ${attempt}:`, response);
             return response;
           } catch (error: any) {
             console.warn(
-              `Create payment intent attempt ${attempt} failed:`,
+              `Process payment attempt ${attempt} failed:`,
               error.message
             );
 
             if (attempt === maxRetries) {
               throw new Error(
-                error.message || "Failed to create payment intent after retries"
+                error.message || "Failed to process payment after retries"
               );
             }
 
-            // Wait before retry with exponential backoff
             await new Promise((resolve) => setTimeout(resolve, attempt * 500));
           }
         }
 
-        throw new Error("Failed to create payment intent after retries");
+        throw new Error("Failed to process payment after retries");
       } catch (error: any) {
-        console.error("Create payment intent error:", error);
+        console.error("Process payment error:", error);
         setError(error.message);
         throw error;
       }
     },
-    [sessionId, createPaymentIntentMutate]
+    [sessionId, processFullPaymentMutate]
   );
 
   const { refetch: verifySessionRefetch } = useQuery({
@@ -283,11 +269,9 @@ export const useOrder = (): UseOrderReturn => {
         "Order placed successfully! Confirmation will be sent soon."
       );
 
-      // Clear cart and reset state
       clearCart(null, null);
       resetSession();
 
-      // Reset form data
       setFormData({
         email: user?.email || "",
       });
@@ -312,7 +296,7 @@ export const useOrder = (): UseOrderReturn => {
           } else if (data.discountType === "percentage") {
             newDiscount = Math.min(
               ((data.discountValue || 0) * subtotal) / 100,
-              subtotal // Ensure discount doesn't exceed subtotal
+              subtotal
             );
           }
 
@@ -357,7 +341,6 @@ export const useOrder = (): UseOrderReturn => {
     [validateCouponMutate]
   );
 
-  // Calculate totals
   const subtotal = getTotalPrice();
   const shipping = useMemo(() => {
     return subtotal > 100 ||
@@ -369,14 +352,14 @@ export const useOrder = (): UseOrderReturn => {
   const total = Math.max(0, subtotal + shipping - discount);
 
   const isLoading =
-    isCreatingSession || isCreatingPaymentIntent || isValidatingCoupon;
+    isCreatingSession || isProcessingPayment || isValidatingCoupon;
 
   return {
     sessionId,
     isLoading,
     error,
     createSession,
-    createPaymentIntent,
+    processFullPayment,
     verifySession,
     placeOrder,
     formData,

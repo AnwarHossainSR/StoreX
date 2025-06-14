@@ -31,6 +31,7 @@ model users {
   following         String[]          @db.ObjectId
   avatarId          String?           @db.ObjectId
   avatar            images?           @relation(fields: [avatarId], references: [id], onDelete: SetNull)
+  stripeCustomerId  String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   shopReviews       shopReviews[]
