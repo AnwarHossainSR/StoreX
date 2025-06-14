@@ -32,7 +32,7 @@ export const useCurrentUser = () => {
   //   isPublicPath,
   // });
 
-  const user = data?.user;
+  const user = data?.seller;
   const errorMessage = isError
     ? (error?.cause as BackendErrorResponse | undefined)?.message ||
       "Failed to fetch seller"

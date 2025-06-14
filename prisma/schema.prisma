@@ -31,6 +31,7 @@ model users {
   following         String[]          @db.ObjectId
   avatarId          String?           @db.ObjectId
   avatar            images?           @relation(fields: [avatarId], references: [id], onDelete: SetNull)
+  stripeCustomerId  String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   shopReviews       shopReviews[]
@@ -86,7 +87,7 @@ model sellers {
   currency            String?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
-  shops               shops?
+  shop                shops?
   Product             Product[]
   PaymentDistribution PaymentDistribution[]
   DiscountCode        DiscountCode[]
@@ -102,14 +103,16 @@ model siteConfig {
 
 model DiscountCode {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  public_id     String
+  public_name   String
   discountType  String
   discountValue Float
   discountCode  String   @unique
   sellerId      String   @db.ObjectId
-  sellers       sellers  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  // sellers       sellers  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  sellers       sellers? @relation(fields: [sellersId], references: [id])
+  sellersId     String?  @db.ObjectId
 }
 
 enum ProductStatus {

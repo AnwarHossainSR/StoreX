@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 
 interface LoadingProps {
@@ -176,16 +178,97 @@ export const PageLoading: React.FC = () => (
 
 // Auth Loading Component
 export const AuthLoading: React.FC = () => (
-  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
-    <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-200">
-      <div className="text-center">
-        <div className="w-12 h-12 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-        <h3 className="text-lg font-medium text-gray-800 mb-2">
+  <div
+    className="min-h-screen animate-gradient flex items-center justify-center"
+    role="status"
+    aria-live="polite"
+  >
+    <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-10 border border-white/20 max-w-sm w-full mx-4">
+      <div className="text-center space-y-6">
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="absolute inset-0 border-4 border-blue-200/50 rounded-full animate-pulse"></div>
+          <div className="absolute inset-0 border-4 border-t-blue-600 rounded-full animate-spin-custom"></div>
+          <div className="absolute inset-2 border-2 border-indigo-200 border-b-indigo-500 rounded-full animate-spin-custom-reverse"></div>
+        </div>
+        <h3
+          className="text-2xl font-bold text-gray-900 animate-pulse-slow"
+          aria-label="Authentication in progress"
+        >
           Authenticating...
         </h3>
-        <p className="text-gray-600 text-sm">Verifying your credentials</p>
+        <p className="text-gray-700 text-base max-w-xs mx-auto">
+          Verifying your credentials, please wait
+        </p>
+        <div className="w-full h-1 bg-gray-200/50 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 animate-progress"></div>
+        </div>
       </div>
     </div>
+    <style jsx>{`
+      @keyframes gradient {
+        0% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0% 50%;
+        }
+      }
+      @keyframes spin-custom {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes spin-custom-reverse {
+        0% {
+          transform: rotate(360deg);
+        }
+        100% {
+          transform: rotate(0deg);
+        }
+      }
+      @keyframes pulse-slow {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+      @keyframes progress {
+        0% {
+          width: 0%;
+        }
+        50% {
+          width: 80%;
+        }
+        100% {
+          width: 20%;
+        }
+      }
+      .animate-gradient {
+        background-size: 200% 200%;
+        animation: gradient 15s ease-in-out infinite;
+      }
+      .animate-spin-custom {
+        animation: spin-custom 1.2s linear infinite;
+      }
+      .animate-spin-custom-reverse {
+        animation: spin-custom-reverse 1.8s linear infinite;
+      }
+      .animate-pulse-slow {
+        animation: pulse-slow 2s ease-in-out infinite;
+      }
+      .animate-progress {
+        animation: progress 2s ease-in-out infinite;
+      }
+    `}</style>
   </div>
 );
 

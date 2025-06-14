@@ -3,6 +3,7 @@ import { imageKit } from "@packages/libs/imagekit";
 import prisma from "@packages/libs/prisma";
 import { Prisma, ProductStatus } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
+import { getSellerId } from "../libs/helper";
 
 export const getCategories = async (
   req: Request,
@@ -26,9 +27,10 @@ export const getDiscountCodes = async (
   next: NextFunction
 ) => {
   try {
+    const sellerId = getSellerId(req);
     const discountCodes = await prisma.discountCode.findMany({
       where: {
-        sellerId: req.seller.id,
+        sellerId,
       },
       select: {
         id: true,
@@ -84,13 +86,14 @@ export const createDiscountCode = async (
       throw new ValidationError("Discount code already exists");
     }
 
+    const sellerId = getSellerId(req);
     const newDiscountCode = await prisma.discountCode.create({
       data: {
         public_name,
         discountType,
         discountValue,
         discountCode,
-        sellerId: req.seller.id,
+        sellerId,
       },
       select: {
         id: true,
@@ -128,7 +131,8 @@ export const deleteDiscountCode = async (
       throw new ValidationError("Discount code not found");
     }
 
-    if (discountCode.sellerId !== req.seller.id) {
+    const sellerId = getSellerId(req);
+    if (discountCode.sellerId !== sellerId) {
       throw new ValidationError("Unauthorized to delete this discount code");
     }
 
@@ -265,9 +269,7 @@ export const createProduct = async (
       throw new ValidationError("Missing required fields");
     }
 
-    if (!req.seller.id) {
-      throw new ValidationError("Seller ID is required");
-    }
+    const sellerId = getSellerId(req);
 
     const productExist = await prisma.product.findUnique({
       where: {
@@ -307,7 +309,7 @@ export const createProduct = async (
             shopsId: req.seller.shop.id,
           })),
         },
-        sellerId: req.seller.id,
+        sellerId,
         shopId: req.seller.shop.id,
       },
       include: {
@@ -336,7 +338,7 @@ export const getSellerProducts = async (
 
     // Build dynamic filters based on search and category
     const whereConditions: any = {
-      sellerId: req.seller.id,
+      sellerId: getSellerId(req),
     };
 
     if (search) {
@@ -403,7 +405,8 @@ export const deleteProduct = async (
       throw new ValidationError("Product not found");
     }
 
-    if (product.sellerId !== req.seller.id) {
+    const sellerId = getSellerId(req);
+    if (product.sellerId !== sellerId) {
       throw new ValidationError("Unauthorized to delete this product");
     }
 
@@ -451,7 +454,8 @@ export const restoreProduct = async (
       throw new ValidationError("Product not found");
     }
 
-    if (product.sellerId !== req.seller.id) {
+    const sellerId = getSellerId(req);
+    if (product.sellerId !== sellerId) {
       throw new ValidationError("Unauthorized to restore this product");
     }
 
@@ -684,7 +688,8 @@ export const updateProduct = async (
       throw new NotFoundError("Product not found");
     }
 
-    if (existingProduct.sellerId !== req.seller.id) {
+    const sellerId = getSellerId(req);
+    if (existingProduct.sellerId !== sellerId) {
       throw new ValidationError("Unauthorized to update this product");
     }
 

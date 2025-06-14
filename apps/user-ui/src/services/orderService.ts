@@ -19,14 +19,15 @@ export interface PaymentSessionResponse {
   sessionId: string;
 }
 
-export interface PaymentIntentResponse {
+export interface ProcessPaymentResponse {
   success: boolean;
-  clientSecret: string;
   paymentIntentId: string;
+  message?: string;
 }
 
 export interface VerifySessionResponse {
   success: boolean;
+  message?: string;
   session: {
     userId: string;
     cart: CartItem[];
@@ -40,7 +41,6 @@ export interface VerifySessionResponse {
     shippingAddressId: string;
     coupon: Coupon | null;
     orderIds: string[];
-    createdAt: number;
   };
   orders: {
     id: string;
@@ -97,20 +97,19 @@ export const orderService = {
     }
   },
 
-  async createPaymentIntent(data: {
-    amount: number;
-    sellerStripeAccountId: string;
+  async processFullPayment(data: {
+    paymentMethodId: string;
     sessionId: string;
-  }): Promise<PaymentIntentResponse> {
+  }): Promise<ProcessPaymentResponse> {
     try {
-      const response = await apiClient.post<PaymentIntentResponse>(
-        `${API_BASE_URL}/create-payment-intent`,
+      const response = await apiClient.post<ProcessPaymentResponse>(
+        `${API_BASE_URL}/process-full-payment`,
         data
       );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "Failed to create payment intent", {
+      throw new Error(errorData?.message || "Failed to process payment", {
         cause: errorData,
       });
     }
@@ -124,10 +123,17 @@ export const orderService = {
         `${API_BASE_URL}/verify-payment-session?sessionId=${sessionId}`
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "Failed to verify session", {
-        cause: errorData,
+      const errorMessage =
+        errorData?.message || `Failed to verify session: ${error.message}`;
+      console.error("verifyPaymentSession error:", {
+        sessionId,
+        errorMessage,
+        errorData,
+      });
+      throw new Error(errorMessage, {
+        cause: errorData || error,
       });
     }
   },

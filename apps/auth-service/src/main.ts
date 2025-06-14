@@ -19,8 +19,8 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
+      "http://localhost:3000", // user-ui
+      "http://localhost:6003", //seller-ui
       "http://localhost:8080",
     ], // Allow Gateway and frontend
     allowedHeaders: ["Authorization", "Content-Type"],
