@@ -452,8 +452,6 @@ export const verifyPaymentSession = async (
     const sessionId = req.query.sessionId as string;
     const userId = req.user?.id;
 
-    console.log("Verifying payment session:", { sessionId, userId });
-
     if (!sessionId || !userId) {
       console.error("Missing sessionId or userId:", { sessionId, userId });
       return res.status(400).json({
