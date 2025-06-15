@@ -9,6 +9,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
 });
 
+// Schema for validating order ID
+const OrderIdSchema = z.object({
+  id: z.string().min(1, "Order ID is required"),
+});
+
 interface CartItem {
   id: string;
   quantity: number;
@@ -976,5 +981,181 @@ export const cleanupExpiredSessions = async () => {
     console.log(`Cleaned up ${cleanedCount} expired sessions`);
   } catch (error: any) {
     console.error("Error cleaning up expired sessions:", error.message);
+  }
+};
+
+// Get all orders for a user
+export const getAllOrders = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const orders = await prisma.order.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        shop: {
+          select: {
+            name: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                title: true,
+                images: {
+                  select: {
+                    url: true,
+                  },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+        shippingAddress: {
+          select: {
+            address: true,
+            city: true,
+            state: true,
+            postalCode: true,
+            country: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: orders.map((order) => ({
+        id: order.id,
+        date: order.createdAt.toISOString().split("T")[0],
+        status: order.status,
+        total: `$${order.total.toFixed(2)}`,
+        items: order.items.length,
+        shopName: order.shop.name,
+      })),
+    });
+  } catch (error: any) {
+    console.error("Get all orders error:", error.message);
+    return next(error);
+  }
+};
+
+// Get single order by ID
+export const getSingleOrder = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = OrderIdSchema.parse(req.params);
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        userId,
+      },
+      include: {
+        shop: {
+          select: {
+            name: true,
+            address: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                title: true,
+                images: {
+                  select: {
+                    url: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        shippingAddress: {
+          select: {
+            name: true,
+            address: true,
+            city: true,
+            state: true,
+            postalCode: true,
+            country: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found or unauthorized",
+      });
+    }
+
+    console.log("order", order);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: order.id,
+        date: order.createdAt.toISOString().split("T")[0],
+        status: order.status,
+        total: order.total,
+        discountAmount: order.discountAmount,
+        couponCode: order.couponCode,
+        shop: {
+          name: order.shop.name,
+          address: order.shop.address,
+        },
+        shippingAddress: order.shippingAddress,
+        items: order.items.map((item) => ({
+          productId: item.productId,
+          title: item.product.title,
+          quantity: item.quantity,
+          price: item.price,
+          image: item.product.images[0]?.url,
+          selectedOptions: item.selectedOptions,
+        })),
+      },
+    });
+  } catch (error: any) {
+    console.error("Get single order error:", error.message);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request data",
+        errors: error.errors,
+      });
+    }
+    return next(error);
   }
 };
