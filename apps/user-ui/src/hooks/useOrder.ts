@@ -1,6 +1,8 @@
 import {
   CartItem,
   Coupon,
+  Order,
+  OrderDetails,
   orderService,
   VerifySessionResponse,
 } from "@/services/orderService";
@@ -37,6 +39,8 @@ export interface UseOrderReturn {
   total: number;
   validateCoupon: (code: string) => Promise<void>;
   resetSession: () => void;
+  getAllOrders: () => Promise<Order[]>;
+  getSingleOrder: (orderId: string) => Promise<OrderDetails>;
 }
 
 export const useOrder = (): UseOrderReturn => {
@@ -265,10 +269,6 @@ export const useOrder = (): UseOrderReturn => {
 
   const placeOrder = useCallback(() => {
     try {
-      toast.success(
-        "Order placed successfully! Confirmation will be sent soon."
-      );
-
       clearCart(null, null);
       resetSession();
 
@@ -276,7 +276,9 @@ export const useOrder = (): UseOrderReturn => {
         email: user?.email || "",
       });
 
-      console.log("Order placement completed successfully");
+      toast.success(
+        "Order placed successfully! Confirmation will be sent soon."
+      );
     } catch (error: any) {
       console.error("Error during order placement:", error);
       toast.error("Error completing order placement");
@@ -341,6 +343,26 @@ export const useOrder = (): UseOrderReturn => {
     [validateCouponMutate]
   );
 
+  const getAllOrders = useCallback(async () => {
+    try {
+      const orders = await orderService.getAllOrders();
+      return orders;
+    } catch (error: any) {
+      setError(error.message || "Failed to fetch orders");
+      throw error;
+    }
+  }, []);
+
+  const getSingleOrder = useCallback(async (orderId: string) => {
+    try {
+      const order = await orderService.getSingleOrder(orderId);
+      return order;
+    } catch (error: any) {
+      setError(error.message || "Failed to fetch order");
+      throw error;
+    }
+  }, []);
+
   const subtotal = getTotalPrice();
   const shipping = useMemo(() => {
     return subtotal > 100 ||
@@ -372,5 +394,7 @@ export const useOrder = (): UseOrderReturn => {
     total,
     validateCoupon,
     resetSession,
+    getAllOrders,
+    getSingleOrder,
   };
 };

@@ -3,6 +3,8 @@ import express from "express";
 import {
   createOrder,
   createPaymentSession,
+  getAllOrders,
+  getSingleOrder,
   processFullPayment,
   verifyPaymentSession,
 } from "../controllers/order.controller";
@@ -20,5 +22,8 @@ router.post("/process-full-payment", withAuth("user"), processFullPayment);
 
 // Handle Stripe webhook for payment completion
 router.post("/create-order-webhook", createOrder);
+
+router.get("/get-all-orders", withAuth("user"), getAllOrders);
+router.get("/:id", withAuth("user"), getSingleOrder);
 
 export default router;

@@ -72,6 +72,45 @@ export interface BackendErrorResponse {
   details?: Record<string, any>;
 }
 
+export interface Order {
+  id: string;
+  date: string;
+  status: string;
+  total: string;
+  items: number;
+  shopName: string;
+}
+
+export interface OrderDetails {
+  id: string;
+  date: string;
+  status: string;
+  total: number;
+  discountAmount: number;
+  couponCode: string | null;
+  shop: {
+    name: string;
+    address: string;
+  };
+  shippingAddress: {
+    name: string;
+    address: string;
+    city: string | null;
+    state: string | null;
+    postalCode: string | null;
+    country: string;
+    phone: string | null;
+  } | null;
+  items: {
+    productId: string;
+    title: string;
+    quantity: number;
+    price: number;
+    image: string | undefined;
+    selectedOptions: Record<string, string> | null;
+  }[];
+}
+
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URI}/api/orders`;
 
 export const orderService = {
@@ -148,6 +187,41 @@ export const orderService = {
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
       throw new Error(errorData?.message || "Failed to validate coupon", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async getAllOrders(): Promise<Order[]> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: Order[] }>(
+        `${API_BASE_URL}/get-all-orders`
+      );
+      if (!response.data.success) {
+        throw new Error("Failed to fetch orders");
+      }
+      return response.data.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to fetch orders", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async getSingleOrder(orderId: string): Promise<OrderDetails> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: OrderDetails;
+      }>(`${API_BASE_URL}/${orderId}`);
+      if (!response.data.success) {
+        throw new Error("Failed to fetch order");
+      }
+      return response.data.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to fetch order", {
         cause: errorData,
       });
     }
