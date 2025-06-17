@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { NextFunction, Request, Response } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
+import { sendOrderEmail } from "../utils/sendOrderEmail";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
@@ -264,7 +265,28 @@ export const processFullPayment = async (
       `Found charge: ${chargeId} for PaymentIntent: ${paymentIntent.id}`
     );
 
-    // Create Transfers for each seller
+    // Prepare email data
+    let allOrderItems: any[] = [];
+    let allOrders: any[] = [];
+    let discountAmount = 0;
+
+    // Calculate discount amount
+    if (session.coupon?.discountedProductId) {
+      const discountedItem = session.cart.find(
+        (item) => item.id === session.coupon?.discountedProductId
+      );
+      if (discountedItem) {
+        discountAmount =
+          session.coupon.discountPercent && session.coupon.discountPercent > 0
+            ? (discountedItem.sale_price *
+                discountedItem.quantity *
+                session.coupon.discountPercent) /
+              100
+            : session.coupon.discountAmount || 0;
+      }
+    }
+
+    // Create Transfers for each seller and collect order data
     await prisma.$transaction(async (tx) => {
       for (const seller of session.sellers) {
         const sellerItems = session.cart.filter(
@@ -305,7 +327,7 @@ export const processFullPayment = async (
             amount: transferAmount,
             currency: "usd",
             destination: seller.stripeAccountId,
-            source_transaction: chargeId, // Use the charge ID we retrieved
+            source_transaction: chargeId,
             metadata: {
               sessionId,
               userId,
@@ -321,12 +343,19 @@ export const processFullPayment = async (
             } USD`
           );
 
-          // Update order status
+          // Update order status and collect order data
           const orders = await tx.order.findMany({
             where: {
               id: { in: session.orderIds },
               shopId: seller.shopId,
               status: "Pending",
+            },
+            include: {
+              items: {
+                include: {
+                  product: true,
+                },
+              },
             },
           });
 
@@ -354,6 +383,19 @@ export const processFullPayment = async (
               },
             });
 
+            // Collect order data for email
+            allOrders.push(order);
+
+            // Transform order items for email template
+            const emailOrderItems = order.items.map((item) => ({
+              name: item.product.title,
+              quantity: item.quantity,
+              price: item.price,
+              selectedOptions: item.selectedOptions || {},
+            }));
+
+            allOrderItems.push(...emailOrderItems);
+
             console.log(
               `Order ${order.id} marked as paid for shop ${seller.shopId}`
             );
@@ -374,6 +416,71 @@ export const processFullPayment = async (
         console.log(`Session ${sessionId} completed and cleaned up`);
       }
     });
+
+    // Send order confirmation email
+    if (customer?.email && allOrderItems.length > 0) {
+      const shippingData = await prisma.shippingAddress.findUnique({
+        where: { id: session?.shippingAddressId },
+      });
+      const orderConfirmationData = {
+        customerName: customer.name || "Valued Customer",
+        orderId: sessionId,
+        orderDate: new Date().toLocaleDateString(),
+        orderItems: allOrderItems,
+        totalAmount: totalAmount,
+        shippingCost: shipping,
+        discountAmount: discountAmount,
+        shippingAddress: shippingData || {
+          name: customer.name || "N/A",
+          address: "Address not provided",
+          city: "N/A",
+          state: "N/A",
+          postalCode: "N/A",
+          country: "N/A",
+          phone: "N/A",
+        },
+        trackOrderUrl: `${frontendUrl}/orders/${sessionId}`,
+      };
+
+      try {
+        await sendOrderEmail(
+          customer.email,
+          "Order Confirmation - StoreX",
+          "order-confirmation",
+          orderConfirmationData
+        );
+        console.log(`Order confirmation email sent to ${customer.email}`);
+      } catch (emailError) {
+        console.error("Failed to send order confirmation email:", emailError);
+      }
+
+      // Send payment received email
+      const paymentReceivedData = {
+        customerName: customer.name || "Valued Customer",
+        orderId: sessionId,
+        paymentAmount: totalAmount,
+        paymentDate: new Date().toLocaleDateString(),
+        paymentMethod: "Card",
+        paymentIntentId: paymentIntent.id,
+        transactionId: chargeId,
+        orderItems: allOrderItems,
+        shippingCost: shipping,
+        discountAmount: discountAmount,
+      };
+
+      try {
+        await sendOrderEmail(
+          customer.email,
+          "Payment Confirmation - StoreX",
+          "payment-received",
+          paymentReceivedData
+        );
+        console.log(`Payment confirmation email sent to ${customer.email}`);
+      } catch (emailError) {
+        console.error("Failed to send payment confirmation email:", emailError);
+        // Don't fail the entire payment process if email fails
+      }
+    }
 
     console.log(
       "Payment processing completed for PaymentIntent:",
