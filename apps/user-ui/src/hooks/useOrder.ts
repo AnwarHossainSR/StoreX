@@ -162,7 +162,7 @@ export const useOrder = (): UseOrderReturn => {
       });
     },
     onSuccess: () => {
-      clearCart(null, null);
+      clearCart();
       placeOrder();
     },
   });
@@ -269,9 +269,7 @@ export const useOrder = (): UseOrderReturn => {
 
   const placeOrder = useCallback(() => {
     try {
-      clearCart(null, null);
       resetSession();
-
       setFormData({
         email: user?.email || "",
       });
@@ -279,6 +277,7 @@ export const useOrder = (): UseOrderReturn => {
       toast.success(
         "Order placed successfully! Confirmation will be sent soon."
       );
+      clearCart();
     } catch (error: any) {
       console.error("Error during order placement:", error);
       toast.error("Error completing order placement");

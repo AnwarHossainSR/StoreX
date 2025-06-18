@@ -8,6 +8,7 @@ import { sendOrderEmail } from "../utils/sendOrderEmail";
 
 import {
   CartItem,
+  CustomRequest,
   OrderIdSchema,
   ProcessFullPaymentRequest,
   ProcessFullPaymentSchema,
@@ -477,7 +478,7 @@ export const processFullPayment = async (
 
 // Existing createPaymentSession (unchanged)
 export const createPaymentSession = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -777,7 +778,7 @@ export const createPaymentSession = async (
 
 // Verify payment session (unchanged)
 export const verifyPaymentSession = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -1049,7 +1050,7 @@ export const cleanupExpiredSessions = async () => {
 
 // Get all orders for a user
 export const getAllOrders = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -1122,7 +1123,7 @@ export const getAllOrders = async (
 
 // Get single order by ID
 export const getSingleOrder = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
