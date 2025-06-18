@@ -162,7 +162,6 @@ export const useOrder = (): UseOrderReturn => {
       });
     },
     onSuccess: () => {
-      clearCart();
       placeOrder();
     },
   });

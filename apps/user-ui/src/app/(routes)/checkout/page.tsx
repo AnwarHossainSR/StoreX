@@ -6,7 +6,19 @@ import { useOrder } from "@/hooks/useOrder";
 import { useCartStore } from "@/stores/cartStore";
 import { useCheckoutStore } from "@/stores/checkoutStore";
 import { loadStripe, StripeElements } from "@stripe/stripe-js";
-import { ChevronRight, Lock } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  ChevronRight,
+  CreditCard,
+  Lock,
+  MapPin,
+  Package,
+  RefreshCw,
+  Tag,
+  Truck,
+  XCircle,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,7 +29,7 @@ const stripePromise = loadStripe(
 );
 
 export default function CheckoutPage() {
-  const { items, getTotalPrice, clearCart } = useCartStore();
+  const { items, getTotalPrice } = useCartStore();
   const { shippingAddress, user } = useCurrentUser({
     enabled: true,
     refetchOnMount: true,
@@ -27,7 +39,6 @@ export default function CheckoutPage() {
     isLoading,
     createSession,
     verifySession,
-    placeOrder,
     formData,
     couponCode,
     setCouponCode,
@@ -38,16 +49,11 @@ export default function CheckoutPage() {
     validateCoupon,
     processFullPayment,
   } = useOrder();
-  const {
-    activeTab,
-    setActiveTab,
-    sessionCreated,
-    triggerSessionCreation,
-    resetCheckout,
-  } = useCheckoutStore();
+  const { activeTab, setActiveTab, sessionCreated, triggerSessionCreation } =
+    useCheckoutStore();
 
   const [elements, setElements] = useState<StripeElements | null>(null);
-  const [paymentElement, setPaymentElement] = useState<any>(null);
+  const [stripe, setStripe] = useState<any>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
@@ -58,8 +64,10 @@ export default function CheckoutPage() {
   const [paymentStatus, setPaymentStatus] = useState<
     "success" | "failed" | null
   >(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
-  const paymentElementMounted = useRef(false);
+  const stripeElementsRef = useRef<HTMLDivElement>(null);
+  const paymentElementRef = useRef<any>(null);
 
   // Set default address as selected on mount
   useEffect(() => {
@@ -69,19 +77,28 @@ export default function CheckoutPage() {
     }
   }, [shippingAddress, selectedAddressId]);
 
+  // Initialize Stripe once
+  useEffect(() => {
+    const initStripe = async () => {
+      const stripeInstance = await stripePromise;
+      setStripe(stripeInstance);
+    };
+    initStripe();
+  }, []);
+
   // Initialize Stripe Elements after session creation
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
-    const initializeStripe = async () => {
-      if (!sessionCreated || !selectedAddressId) return;
+    const initializeStripeElements = async () => {
+      if (!sessionCreated || !selectedAddressId || !stripe || activeTab !== 3) {
+        return;
+      }
 
       setIsStripeLoading(true);
       setStripeError(null);
-      try {
-        const stripe = await stripePromise;
-        if (!stripe || !mounted) return;
 
+      try {
         let activeSessionId = sessionId || currentSessionId;
         if (!activeSessionId) {
           activeSessionId = await createSession(
@@ -91,6 +108,19 @@ export default function CheckoutPage() {
           setCurrentSessionId(activeSessionId);
         }
 
+        if (!isMounted) return;
+
+        // Clean up existing elements
+        if (paymentElementRef.current) {
+          try {
+            paymentElementRef.current.destroy();
+          } catch (e) {
+            console.warn("Error destroying payment element:", e);
+          }
+          paymentElementRef.current = null;
+        }
+
+        // Create new elements
         const newElements = stripe.elements({
           mode: "payment",
           currency: "usd",
@@ -98,74 +128,77 @@ export default function CheckoutPage() {
           paymentMethodCreation: "manual",
           appearance: {
             theme: "stripe",
-            variables: { colorPrimary: "#2563eb" },
+            variables: {
+              colorPrimary: "#2563eb",
+              colorBackground: "#ffffff",
+              colorText: "#1f2937",
+              colorDanger: "#ef4444",
+              fontFamily: "Inter, system-ui, sans-serif",
+              spacingUnit: "4px",
+              borderRadius: "8px",
+            },
           },
         });
 
-        setElements(newElements);
+        if (isMounted) {
+          setElements(newElements);
+
+          // Create and mount payment element
+          const paymentElement = newElements.create("payment", {
+            layout: "tabs",
+            defaultValues: {
+              billingDetails: {
+                name: user?.name || "",
+                email: user?.email || formData.email || "",
+              },
+            },
+          });
+
+          if (stripeElementsRef.current && isMounted) {
+            await paymentElement.mount(stripeElementsRef.current);
+            paymentElementRef.current = paymentElement;
+          }
+        }
       } catch (error: any) {
-        setStripeError("Failed to load payment form. Please try again.");
+        if (isMounted) {
+          console.error("Stripe initialization error:", error);
+          setStripeError(
+            error.message || "Failed to load payment form. Please try again."
+          );
+        }
       } finally {
-        if (mounted) setIsStripeLoading(false);
+        if (isMounted) {
+          setIsStripeLoading(false);
+        }
       }
     };
 
-    initializeStripe();
+    initializeStripeElements();
 
     return () => {
-      mounted = false;
+      isMounted = false;
+      if (paymentElementRef.current) {
+        try {
+          paymentElementRef.current.destroy();
+        } catch (e) {
+          console.warn("Cleanup error:", e);
+        }
+        paymentElementRef.current = null;
+      }
     };
   }, [
     sessionCreated,
     selectedAddressId,
-    couponCode,
+    stripe,
     createSession,
     sessionId,
     currentSessionId,
     total,
+    activeTab,
+    couponCode,
+    user,
+    formData.email,
   ]);
-
-  // Mount payment element
-  useEffect(() => {
-    if (
-      elements &&
-      !paymentElementMounted.current &&
-      !isStripeLoading &&
-      activeTab === 3
-    ) {
-      try {
-        const newPaymentElement = elements.create("payment", {
-          layout: "tabs",
-        });
-        const paymentElementDiv = document.getElementById("payment-element");
-        if (paymentElementDiv) {
-          newPaymentElement.mount("#payment-element");
-          setPaymentElement(newPaymentElement);
-          paymentElementMounted.current = true;
-        }
-      } catch (error: any) {
-        setStripeError("Failed to load payment form");
-      }
-    }
-
-    return () => {
-      if (paymentElement && paymentElementMounted.current) {
-        try {
-          paymentElement.unmount();
-          paymentElementMounted.current = false;
-        } catch (error) {
-          console.warn("Error unmounting payment element:", error);
-        }
-      }
-    };
-  }, [elements, isStripeLoading, activeTab, paymentElement]);
-
-  // Show Stripe error
-  useEffect(() => {
-    if (stripeError && !isStripeLoading) {
-      toast.error(stripeError, { duration: 5000 });
-    }
-  }, [stripeError, isStripeLoading]);
 
   const sortedAddresses = shippingAddress
     ? [...shippingAddress].sort((a, b) =>
@@ -183,10 +216,13 @@ export default function CheckoutPage() {
       setCouponError("Please enter a coupon code");
       return;
     }
+    setCouponLoading(true);
     try {
       await validateCoupon(couponCode);
     } catch (err: any) {
       setCouponError(err.message || "Failed to apply coupon");
+    } finally {
+      setCouponLoading(false);
     }
   }, [couponCode, validateCoupon]);
 
@@ -202,25 +238,19 @@ export default function CheckoutPage() {
   const handlePaymentSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (isProcessingPayment) return;
-
-      if (!elements || !paymentElement || isStripeLoading) {
-        toast.error(stripeError || "Payment system not initialized.");
-        return;
-      }
+      if (isProcessingPayment || !stripe || !elements) return;
 
       setIsProcessingPayment(true);
-      try {
-        const stripe = await stripePromise;
-        if (!stripe) throw new Error("Stripe not initialized");
+      setStripeError(null);
 
-        // Submit the payment form data
-        const submitResult = await elements.submit();
-        if (submitResult.error) {
-          throw new Error(submitResult.error.message);
+      try {
+        // Submit the payment form
+        const { error: submitError } = await elements.submit();
+        if (submitError) {
+          throw new Error(submitError.message);
         }
 
-        // Verify session after form submission
+        // Verify session
         let activeSessionId = sessionId || currentSessionId;
         const sessionData = await verifySession(activeSessionId!);
         if (!sessionData?.success) {
@@ -233,54 +263,60 @@ export default function CheckoutPage() {
           throw new Error("Session belongs to a different user");
         }
 
-        // Create payment method after successful form submission
-        const { error, paymentMethod } = await stripe.createPaymentMethod({
-          elements,
-          params: {
-            billing_details: {
-              name: user?.name || "Customer",
-              email: user?.email || formData.email || "unknown@example.com",
+        // Create payment method
+        const { error: paymentError, paymentMethod } =
+          await stripe.createPaymentMethod({
+            elements,
+            params: {
+              billing_details: {
+                name: user?.name || "Customer",
+                email: user?.email || formData.email || "unknown@example.com",
+              },
             },
-          },
-        });
+          });
 
-        if (error) {
-          throw new Error(error.message);
+        if (paymentError) {
+          throw new Error(paymentError.message);
         }
 
-        processFullPayment(paymentMethod.id);
+        // Process payment
+        await processFullPayment(paymentMethod.id);
         setPaymentStatus("success");
         setActiveTab(4);
-      } catch (err) {
-        console.error("Payment error:", err);
-        toast.error("Payment Error", {
-          description:
-            err instanceof Error
-              ? err.message
-              : "An unexpected error occurred.",
+
+        toast.success("Payment successful!", {
+          description: "Your order has been placed successfully.",
         });
+      } catch (err: any) {
+        console.error("Payment error:", err);
         setPaymentStatus("failed");
-        setActiveTab(4);
+        setStripeError(err.message || "Payment failed. Please try again.");
+        toast.error("Payment Failed", {
+          description: err.message || "An unexpected error occurred.",
+        });
       } finally {
         setIsProcessingPayment(false);
       }
     },
     [
       isProcessingPayment,
+      stripe,
       elements,
-      paymentElement,
-      isStripeLoading,
-      stripeError,
       sessionId,
       currentSessionId,
       verifySession,
-      placeOrder,
-      clearCart,
       user,
       formData.email,
+      processFullPayment,
       setActiveTab,
     ]
   );
+
+  const retryPayment = () => {
+    setPaymentStatus(null);
+    setStripeError(null);
+    setActiveTab(3);
+  };
 
   const subtotal = getTotalPrice();
   const shipping =
@@ -288,7 +324,7 @@ export default function CheckoutPage() {
       ? 0
       : 10;
 
-  if (isLoading)
+  if (isLoading && activeTab === 1)
     return (
       <Loading
         size="lg"
@@ -296,364 +332,604 @@ export default function CheckoutPage() {
       />
     );
 
-  if (!isLoading && items.length === 0) {
+  if (!isLoading && activeTab !== 4 && items.length === 0) {
     return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-800 mb-2">
-          Your cart is empty
-        </h3>
-        <p className="text-gray-500 mb-6">
-          Looks like you haven't added anything to your cart yet.
-        </p>
-        <Link
-          href="/products"
-          className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-        >
-          Continue Shopping
-        </Link>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md mx-4">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Package className="w-8 h-8 text-blue-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Your cart is empty
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Looks like you haven't added anything to your cart yet.
+          </p>
+          <Link
+            href="/products"
+            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Continue Shopping
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center text-sm text-gray-500 mb-8">
-          <Link href="/" className="hover:text-blue-500 transition-colors">
-            Home
-          </Link>
-          <ChevronRight size={16} className="mx-2" />
-          <Link href="/cart" className="hover:text-blue-500 transition-colors">
-            Cart
-          </Link>
-          <ChevronRight size={16} className="mx-2" />
-          <span className="text-gray-800">Checkout</span>
-        </div>
-
-        <div className="flex border-b border-gray-200 mb-6">
-          {[
-            { id: 1, name: "Personal & Address" },
-            { id: 2, name: "Order Summary" },
-            { id: 3, name: "Payment" },
-            { id: 4, name: "Complete" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => activeTab >= tab.id && setActiveTab(tab.id)}
-              className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
-                activeTab === tab.id
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : activeTab > tab.id
-                  ? "text-gray-600 hover:text-blue-600 cursor-pointer"
-                  : "text-gray-400 cursor-not-allowed"
-              }`}
-              disabled={activeTab < tab.id}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center text-sm text-gray-500">
+            <Link href="/" className="hover:text-blue-600 transition-colors">
+              Home
+            </Link>
+            <ChevronRight size={16} className="mx-2 text-gray-400" />
+            <Link
+              href="/cart"
+              className="hover:text-blue-600 transition-colors"
             >
-              {tab.name}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 1 && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">
-              Personal & Address
-            </h2>
-            <div className="mb-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-4">
-                Contact Information
-              </h3>
-              <div className="mb-4">
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={formData.email || user?.email || ""}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled
-                />
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-gray-800 mb-4">
-                Shipping Address
-              </h3>
-              <div className="space-y-4">
-                {sortedAddresses.length ? (
-                  sortedAddresses.map((addr) => (
-                    <label
-                      key={addr.id}
-                      className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50"
-                    >
-                      <input
-                        type="radio"
-                        name="shippingAddress"
-                        value={addr.id}
-                        checked={selectedAddressId === addr.id}
-                        onChange={() => setSelectedAddressId(addr.id)}
-                        className="mr-4"
-                        required
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">
-                          {addr.name}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {addr.address}, {addr.city}, {addr.state}{" "}
-                          {addr.postalCode}, {addr.country}
-                        </p>
-                        <p className="text-sm text-gray-600">{addr.phone}</p>
-                        {addr.isDefault && (
-                          <span className="text-xs text-green-600">
-                            Default
-                          </span>
-                        )}
-                      </div>
-                    </label>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-600">
-                    No shipping addresses found. Please add one in your account
-                    settings.
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveTab(2)}
-              disabled={!selectedAddressId}
-              className="mt-6 w-full px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-            >
-              Continue to Order Summary
-            </button>
+              Cart
+            </Link>
+            <ChevronRight size={16} className="mx-2 text-gray-400" />
+            <span className="text-gray-900 font-medium">Checkout</span>
           </div>
-        )}
+        </div>
+      </div>
 
-        {activeTab === 2 && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">
-              Order Summary
-            </h2>
-            <div className="space-y-4 mb-6">
-              {items.map((item) => (
-                <div
-                  key={`${item.id}-${item.color}-${item.size}`}
-                  className="flex items-center"
-                >
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                    <Image
-                      src={
-                        item.product.images[0]?.url || "/placeholder-image.jpg"
-                      }
-                      alt={item.product.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
-                      {item.quantity}
-                    </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            {[
+              { id: 1, name: "Address", icon: MapPin },
+              { id: 2, name: "Review", icon: Package },
+              { id: 3, name: "Payment", icon: CreditCard },
+              { id: 4, name: "Complete", icon: CheckCircle },
+            ].map((step, index) => (
+              <div key={step.id} className="flex items-center">
+                <div className="flex items-center">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                      activeTab === step.id
+                        ? "bg-blue-600 text-white"
+                        : activeTab > step.id
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {activeTab > step.id ? (
+                      <CheckCircle size={20} />
+                    ) : (
+                      <step.icon size={20} />
+                    )}
                   </div>
-                  <div className="ml-4 flex-grow">
-                    <h4 className="text-sm font-medium text-gray-800">
-                      {item.product.title}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      ${item.product.sale_price.toFixed(2)}
+                  <div className="ml-3 hidden sm:block">
+                    <p
+                      className={`text-sm font-medium ${
+                        activeTab >= step.id ? "text-gray-900" : "text-gray-500"
+                      }`}
+                    >
+                      {step.name}
                     </p>
-                    {item.color && (
-                      <p className="text-sm text-gray-500">
-                        Color: {item.color}
-                      </p>
-                    )}
-                    {item.size && (
-                      <p className="text-sm text-gray-500">Size: {item.size}</p>
-                    )}
-                  </div>
-                  <div className="text-sm font-medium text-gray-800">
-                    ${(item.product.sale_price * item.quantity).toFixed(2)}
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="mb-6">
-              <label
-                htmlFor="couponCode"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Coupon Code
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  id="couponCode"
-                  value={couponCode}
-                  onChange={handleCouponChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter coupon code"
-                />
+                {index < 3 && (
+                  <div
+                    className={`hidden sm:block w-20 h-1 mx-4 rounded-full ${
+                      activeTab > step.id ? "bg-green-500" : "bg-gray-200"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Step 1: Address */}
+            {activeTab === 1 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center mb-6">
+                  <MapPin className="w-6 h-6 text-blue-600 mr-3" />
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Shipping Information
+                  </h2>
+                </div>
+
+                {/* Contact Information */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Contact Information
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label
+                        htmlFor="email"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Email address
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        value={formData.email || user?.email || ""}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                        disabled
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shipping Address */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Shipping Address
+                  </h3>
+                  <div className="space-y-4">
+                    {sortedAddresses.length ? (
+                      sortedAddresses.map((addr) => (
+                        <label
+                          key={addr.id}
+                          className={`block p-4 border-2 rounded-xl cursor-pointer transition-all hover:bg-gray-50 ${
+                            selectedAddressId === addr.id
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="shippingAddress"
+                            value={addr.id}
+                            checked={selectedAddressId === addr.id}
+                            onChange={() => setSelectedAddressId(addr.id)}
+                            className="sr-only"
+                            required
+                          />
+                          <div className="flex items-start">
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 mr-4 mt-1 flex-shrink-0 ${
+                                selectedAddressId === addr.id
+                                  ? "border-blue-500 bg-blue-500"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {selectedAddressId === addr.id && (
+                                <div className="w-full h-full rounded-full bg-white scale-50"></div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center mb-1">
+                                <p className="font-semibold text-gray-900">
+                                  {addr.name}
+                                </p>
+                                {addr.isDefault && (
+                                  <span className="ml-2 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-gray-600 text-sm mb-1">
+                                {addr.address}, {addr.city}, {addr.state}{" "}
+                                {addr.postalCode}
+                              </p>
+                              <p className="text-gray-600 text-sm">
+                                {addr.country}
+                              </p>
+                              <p className="text-gray-600 text-sm">
+                                {addr.phone}
+                              </p>
+                            </div>
+                          </div>
+                        </label>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-xl">
+                        <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600 mb-4">
+                          No shipping addresses found.
+                        </p>
+                        <Link
+                          href="/account/addresses"
+                          className="text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Add shipping address
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={applyCoupon}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                  disabled={isLoading}
+                  onClick={() => setActiveTab(2)}
+                  disabled={!selectedAddressId}
+                  className="mt-8 w-full bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  Apply
+                  Continue to Review Order
                 </button>
               </div>
-              {couponError && (
-                <p className="mt-2 text-sm text-red-600">{couponError}</p>
-              )}
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="text-gray-800">${subtotal.toFixed(2)}</span>
+            )}
+
+            {/* Step 2: Order Review */}
+            {activeTab === 2 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center mb-6">
+                  <Package className="w-6 h-6 text-blue-600 mr-3" />
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Order Review
+                  </h2>
+                </div>
+
+                {/* Order Items */}
+                <div className="space-y-4 mb-8">
+                  {items.map((item) => (
+                    <div
+                      key={`${item.id}-${item.color}-${item.size}`}
+                      className="flex items-center p-4 bg-gray-50 rounded-xl"
+                    >
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                        <Image
+                          src={
+                            item.product.images[0]?.url ||
+                            "/placeholder-image.jpg"
+                          }
+                          alt={item.product.title}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                          {item.quantity}
+                        </div>
+                      </div>
+                      <div className="ml-4 flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-1">
+                          {item.product.title}
+                        </h4>
+                        <div className="flex items-center space-x-4">
+                          <p className="text-blue-600 font-bold">
+                            ${item.product.sale_price.toFixed(2)}
+                          </p>
+                          {item.color && (
+                            <span className="text-sm text-gray-600">
+                              Color: {item.color}
+                            </span>
+                          )}
+                          {item.size && (
+                            <span className="text-sm text-gray-600">
+                              Size: {item.size}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">
+                          $
+                          {(item.product.sale_price * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Coupon Section */}
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 mb-6">
+                  <div className="flex items-center mb-4">
+                    <Tag className="w-5 h-5 text-green-600 mr-2" />
+                    <h3 className="font-semibold text-gray-900">
+                      Apply Coupon
+                    </h3>
+                  </div>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={handleCouponChange}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter coupon code"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                      className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 font-medium flex items-center"
+                    >
+                      {couponLoading ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Apply"
+                      )}
+                    </button>
+                  </div>
+                  {couponError && (
+                    <div className="mt-3 flex items-center text-red-600">
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      <p className="text-sm">{couponError}</p>
+                    </div>
+                  )}
+                  {discount > 0 && (
+                    <div className="mt-3 flex items-center text-green-600">
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      <p className="text-sm">
+                        Coupon applied! You saved ${discount.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 flex items-center justify-center"
+                >
+                  <Lock className="w-5 h-5 mr-2" />
+                  Proceed to Payment
+                </button>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Shipping</span>
-                <span className="text-gray-800">
-                  {shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}
+            )}
+
+            {/* Step 3: Payment */}
+            {activeTab === 3 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center mb-6">
+                  <CreditCard className="w-6 h-6 text-blue-600 mr-3" />
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Payment Information
+                  </h2>
+                </div>
+
+                <form onSubmit={handlePaymentSubmit}>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Payment Details
+                    </label>
+
+                    {isStripeLoading ? (
+                      <div className="border border-gray-300 rounded-xl p-8 min-h-[300px] flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                          <p className="text-gray-600">
+                            Loading secure payment form...
+                          </p>
+                        </div>
+                      </div>
+                    ) : stripeError ? (
+                      <div className="border border-red-300 rounded-xl p-8 min-h-[300px] flex items-center justify-center bg-red-50">
+                        <div className="text-center">
+                          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                          <p className="text-red-600 mb-4">{stripeError}</p>
+                          <button
+                            type="button"
+                            onClick={() => window.location.reload()}
+                            className="text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            Refresh page
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border border-gray-300 rounded-xl p-6 min-h-[300px]">
+                        <div ref={stripeElementsRef} className="w-full" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-blue-50 rounded-xl p-4 mb-6">
+                    <div className="flex items-start">
+                      <AlertCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-blue-800 font-medium mb-1">
+                          Secure Payment Processing
+                        </p>
+                        <p className="text-sm text-blue-700">
+                          You will be charged once for the total amount, which
+                          will be distributed to the respective vendors
+                          automatically.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={
+                      isLoading ||
+                      isProcessingPayment ||
+                      !elements ||
+                      isStripeLoading
+                    }
+                    className="w-full bg-green-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center justify-center"
+                  >
+                    {isProcessingPayment ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                        Processing Payment...
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-5 h-5 mr-2" />
+                        Complete Payment ${total.toFixed(2)}
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Step 4: Complete */}
+            {activeTab === 4 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+                {paymentStatus === "success" ? (
+                  <>
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle className="w-12 h-12 text-green-600" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                      Order Placed Successfully!
+                    </h2>
+                    <p className="text-gray-600 mb-8 text-lg">
+                      Thank you for your order. We've sent a confirmation email
+                      with your order details.
+                    </p>
+                    <div className="space-y-4">
+                      <Link
+                        href="/account/orders"
+                        className="inline-block bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        View Order Details
+                      </Link>
+                      <br />
+                      <Link
+                        href="/products"
+                        className="inline-block text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Continue Shopping
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <XCircle className="w-12 h-12 text-red-600" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                      Payment Failed
+                    </h2>
+                    <p className="text-gray-600 mb-8 text-lg">
+                      Something went wrong with your payment. Please try again
+                      or contact our support team.
+                    </p>
+                    {stripeError && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                        <p className="text-red-700 text-sm">{stripeError}</p>
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      <button
+                        onClick={retryPayment}
+                        className="inline-block bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        Try Payment Again
+                      </button>
+                      <br />
+                      <Link
+                        href="/cart"
+                        className="inline-block text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Return to Cart
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Order Summary Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-8">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">
+                Order Summary
+              </h3>
+
+              {/* Items Count */}
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                <span className="text-gray-600">Items ({items.length})</span>
+                <span className="font-semibold text-gray-900">
+                  ${subtotal.toFixed(2)}
                 </span>
               </div>
+
+              {/* Shipping */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <Truck className="w-4 h-4 text-gray-500 mr-2" />
+                  <span className="text-gray-600">Shipping</span>
+                </div>
+                <span className="font-semibold text-gray-900">
+                  {shipping === 0 ? (
+                    <span className="text-green-600">Free</span>
+                  ) : (
+                    `$${shipping.toFixed(2)}`
+                  )}
+                </span>
+              </div>
+
+              {/* Discount */}
               {discount > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Discount</span>
-                  <span className="text-green-600">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <Tag className="w-4 h-4 text-green-600 mr-2" />
+                    <span className="text-gray-600">Discount</span>
+                  </div>
+                  <span className="font-semibold text-green-600">
                     -${discount.toFixed(2)}
                   </span>
                 </div>
               )}
-              <div className="border-t border-gray-200 pt-4">
+
+              {/* Total */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-gray-800">Total</span>
-                  <span className="text-lg font-bold text-gray-800">
+                  <span className="text-xl font-bold text-gray-900">Total</span>
+                  <span className="text-2xl font-bold text-blue-600">
                     ${total.toFixed(2)}
                   </span>
                 </div>
               </div>
-              <button
-                onClick={handlePlaceOrder}
-                disabled={isLoading}
-                className="mt-6 w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-              >
-                <Lock size={20} className="mr-2" />
-                Place Order
-              </button>
-            </div>
-          </div>
-        )}
 
-        {activeTab === 3 && (
-          <form onSubmit={handlePaymentSubmit}>
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">
-                Payment Information
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Card details
-                  </label>
-                  {isStripeLoading ? (
-                    <div className="w-full border border-gray-300 rounded-md p-4 min-h-[200px] flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                        <p className="text-sm text-gray-600">
-                          Loading payment form...
-                        </p>
-                      </div>
-                    </div>
-                  ) : stripeError ? (
-                    <div className="w-full border border-red-300 rounded-md p-4 min-h-[200px] flex items-center justify-center text-red-600 bg-red-50">
-                      <div className="text-center">
-                        <p className="text-sm">{stripeError}</p>
-                        <button
-                          type="button"
-                          onClick={() => window.location.reload()}
-                          className="mt-2 text-xs text-blue-600 hover:underline"
-                        >
-                          Refresh page
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      id="payment-element"
-                      className="w-full border border-gray-300 rounded-md p-4 min-h-[200px]"
-                    ></div>
-                  )}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <p>
-                    💡 Note: You will be charged once for the total amount,
-                    which will be distributed to the respective vendors.
-                  </p>
+              {/* Security Badge */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center justify-center text-sm text-gray-600">
+                  <Lock className="w-4 h-4 mr-2" />
+                  <span>Secure SSL encrypted checkout</span>
                 </div>
               </div>
-              <button
-                type="submit"
-                disabled={
-                  isLoading ||
-                  isProcessingPayment ||
-                  !paymentElement ||
-                  isStripeLoading
-                }
-                className="mt-6 w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-              >
-                <Lock size={20} className="mr-2" />
-                {isProcessingPayment
-                  ? "Processing Payment..."
-                  : "Complete Payment"}
-              </button>
-            </div>
-          </form>
-        )}
 
-        {activeTab === 4 && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 text-center">
-            {paymentStatus === "success" ? (
-              <>
-                <h2 className="text-xl font-bold text-green-600 mb-4">
-                  Order Placed Successfully!
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Thank you for your order. You'll receive a confirmation email
-                  soon.
-                </p>
-                <Link
-                  href="/products"
-                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  Continue Shopping
-                </Link>
-              </>
-            ) : (
-              <>
-                <h2 className="text-xl font-bold text-red-600 mb-4">
-                  Payment Failed
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Something went wrong with your payment. Please try again or
-                  contact support.
-                </p>
-                <button
-                  onClick={() => {
-                    resetCheckout();
-                    setActiveTab(1);
-                  }}
-                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  Try Again
-                </button>
-              </>
-            )}
+              {/* Order Items Preview (show only on payment step) */}
+              {activeTab === 3 && (
+                <div className="mt-6">
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Order Items
+                  </h4>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {items.map((item) => (
+                      <div
+                        key={`${item.id}-${item.color}-${item.size}`}
+                        className="flex items-center space-x-3"
+                      >
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                          <Image
+                            src={
+                              item.product.images[0]?.url ||
+                              "/placeholder-image.jpg"
+                            }
+                            alt={item.product.title}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            {item.quantity}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.product.title}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            ${item.product.sale_price.toFixed(2)} each
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
