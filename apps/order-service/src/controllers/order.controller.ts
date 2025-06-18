@@ -248,7 +248,7 @@ export const processFullPayment = async (
     }
 
     // Create Transfers for each seller and collect order data
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       for (const seller of session.sellers) {
         const sellerItems = session.cart.filter(
           (item) => item.shopId === seller.shopId
@@ -354,7 +354,7 @@ export const processFullPayment = async (
             allOrders.push(order);
 
             // Transform order items for email template
-            const emailOrderItems = order.items.map((item) => ({
+            const emailOrderItems = order.items.map((item: any) => ({
               name: item.product.title,
               quantity: item.quantity,
               price: item.price,
@@ -637,7 +637,7 @@ export const createPaymentSession = async (
       },
     });
 
-    const foundShopIds = shops.map((shop) => shop.id);
+    const foundShopIds = shops.map((shop: any) => shop.id);
     const missingShops = uniqueShopIds.filter(
       (id) => !foundShopIds.includes(id)
     );
@@ -649,18 +649,18 @@ export const createPaymentSession = async (
     }
 
     const missingStripeAccounts = shops.filter(
-      (shop) => !shop.sellers?.stripeId
+      (shop: any) => !shop.sellers?.stripeId
     );
     if (missingStripeAccounts.length > 0) {
       return res.status(400).json({
         success: false,
         message: `Some sellers lack Stripe accounts: ${missingStripeAccounts
-          .map((s) => s.id)
+          .map((s: any) => s.id)
           .join(", ")}`,
       });
     }
 
-    const sellerData = shops.reduce((acc, shop) => {
+    const sellerData = shops.reduce((acc: any, shop: any) => {
       acc[shop.id] = {
         shopId: shop.id,
         sellerId: shop.sellerId,
@@ -677,7 +677,7 @@ export const createPaymentSession = async (
 
     const sessionId = randomUUID();
 
-    const pendingOrders = await prisma.$transaction(async (tx) => {
+    const pendingOrders = await prisma.$transaction(async (tx: any) => {
       const orders = [];
 
       for (const shopId of uniqueShopIds) {
@@ -792,7 +792,7 @@ export const createPaymentSession = async (
       ),
       shippingAddressId: selectedAddressId,
       coupon: coupon || null,
-      orderIds: pendingOrders.map((order) => order.id),
+      orderIds: pendingOrders.map((order: any) => order.id),
       createdAt: Date.now(),
     };
 
@@ -887,7 +887,7 @@ export const verifyPaymentSession = async (
     if (orders.length !== session.orderIds.length) {
       console.warn(`Some orders missing for session: ${sessionId}`, {
         expectedOrderIds: session.orderIds,
-        foundOrders: orders.map((o) => o.id),
+        foundOrders: orders.map((o: any) => o.id),
       });
     }
 
@@ -951,7 +951,7 @@ export const createOrder = async (
 
       const session: SessionData = JSON.parse(sessionData);
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         for (const seller of session.sellers) {
           const orders = await tx.order.findMany({
             where: {
@@ -1030,7 +1030,7 @@ export const createOrder = async (
 // Release inventory for failed/expired orders (unchanged)
 export const releaseInventoryForOrders = async (orderIds: string[]) => {
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       const orders = await tx.order.findMany({
         where: {
           id: { in: orderIds },
@@ -1147,7 +1147,7 @@ export const getAllOrders = async (
 
     return res.status(200).json({
       success: true,
-      data: orders.map((order) => ({
+      data: orders.map((order: any) => ({
         id: order.id,
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
@@ -1242,7 +1242,7 @@ export const getSingleOrder = async (
           address: order.shop.address,
         },
         shippingAddress: order.shippingAddress,
-        items: order.items.map((item) => ({
+        items: order.items.map((item: any) => ({
           productId: item.productId,
           title: item.product.title,
           quantity: item.quantity,
