@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Order Confirmation - StoreX</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background-color: #f5f7fa;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 640px;
+        margin: 30px auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .header {
+        background: linear-gradient(135deg, #047857, #10b981);
+        padding: 40px 30px;
+        text-align: center;
+        color: #ffffff;
+      }
+      .header img {
+        max-width: 140px;
+        height: auto;
+        margin-bottom: 10px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+      .header p {
+        margin: 10px 0 0;
+        font-size: 16px;
+        opacity: 0.9;
+      }
+      .content {
+        padding: 40px;
+        background-color: #ffffff;
+      }
+      .content h2 {
+        font-size: 22px;
+        font-weight: 500;
+        color: #1f2a44;
+        margin: 0 0 20px;
+      }
+      .order-summary {
+        background-color: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border: 1px solid #e2e8f0;
+      }
+      .order-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .order-item:last-child {
+        border-bottom: none;
+      }
+      .item-details {
+        flex: 1;
+      }
+      .item-name {
+        font-weight: 600;
+        color: #1f2a44;
+        margin-bottom: 5px;
+      }
+      .item-info {
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .item-price {
+        font-weight: 600;
+        color: #047857;
+      }
+      .total-section {
+        background-color: #047857;
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        text-align: center;
+      }
+      .total-amount {
+        font-size: 32px;
+        font-weight: 700;
+        margin: 10px 0;
+      }
+      .shipping-info {
+        background-color: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border-left: 4px solid #10b981;
+      }
+      .shipping-title {
+        font-weight: 600;
+        color: #1f2a44;
+        margin-bottom: 10px;
+      }
+      .content p {
+        font-size: 16px;
+        color: #4b5563;
+        margin: 0 0 15px;
+      }
+      .cta-button {
+        display: inline-block;
+        background: linear-gradient(135deg, #047857, #10b981);
+        color: white;
+        padding: 15px 30px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        margin: 20px 0;
+        transition: transform 0.2s ease;
+      }
+      .cta-button:hover {
+        transform: translateY(-2px);
+      }
+      .footer {
+        background-color: #f8fafc;
+        padding: 25px;
+        text-align: center;
+        font-size: 13px;
+        color: #6b7280;
+        border-top: 1px solid #e2e8f0;
+      }
+      .footer a {
+        color: #10b981;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .footer a:hover {
+        text-decoration: underline;
+      }
+      @media only screen and (max-width: 600px) {
+        .container {
+          margin: 15px;
+          border-radius: 8px;
+        }
+        .header,
+        .content {
+          padding: 30px 20px;
+        }
+        .order-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+        .total-amount {
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img
+          src="https://via.placeholder.com/140x40?text=StoreX+Logo"
+          alt="StoreX Logo"
+        />
+        <h1>Order Confirmed!</h1>
+        <p>Thank you for your purchase</p>
+      </div>
+
+      <div class="content">
+        <h2>Hello <%= customerName %>,</h2>
+        <p>
+          Great news! Your order has been successfully placed and payment
+          confirmed. We're excited to get your items ready for shipment.
+        </p>
+
+        <div class="order-summary">
+          <h3 style="margin: 0 0 15px 0; color: #1f2a44">Order Summary</h3>
+          <div style="margin-bottom: 10px">
+            <strong>Order ID:</strong> #<%= orderId %>
+          </div>
+          <div style="margin-bottom: 10px">
+            <strong>Order Date:</strong> <%= orderDate %>
+          </div>
+          <div style="margin-bottom: 15px">
+            <strong>Payment Method:</strong> Card ending in ****
+          </div>
+
+          <% orderItems.forEach(function(item) { %>
+          <div class="order-item">
+            <div class="item-details">
+              <div class="item-name"><%= item.name %></div>
+              <div class="item-info">
+                Quantity: <%= item.quantity %> × $<%= item.price.toFixed(2) %>
+                <% if (item.selectedOptions &&
+                Object.keys(item.selectedOptions).length > 0) { %>
+                <br />Options: <%
+                Object.entries(item.selectedOptions).forEach(function([key,
+                value]) { %> <%= key %>: <%= value %>; <% }); %> <% } %>
+              </div>
+            </div>
+            <div class="item-price">
+              $<%= (item.quantity * item.price).toFixed(2) %>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+
+        <div class="total-section">
+          <div>Total Amount Paid</div>
+          <div class="total-amount">$<%= totalAmount.toFixed(2) %></div>
+          <% if (shippingCost > 0) { %>
+          <div style="font-size: 14px; opacity: 0.9">
+            (Includes $<%= shippingCost.toFixed(2) %> shipping)
+          </div>
+          <% } %> <% if (discountAmount > 0) { %>
+          <div style="font-size: 14px; opacity: 0.9">
+            Discount Applied: -$<%= discountAmount.toFixed(2) %>
+          </div>
+          <% } %>
+        </div>
+
+        <div class="shipping-info">
+          <div class="shipping-title">Shipping Address</div>
+          <div>
+            <%= shippingAddress.name %><br />
+            <%= shippingAddress.address %><br />
+            <%= shippingAddress.city %>, <%= shippingAddress.state %> <%=
+            shippingAddress.postalCode %><br />
+            <%= shippingAddress.country %> <% if (shippingAddress.phone) { %>
+            <br />Phone: <%= shippingAddress.phone %> <% } %>
+          </div>
+        </div>
+
+        <p>
+          Your order is now being processed and will be shipped within 1-3
+          business days. You'll receive a tracking number once your items are on
+          their way.
+        </p>
+
+        <div style="text-align: center">
+          <a href="<%= trackOrderUrl %>" class="cta-button">Track Your Order</a>
+        </div>
+
+        <p style="font-size: 14px; color: #6b7280; margin-top: 30px">
+          If you have any questions about your order, please don't hesitate to
+          contact our customer support team. We're here to help!
+        </p>
+      </div>
+
+      <div class="footer">
+        <p>© 2025 StoreX. All rights reserved.</p>
+        <p>
+          <a href="#">Track Order</a> | <a href="#">Contact Support</a> |
+          <a href="#">Return Policy</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

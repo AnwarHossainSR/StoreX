@@ -31,7 +31,7 @@ export default function CartPage() {
   };
 
   const handleClearCart = () => {
-    clearCart(userData, deviceData);
+    clearCart();
   };
 
   return (

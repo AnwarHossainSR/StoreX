@@ -35,7 +35,7 @@ interface CartState {
     userInfo: any | null,
     deviceInfo: any | null
   ) => void;
-  clearCart: (userInfo: any | null, deviceInfo: any | null) => void;
+  clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
 }
@@ -208,13 +208,13 @@ export const useCartStore = create<CartState>()(
             ),
           };
         }),
-      clearCart: (userInfo, deviceInfo) =>
+      clearCart: () =>
         set((state) => {
-          if (state.items.length > 0) {
-            toast.success("Cart Cleared", {
-              description: "All items have been removed from your cart.",
-            });
-          }
+          // if (state.items.length > 0) {
+          //   toast.success("Cart Cleared", {
+          //     description: "All items have been removed from your cart.",
+          //   });
+          // }
           return { items: [] };
         }),
       getTotalItems: () =>

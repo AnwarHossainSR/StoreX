@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Payment Confirmation - StoreX</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background-color: #f5f7fa;
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 640px;
+        margin: 30px auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .header {
+        background: linear-gradient(135deg, #1e40af, #3b82f6);
+        padding: 40px 30px;
+        text-align: center;
+        color: #ffffff;
+      }
+      .header img {
+        max-width: 140px;
+        height: auto;
+        margin-bottom: 10px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+      .header p {
+        margin: 10px 0 0;
+        font-size: 16px;
+        opacity: 0.9;
+      }
+      .content {
+        padding: 40px;
+        background-color: #ffffff;
+      }
+      .content h2 {
+        font-size: 22px;
+        font-weight: 500;
+        color: #1f2a44;
+        margin: 0 0 20px;
+      }
+      .payment-summary {
+        background-color: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border: 1px solid #e2e8f0;
+      }
+      .payment-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .payment-item:last-child {
+        border-bottom: none;
+      }
+      .payment-label {
+        font-weight: 500;
+        color: #1f2a44;
+      }
+      .payment-value {
+        font-weight: 600;
+        color: #1e40af;
+      }
+      .amount-section {
+        background-color: #1e40af;
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        text-align: center;
+      }
+      .payment-amount {
+        font-size: 32px;
+        font-weight: 700;
+        margin: 10px 0;
+      }
+      .transaction-details {
+        background-color: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border-left: 4px solid #3b82f6;
+      }
+      .transaction-title {
+        font-weight: 600;
+        color: #1f2a44;
+        margin-bottom: 10px;
+      }
+      .content p {
+        font-size: 16px;
+        color: #4b5563;
+        margin: 0 0 15px;
+      }
+      .order-items {
+        background-color: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border: 1px solid #e2e8f0;
+      }
+      .order-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .order-item:last-child {
+        border-bottom: none;
+      }
+      .item-details {
+        flex: 1;
+      }
+      .item-name {
+        font-weight: 600;
+        color: #1f2a44;
+        margin-bottom: 5px;
+      }
+      .item-info {
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .item-price {
+        font-weight: 600;
+        color: #1e40af;
+      }
+      .footer {
+        background-color: #f8fafc;
+        padding: 25px;
+        text-align: center;
+        font-size: 13px;
+        color: #6b7280;
+        border-top: 1px solid #e2e8f0;
+      }
+      .footer a {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .footer a:hover {
+        text-decoration: underline;
+      }
+      @media only screen and (max-width: 600px) {
+        .container {
+          margin: 15px;
+          border-radius: 8px;
+        }
+        .header,
+        .content {
+          padding: 30px 20px;
+        }
+        .order-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+        .payment-amount {
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img
+          src="https://via.placeholder.com/140x40?text=StoreX+Logo"
+          alt="StoreX Logo"
+        />
+        <h1>Payment Received!</h1>
+        <p>Your payment has been successfully processed</p>
+      </div>
+
+      <div class="content">
+        <h2>Hello <%= customerName %>,</h2>
+        <p>
+          We have successfully received your payment. Your order is now being
+          processed and will be fulfilled shortly.
+        </p>
+
+        <div class="amount-section">
+          <div>Payment Amount</div>
+          <div class="payment-amount">$<%= paymentAmount.toFixed(2) %></div>
+        </div>
+
+        <div class="payment-summary">
+          <h3 style="margin: 0 0 15px 0; color: #1f2a44">Payment Details</h3>
+          <div class="payment-item">
+            <div class="payment-label">Order ID:</div>
+            <div class="payment-value">#<%= orderId %></div>
+          </div>
+          <div class="payment-item">
+            <div class="payment-label">Payment Date:</div>
+            <div class="payment-value"><%= paymentDate %></div>
+          </div>
+          <div class="payment-item">
+            <div class="payment-label">Payment Method:</div>
+            <div class="payment-value"><%= paymentMethod %></div>
+          </div>
+          <div class="payment-item">
+            <div class="payment-label">Transaction ID:</div>
+            <div class="payment-value"><%= transactionId %></div>
+          </div>
+        </div>
+
+        <div class="transaction-details">
+          <div class="transaction-title">Transaction Summary</div>
+          <div style="margin-bottom: 10px">
+            <strong>Items Total:</strong> $<%= (paymentAmount - shippingCost +
+            discountAmount).toFixed(2) %>
+          </div>
+          <% if (discountAmount > 0) { %>
+          <div style="margin-bottom: 10px; color: #047857">
+            <strong>Discount Applied:</strong> -$<%= discountAmount.toFixed(2)
+            %>
+          </div>
+          <% } %> <% if (shippingCost > 0) { %>
+          <div style="margin-bottom: 10px">
+            <strong>Shipping:</strong> $<%= shippingCost.toFixed(2) %>
+          </div>
+          <% } %>
+          <div
+            style="
+              margin-top: 15px;
+              padding-top: 15px;
+              border-top: 1px solid #e2e8f0;
+            "
+          >
+            <strong>Total Paid:</strong> $<%= paymentAmount.toFixed(2) %>
+          </div>
+        </div>
+
+        <div class="order-items">
+          <h3 style="margin: 0 0 15px 0; color: #1f2a44">Items Ordered</h3>
+          <% orderItems.forEach(function(item) { %>
+          <div class="order-item">
+            <div class="item-details">
+              <div class="item-name"><%= item.name %></div>
+              <div class="item-info">
+                Quantity: <%= item.quantity %> × $<%= item.price.toFixed(2) %>
+                <% if (item.selectedOptions &&
+                Object.keys(item.selectedOptions).length > 0) { %>
+                <br />Options: <%
+                Object.entries(item.selectedOptions).forEach(function([key,
+                value]) { %> <%= key %>: <%= value %>; <% }); %> <% } %>
+              </div>
+            </div>
+            <div class="item-price">
+              $<%= (item.quantity * item.price).toFixed(2) %>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+
+        <p>
+          This email serves as your payment receipt. Please keep it for your
+          records. Your order will be processed and shipped according to our
+          standard fulfillment timeline.
+        </p>
+
+        <p style="font-size: 14px; color: #6b7280; margin-top: 30px">
+          If you have any questions about this payment or your order, please
+          contact our support team.
+        </p>
+      </div>
+
+      <div class="footer">
+        <p>© 2025 StoreX. All rights reserved.</p>
+        <p>
+          <a href="#">Contact Support</a> | <a href="#">Payment Policy</a> |
+          <a href="#">Help Center</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

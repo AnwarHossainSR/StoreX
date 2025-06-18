@@ -4,62 +4,24 @@ import { randomUUID } from "crypto";
 import { NextFunction, Request, Response } from "express";
 import Stripe from "stripe";
 import { z } from "zod";
+import { sendOrderEmail } from "../utils/sendOrderEmail";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-03-31.basil",
-});
+import {
+  notifySellerOrderReceived,
+  notifySellerPaymentReceived,
+} from "../services/notificationService";
+import {
+  CartItem,
+  CustomRequest,
+  OrderIdSchema,
+  ProcessFullPaymentRequest,
+  ProcessFullPaymentSchema,
+  SellerData,
+  SessionData,
+  stripe,
+} from "../utils/types";
 
-// Schema for validating order ID
-const OrderIdSchema = z.object({
-  id: z.string().min(1, "Order ID is required"),
-});
-
-interface CartItem {
-  id: string;
-  quantity: number;
-  sale_price: number;
-  shopId: string;
-  selectedOptions?: Record<string, string>;
-}
-
-interface Coupon {
-  code: string;
-  discountPercent?: number;
-  discountAmount?: number;
-  discountedProductId?: string;
-}
-
-interface SellerData {
-  shopId: string;
-  sellerId: string;
-  stripeAccountId: string;
-}
-
-interface SessionData {
-  userId: string;
-  cart: CartItem[];
-  sellers: SellerData[];
-  shopTotals: Record<string, number>;
-  totalAmount: number;
-  shippingAddressId: string;
-  coupon: Coupon | null;
-  orderIds: string[];
-  createdAt: number;
-}
-
-// Define request body schema
-const ProcessFullPaymentSchema = z.object({
-  paymentMethodId: z.string().min(1, "PaymentMethod ID is required"),
-  sessionId: z.string().min(1, "Session ID is required"),
-});
-
-// Define request interface
-interface ProcessFullPaymentRequest extends Request {
-  body: z.infer<typeof ProcessFullPaymentSchema>;
-  user?: { id: string };
-}
-
-// New endpoint to process full payment and disburse to sellers
+// process full payment and disburse to sellers
 export const processFullPayment = async (
   req: ProcessFullPaymentRequest,
   res: Response,
@@ -264,8 +226,29 @@ export const processFullPayment = async (
       `Found charge: ${chargeId} for PaymentIntent: ${paymentIntent.id}`
     );
 
-    // Create Transfers for each seller
-    await prisma.$transaction(async (tx) => {
+    // Prepare email data
+    let allOrderItems: any[] = [];
+    let allOrders: any[] = [];
+    let discountAmount = 0;
+
+    // Calculate discount amount
+    if (session.coupon?.discountedProductId) {
+      const discountedItem = session.cart.find(
+        (item) => item.id === session.coupon?.discountedProductId
+      );
+      if (discountedItem) {
+        discountAmount =
+          session.coupon.discountPercent && session.coupon.discountPercent > 0
+            ? (discountedItem.sale_price *
+                discountedItem.quantity *
+                session.coupon.discountPercent) /
+              100
+            : session.coupon.discountAmount || 0;
+      }
+    }
+
+    // Create Transfers for each seller and collect order data
+    await prisma.$transaction(async (tx: any) => {
       for (const seller of session.sellers) {
         const sellerItems = session.cart.filter(
           (item) => item.shopId === seller.shopId
@@ -305,7 +288,7 @@ export const processFullPayment = async (
             amount: transferAmount,
             currency: "usd",
             destination: seller.stripeAccountId,
-            source_transaction: chargeId, // Use the charge ID we retrieved
+            source_transaction: chargeId,
             metadata: {
               sessionId,
               userId,
@@ -321,12 +304,25 @@ export const processFullPayment = async (
             } USD`
           );
 
-          // Update order status
+          // Get seller details for notifications
+          const sellerDetails = await tx.sellers.findUnique({
+            where: { id: seller.sellerId },
+            select: { email: true, name: true },
+          });
+
+          // Update order status and collect order data
           const orders = await tx.order.findMany({
             where: {
               id: { in: session.orderIds },
               shopId: seller.shopId,
               status: "Pending",
+            },
+            include: {
+              items: {
+                include: {
+                  product: true,
+                },
+              },
             },
           });
 
@@ -354,9 +350,53 @@ export const processFullPayment = async (
               },
             });
 
+            // Collect order data for email
+            allOrders.push(order);
+
+            // Transform order items for email template
+            const emailOrderItems = order.items.map((item: any) => ({
+              name: item.product.title,
+              quantity: item.quantity,
+              price: item.price,
+              selectedOptions: item.selectedOptions || {},
+            }));
+
+            allOrderItems.push(...emailOrderItems);
+
             console.log(
               `Order ${order.id} marked as paid for shop ${seller.shopId}`
             );
+
+            // Send notifications to seller (async - don't wait)
+            if (sellerDetails?.email) {
+              // Send order received notification
+              notifySellerOrderReceived(
+                seller.sellerId,
+                order.id,
+                sellerAmount,
+                customer?.name || "Customer",
+                sellerDetails.email
+              ).catch((error) => {
+                console.error(
+                  `Failed to send order notification to seller ${seller.sellerId}:`,
+                  error
+                );
+              });
+
+              // Send payment received notification
+              notifySellerPaymentReceived(
+                seller.sellerId,
+                order.id,
+                sellerAmount,
+                platformFee / 100,
+                sellerDetails.email
+              ).catch((error) => {
+                console.error(
+                  `Failed to send payment notification to seller ${seller.sellerId}:`,
+                  error
+                );
+              });
+            }
           }
         }
       }
@@ -374,6 +414,71 @@ export const processFullPayment = async (
         console.log(`Session ${sessionId} completed and cleaned up`);
       }
     });
+
+    // Send order confirmation email
+    if (customer?.email && allOrderItems.length > 0) {
+      const shippingData = await prisma.shippingAddress.findUnique({
+        where: { id: session?.shippingAddressId },
+      });
+      const orderConfirmationData = {
+        customerName: customer.name || "Valued Customer",
+        orderId: sessionId,
+        orderDate: new Date().toLocaleDateString(),
+        orderItems: allOrderItems,
+        totalAmount: totalAmount,
+        shippingCost: shipping,
+        discountAmount: discountAmount,
+        shippingAddress: shippingData || {
+          name: customer.name || "N/A",
+          address: "Address not provided",
+          city: "N/A",
+          state: "N/A",
+          postalCode: "N/A",
+          country: "N/A",
+          phone: "N/A",
+        },
+        trackOrderUrl: `${frontendUrl}/orders/${sessionId}`,
+      };
+
+      try {
+        await sendOrderEmail(
+          customer.email,
+          "Order Confirmation - StoreX",
+          "order-confirmation",
+          orderConfirmationData
+        );
+        console.log(`Order confirmation email sent to ${customer.email}`);
+      } catch (emailError) {
+        console.error("Failed to send order confirmation email:", emailError);
+      }
+
+      // Send payment received email
+      const paymentReceivedData = {
+        customerName: customer.name || "Valued Customer",
+        orderId: sessionId,
+        paymentAmount: totalAmount,
+        paymentDate: new Date().toLocaleDateString(),
+        paymentMethod: "Card",
+        paymentIntentId: paymentIntent.id,
+        transactionId: chargeId,
+        orderItems: allOrderItems,
+        shippingCost: shipping,
+        discountAmount: discountAmount,
+      };
+
+      try {
+        await sendOrderEmail(
+          customer.email,
+          "Payment Confirmation - StoreX",
+          "payment-received",
+          paymentReceivedData
+        );
+        console.log(`Payment confirmation email sent to ${customer.email}`);
+      } catch (emailError) {
+        console.error("Failed to send payment confirmation email:", emailError);
+        // Don't fail the entire payment process if email fails
+      }
+    }
 
     console.log(
       "Payment processing completed for PaymentIntent:",
@@ -414,7 +519,7 @@ export const processFullPayment = async (
 
 // Existing createPaymentSession (unchanged)
 export const createPaymentSession = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -532,7 +637,7 @@ export const createPaymentSession = async (
       },
     });
 
-    const foundShopIds = shops.map((shop) => shop.id);
+    const foundShopIds = shops.map((shop: any) => shop.id);
     const missingShops = uniqueShopIds.filter(
       (id) => !foundShopIds.includes(id)
     );
@@ -544,18 +649,18 @@ export const createPaymentSession = async (
     }
 
     const missingStripeAccounts = shops.filter(
-      (shop) => !shop.sellers?.stripeId
+      (shop: any) => !shop.sellers?.stripeId
     );
     if (missingStripeAccounts.length > 0) {
       return res.status(400).json({
         success: false,
         message: `Some sellers lack Stripe accounts: ${missingStripeAccounts
-          .map((s) => s.id)
+          .map((s: any) => s.id)
           .join(", ")}`,
       });
     }
 
-    const sellerData = shops.reduce((acc, shop) => {
+    const sellerData = shops.reduce((acc: any, shop: any) => {
       acc[shop.id] = {
         shopId: shop.id,
         sellerId: shop.sellerId,
@@ -572,7 +677,7 @@ export const createPaymentSession = async (
 
     const sessionId = randomUUID();
 
-    const pendingOrders = await prisma.$transaction(async (tx) => {
+    const pendingOrders = await prisma.$transaction(async (tx: any) => {
       const orders = [];
 
       for (const shopId of uniqueShopIds) {
@@ -687,7 +792,7 @@ export const createPaymentSession = async (
       ),
       shippingAddressId: selectedAddressId,
       coupon: coupon || null,
-      orderIds: pendingOrders.map((order) => order.id),
+      orderIds: pendingOrders.map((order: any) => order.id),
       createdAt: Date.now(),
     };
 
@@ -714,7 +819,7 @@ export const createPaymentSession = async (
 
 // Verify payment session (unchanged)
 export const verifyPaymentSession = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -782,7 +887,7 @@ export const verifyPaymentSession = async (
     if (orders.length !== session.orderIds.length) {
       console.warn(`Some orders missing for session: ${sessionId}`, {
         expectedOrderIds: session.orderIds,
-        foundOrders: orders.map((o) => o.id),
+        foundOrders: orders.map((o: any) => o.id),
       });
     }
 
@@ -846,7 +951,7 @@ export const createOrder = async (
 
       const session: SessionData = JSON.parse(sessionData);
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         for (const seller of session.sellers) {
           const orders = await tx.order.findMany({
             where: {
@@ -925,7 +1030,7 @@ export const createOrder = async (
 // Release inventory for failed/expired orders (unchanged)
 export const releaseInventoryForOrders = async (orderIds: string[]) => {
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       const orders = await tx.order.findMany({
         where: {
           id: { in: orderIds },
@@ -986,7 +1091,7 @@ export const cleanupExpiredSessions = async () => {
 
 // Get all orders for a user
 export const getAllOrders = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -1042,7 +1147,7 @@ export const getAllOrders = async (
 
     return res.status(200).json({
       success: true,
-      data: orders.map((order) => ({
+      data: orders.map((order: any) => ({
         id: order.id,
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
@@ -1059,7 +1164,7 @@ export const getAllOrders = async (
 
 // Get single order by ID
 export const getSingleOrder = async (
-  req: any,
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -1137,7 +1242,7 @@ export const getSingleOrder = async (
           address: order.shop.address,
         },
         shippingAddress: order.shippingAddress,
-        items: order.items.map((item) => ({
+        items: order.items.map((item: any) => ({
           productId: item.productId,
           title: item.product.title,
           quantity: item.quantity,
