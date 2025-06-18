@@ -1,0 +1,100 @@
+<!-- Create this as: seller-order-notification.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Order Received - StoreX</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background-color: #f5f7fa;
+      }
+      .container {
+        max-width: 600px;
+        margin: 30px auto;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .header {
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        padding: 40px 30px;
+        text-align: center;
+        color: white;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 500;
+      }
+      .content {
+        padding: 40px;
+      }
+      .order-info {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border-left: 4px solid #2563eb;
+      }
+      .cta-button {
+        display: inline-block;
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: white;
+        padding: 15px 30px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        margin: 20px 0;
+      }
+      .footer {
+        background: #f8fafc;
+        padding: 25px;
+        text-align: center;
+        font-size: 13px;
+        color: #6b7280;
+        border-top: 1px solid #e2e8f0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎉 New Order Received!</h1>
+        <p>You have a new customer order</p>
+      </div>
+      <div class="content">
+        <h2>Hello <%= sellerName %>,</h2>
+        <p>Great news! You've received a new order on StoreX.</p>
+
+        <div class="order-info">
+          <h3 style="margin: 0 0 15px 0; color: #1f2a44">Order Details</h3>
+          <div><strong>Order ID:</strong> #<%= orderId %></div>
+          <div><strong>Customer:</strong> <%= customerName %></div>
+          <div>
+            <strong>Order Amount:</strong> $<%= orderAmount.toFixed(2) %>
+          </div>
+          <div><strong>Order Date:</strong> <%= orderDate %></div>
+        </div>
+
+        <p>
+          Please log in to your seller dashboard to view the complete order
+          details and begin processing.
+        </p>
+
+        <div style="text-align: center">
+          <a href="<%= dashboardUrl %>" class="cta-button"
+            >View Order Details</a
+          >
+        </div>
+      </div>
+      <div class="footer">
+        <p>© 2025 StoreX. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>

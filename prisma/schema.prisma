@@ -38,6 +38,7 @@ model users {
   userAnalytics     userAnalytics?
   shippingAddresses ShippingAddress[]
   Order             Order[]
+  notifications     notifications[]
 }
 
 model shopReviews {
@@ -91,6 +92,7 @@ model sellers {
   Product             Product[]
   PaymentDistribution PaymentDistribution[]
   DiscountCode        DiscountCode[]
+  notifications       notifications[]
 }
 
 model siteConfig {
@@ -258,4 +260,32 @@ model PaymentDistribution {
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   shop            shops    @relation(fields: [shopId], references: [id], onDelete: Cascade)
   seller          sellers  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model notifications {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  type      NotificationType
+  title     String
+  message   String
+  data      Json? // Additional data like orderId, amount, etc.
+  isRead    Boolean          @default(false)
+  sellerId  String?          @db.ObjectId
+  userId    String?          @db.ObjectId
+  seller    sellers?         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  user      users?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+enum NotificationType {
+  ORDER_RECEIVED
+  PAYMENT_RECEIVED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  PRODUCT_APPROVED
+  PRODUCT_REJECTED
+  ACCOUNT_VERIFIED
+  PAYOUT_PROCESSED
+  LOW_STOCK
+  REVIEW_RECEIVED
 }

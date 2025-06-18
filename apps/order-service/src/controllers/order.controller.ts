@@ -7,6 +7,10 @@ import { z } from "zod";
 import { sendOrderEmail } from "../utils/sendOrderEmail";
 
 import {
+  notifySellerOrderReceived,
+  notifySellerPaymentReceived,
+} from "../services/notificationService";
+import {
   CartItem,
   CustomRequest,
   OrderIdSchema,
@@ -300,6 +304,12 @@ export const processFullPayment = async (
             } USD`
           );
 
+          // Get seller details for notifications
+          const sellerDetails = await tx.sellers.findUnique({
+            where: { id: seller.sellerId },
+            select: { email: true, name: true },
+          });
+
           // Update order status and collect order data
           const orders = await tx.order.findMany({
             where: {
@@ -356,6 +366,37 @@ export const processFullPayment = async (
             console.log(
               `Order ${order.id} marked as paid for shop ${seller.shopId}`
             );
+
+            // Send notifications to seller (async - don't wait)
+            if (sellerDetails?.email) {
+              // Send order received notification
+              notifySellerOrderReceived(
+                seller.sellerId,
+                order.id,
+                sellerAmount,
+                customer?.name || "Customer",
+                sellerDetails.email
+              ).catch((error) => {
+                console.error(
+                  `Failed to send order notification to seller ${seller.sellerId}:`,
+                  error
+                );
+              });
+
+              // Send payment received notification
+              notifySellerPaymentReceived(
+                seller.sellerId,
+                order.id,
+                sellerAmount,
+                platformFee / 100,
+                sellerDetails.email
+              ).catch((error) => {
+                console.error(
+                  `Failed to send payment notification to seller ${seller.sellerId}:`,
+                  error
+                );
+              });
+            }
           }
         }
       }
