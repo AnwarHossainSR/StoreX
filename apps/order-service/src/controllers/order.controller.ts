@@ -6,61 +6,17 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { sendOrderEmail } from "../utils/sendOrderEmail";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-03-31.basil",
-});
+import {
+  CartItem,
+  OrderIdSchema,
+  ProcessFullPaymentRequest,
+  ProcessFullPaymentSchema,
+  SellerData,
+  SessionData,
+  stripe,
+} from "../utils/types";
 
-// Schema for validating order ID
-const OrderIdSchema = z.object({
-  id: z.string().min(1, "Order ID is required"),
-});
-
-interface CartItem {
-  id: string;
-  quantity: number;
-  sale_price: number;
-  shopId: string;
-  selectedOptions?: Record<string, string>;
-}
-
-interface Coupon {
-  code: string;
-  discountPercent?: number;
-  discountAmount?: number;
-  discountedProductId?: string;
-}
-
-interface SellerData {
-  shopId: string;
-  sellerId: string;
-  stripeAccountId: string;
-}
-
-interface SessionData {
-  userId: string;
-  cart: CartItem[];
-  sellers: SellerData[];
-  shopTotals: Record<string, number>;
-  totalAmount: number;
-  shippingAddressId: string;
-  coupon: Coupon | null;
-  orderIds: string[];
-  createdAt: number;
-}
-
-// Define request body schema
-const ProcessFullPaymentSchema = z.object({
-  paymentMethodId: z.string().min(1, "PaymentMethod ID is required"),
-  sessionId: z.string().min(1, "Session ID is required"),
-});
-
-// Define request interface
-interface ProcessFullPaymentRequest extends Request {
-  body: z.infer<typeof ProcessFullPaymentSchema>;
-  user?: { id: string };
-}
-
-// New endpoint to process full payment and disburse to sellers
+// process full payment and disburse to sellers
 export const processFullPayment = async (
   req: ProcessFullPaymentRequest,
   res: Response,
