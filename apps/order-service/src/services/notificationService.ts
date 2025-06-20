@@ -1,5 +1,3 @@
-// Create this as a new file: src/utils/notificationService.ts
-
 import prisma from "@packages/libs/prisma";
 import { sendOrderEmail } from "../utils/sendOrderEmail";
 
@@ -52,7 +50,8 @@ export const notifySellerOrderReceived = async (
   orderId: string,
   orderAmount: number,
   customerName: string,
-  sellerEmail: string
+  sellerEmail: string,
+  userId: string
 ) => {
   try {
     // Create database notification
@@ -69,6 +68,7 @@ export const notifySellerOrderReceived = async (
         orderDate: new Date().toISOString(),
       },
       sellerId,
+      userId,
     });
 
     // Send email notification to seller
@@ -102,7 +102,8 @@ export const notifySellerPaymentReceived = async (
   orderId: string,
   paymentAmount: number,
   platformFee: number,
-  sellerEmail: string
+  sellerEmail: string,
+  userId: string
 ) => {
   try {
     const netAmount = paymentAmount - platformFee;
@@ -122,17 +123,18 @@ export const notifySellerPaymentReceived = async (
         timestamp: new Date().toISOString(),
       },
       sellerId,
+      userId,
     });
 
     // Send email notification to seller
     const emailData = {
-      sellerName: "Seller", // You might want to fetch actual seller name
+      sellerName: "Seller",
       orderId,
       paymentAmount,
       platformFee,
       netAmount,
       paymentDate: new Date().toLocaleDateString(),
-      dashboardUrl: `${process.env.FRONTEND_URL}/seller/payments`,
+      dashboardUrl: `${process.env.SELLER_URL}/seller/payments`,
     };
 
     await sendOrderEmail(

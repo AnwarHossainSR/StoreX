@@ -81,11 +81,20 @@ export const processFullPayment = async (
 
     // Validate FRONTEND_URL
     const frontendUrl = process.env.FRONTEND_URL || "https://localhost:3000";
+    const sellerUrl = process.env.SELLER_URL || "https://localhost:6004";
+
     if (!frontendUrl.match(/^https?:\/\//)) {
       console.error(
         "FRONTEND_URL must include an explicit scheme (http or https)"
       );
       throw new Error("Invalid FRONTEND_URL configuration");
+    }
+
+    if (!sellerUrl.match(/^https?:\/\//)) {
+      console.error(
+        "SELLER_URL must include an explicit scheme (http or https)"
+      );
+      throw new Error("Invalid SELLER_URL configuration");
     }
 
     // Log platform balance for debugging
@@ -375,7 +384,8 @@ export const processFullPayment = async (
                 order.id,
                 sellerAmount,
                 customer?.name || "Customer",
-                sellerDetails.email
+                sellerDetails.email,
+                userId
               ).catch((error) => {
                 console.error(
                   `Failed to send order notification to seller ${seller.sellerId}:`,
@@ -389,7 +399,8 @@ export const processFullPayment = async (
                 order.id,
                 sellerAmount,
                 platformFee / 100,
-                sellerDetails.email
+                sellerDetails.email,
+                userId
               ).catch((error) => {
                 console.error(
                   `Failed to send payment notification to seller ${seller.sellerId}:`,
