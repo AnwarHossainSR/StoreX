@@ -55,14 +55,6 @@ export default function OrdersPage() {
   };
 
   const handleStatusToggle = async (orderId: string, currentStatus: string) => {
-    let newStatus: string;
-    if (currentStatus === "Paid") {
-      newStatus = "Pending";
-    } else if (currentStatus === "Pending") {
-      newStatus = "Cancelled";
-    } else {
-      newStatus = "Paid";
-    }
     setOrderToUpdate({
       id: orderId,
       customer: ordersData?.data.find((o) => o.id === orderId)?.customer || "",
@@ -93,9 +85,14 @@ export default function OrdersPage() {
       ),
     },
     {
-      key: "id",
+      key: "orderId",
       header: "Order ID",
       sortable: true,
+      render: (order: any) => (
+        <div className="text-sm font-medium text-gray-900">
+          #{order.orderId}
+        </div>
+      ),
     },
     {
       key: "customer",

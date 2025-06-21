@@ -79,10 +79,12 @@ export interface Order {
   total: string;
   items: number;
   shopName: string;
+  orderId: string;
 }
 
 export interface OrderDetails {
   id: string;
+  orderId: string;
   date: string;
   status: string;
   total: number;

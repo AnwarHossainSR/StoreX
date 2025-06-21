@@ -775,7 +775,7 @@ export default function CheckoutPage() {
                     </p>
                     <div className="space-y-4">
                       <Link
-                        href="/account/orders"
+                        href="/dashboard/orders"
                         className="inline-block bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
                       >
                         View Order Details

@@ -58,6 +58,7 @@ model shopReviews {
 model shops {
   id                  String                @id @default(auto()) @map("_id") @db.ObjectId
   name                String
+  shopCode            String                @unique
   bio                 String?
   category            String
   avater              images?               @relation(fields: [imagesId], references: [id])
@@ -217,6 +218,7 @@ model ShippingAddress {
 
 model Order {
   id                  String                @id @default(auto()) @map("_id") @db.ObjectId
+  orderId             String                @unique
   userId              String                @db.ObjectId
   shopId              String                @db.ObjectId
   total               Float

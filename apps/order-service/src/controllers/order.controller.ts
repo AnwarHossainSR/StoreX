@@ -10,6 +10,7 @@ import {
   notifySellerOrderReceived,
   notifySellerPaymentReceived,
 } from "../services/notificationService";
+import { generateOrderId } from "../utils/helper";
 import {
   allowedSortFields,
   CartItem,
@@ -747,10 +748,15 @@ export const createPaymentSession = async (
           selectedOptions: item.selectedOptions || {},
         }));
 
+        const orderId = await generateOrderId(shopId);
+        const userId = req.user?.id!;
+        const selectedAddressId = req.body.selectedAddressId;
+
         const order = await tx.order.create({
           data: {
             userId,
             shopId,
+            orderId,
             total: shopTotal,
             status: "Pending",
             shippingAddressId: selectedAddressId,
@@ -1109,7 +1115,7 @@ export const getAllOrders = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
+    const userId = req?.user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -1162,6 +1168,7 @@ export const getAllOrders = async (
       success: true,
       data: orders.map((order: any) => ({
         id: order.id,
+        orderId: order.orderId,
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
         total: `$${order.total.toFixed(2)}`,
@@ -1239,12 +1246,11 @@ export const getSingleOrder = async (
       });
     }
 
-    console.log("order", order);
-
     return res.status(200).json({
       success: true,
       data: {
         id: order.id,
+        orderId: order.orderId,
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
         total: order.total,
@@ -1367,6 +1373,7 @@ export const getSellerOrders = async (
       success: true,
       data: orders.map((order: any) => ({
         id: order.id,
+        orderId: order.orderId,
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
         total: `${order.total.toFixed(2)}`,
@@ -1525,7 +1532,7 @@ export const exportSellerOrders = async (
       "Order ID,Date,Customer,Email,Phone,Status,Total,Items",
       ...orders.map(
         (order) =>
-          `${order.id},${order.createdAt.toISOString().split("T")[0]},${
+          `${order.orderId},${order.createdAt.toISOString().split("T")[0]},${
             order.user?.name || "Unknown"
           },${order.user?.email || ""},${
             order.shippingAddress?.phone || order.user?.phone || ""
