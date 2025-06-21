@@ -31,7 +31,7 @@ router.post("/create-order-webhook", createOrder);
 router.get("/get-all-orders", withAuth("user"), getAllOrders);
 
 // Get single order by ID (for users)
-router.get("/:id", withAuth("user"), getSingleOrder);
+router.get("/get-order/:id", withAuth("user"), getSingleOrder);
 
 // Get single order by ID (for sellers)
 router.get("/get-seller-order/:id", withAuth("seller"), getSingleSellerOrder);

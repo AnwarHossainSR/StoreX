@@ -60,8 +60,6 @@ const isAuthenticated = async (
       throw new AuthError("Unauthenticated! Invalid token");
     }
 
-    console.log("decoded", decoded);
-
     // Optional role match validation
     if (role && decoded.role !== role) {
       throw new AuthError("Unauthorized! Role mismatch");

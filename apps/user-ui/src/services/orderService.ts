@@ -216,7 +216,7 @@ export const orderService = {
       const response = await apiClient.get<{
         success: boolean;
         data: OrderDetails;
-      }>(`${API_BASE_URL}/${orderId}`);
+      }>(`${API_BASE_URL}/get-order/${orderId}`);
       if (!response.data.success) {
         throw new Error("Failed to fetch order");
       }
