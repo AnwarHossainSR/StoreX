@@ -651,7 +651,7 @@ export const sellerLogin = async (
     setCookie(res, "access_seller_token", accessToken);
 
     res.status(200).json({
-      message: "User logged in successfully",
+      message: "Seller logged in successfully",
       user: {
         id: user.id,
         name: user.name,

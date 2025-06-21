@@ -79,10 +79,12 @@ export interface Order {
   total: string;
   items: number;
   shopName: string;
+  orderId: string;
 }
 
 export interface OrderDetails {
   id: string;
+  orderId: string;
   date: string;
   status: string;
   total: number;
@@ -214,7 +216,7 @@ export const orderService = {
       const response = await apiClient.get<{
         success: boolean;
         data: OrderDetails;
-      }>(`${API_BASE_URL}/${orderId}`);
+      }>(`${API_BASE_URL}/get-order/${orderId}`);
       if (!response.data.success) {
         throw new Error("Failed to fetch order");
       }

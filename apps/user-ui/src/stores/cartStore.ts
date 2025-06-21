@@ -21,7 +21,8 @@ interface CartState {
     size: string,
     userInfo: any | null,
     deviceInfo: any | null,
-    user: any | null
+    user: any | null,
+    showToast: boolean
   ) => void;
   removeItem: (
     id: string,
@@ -51,7 +52,8 @@ export const useCartStore = create<CartState>()(
         size,
         userInfo,
         deviceInfo,
-        user: any = null
+        user: any = null,
+        showToast = true
       ) => {
         const id = `${product.id}-${color}-${size}`;
         set((state) => {
@@ -63,13 +65,16 @@ export const useCartStore = create<CartState>()(
               "Device Info:",
               deviceInfo
             );
-            toast.info("Item Already in Cart", {
-              description: `${product.title} (${color}, ${size}) is already in your cart.`,
-              action: {
-                label: "View Cart",
-                onClick: () => (window.location.href = "/cart"),
-              },
-            });
+            if (showToast) {
+              toast.info("Item Already in Cart", {
+                description: `${product.title} (${color}, ${size}) is already in your cart.`,
+                action: {
+                  label: "View Cart",
+                  onClick: () => (window.location.href = "/cart"),
+                },
+              });
+            }
+
             return state;
           }
           const validQuantity = Math.max(1, Math.min(quantity, product.stock));
@@ -79,13 +84,15 @@ export const useCartStore = create<CartState>()(
             "Device Info:",
             deviceInfo
           );
-          toast.success("Added to Cart", {
-            description: `${product.title} (x${validQuantity}, ${color}, ${size}) added to cart.`,
-            action: {
-              label: "View Cart",
-              onClick: () => (window.location.href = "/cart"),
-            },
-          });
+          if (showToast) {
+            toast.success("Added to Cart", {
+              description: `${product.title} (x${validQuantity}, ${color}, ${size}) added to cart.`,
+              action: {
+                label: "View Cart",
+                onClick: () => (window.location.href = "/cart"),
+              },
+            });
+          }
 
           if (user && user.id) {
             // send Kafka event

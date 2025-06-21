@@ -3,9 +3,15 @@ import express from "express";
 import {
   createOrder,
   createPaymentSession,
+  exportSellerOrders,
+  exportSellerPayments,
   getAllOrders,
+  getSellerOrders,
+  getSellerPayments,
   getSingleOrder,
+  getSingleSellerOrder, // Use the new single order controller
   processFullPayment,
+  updateSellerOrderStatus,
   verifyPaymentSession,
 } from "../controllers/order.controller";
 
@@ -23,7 +29,32 @@ router.post("/process-full-payment", withAuth("user"), processFullPayment);
 // Handle Stripe webhook for payment completion
 router.post("/create-order-webhook", createOrder);
 
+// Get all orders for a user
 router.get("/get-all-orders", withAuth("user"), getAllOrders);
-router.get("/:id", withAuth("user"), getSingleOrder);
+
+// Get single order by ID (for users)
+router.get("/get-order/:id", withAuth("user"), getSingleOrder);
+
+// Get single order by ID (for sellers)
+router.get("/get-seller-order/:id", withAuth("seller"), getSingleSellerOrder);
+
+// Get all orders for a seller
+router.get("/get-seller-orders", withAuth("seller"), getSellerOrders);
+
+// Export orders for a seller
+router.get("/export-seller-orders", withAuth("seller"), exportSellerOrders);
+
+// Update order status
+router.put(
+  "/update-seller-order-status/:id",
+  withAuth("seller"),
+  updateSellerOrderStatus
+);
+
+// get Sellers payments
+router.get("/get-seller-payments", withAuth("seller"), getSellerPayments);
+
+// export seller payments
+router.get("/export-seller-payments", withAuth("seller"), exportSellerPayments);
 
 export default router;

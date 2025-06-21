@@ -3,6 +3,7 @@
 import Loading from "@/components/ui/loading";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useOrder } from "@/hooks/useOrder";
+import { isDevelopment, TEST_CARDS } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { useCheckoutStore } from "@/stores/checkoutStore";
 import { loadStripe, StripeElements } from "@stripe/stripe-js";
@@ -16,6 +17,7 @@ import {
   Package,
   RefreshCw,
   Tag,
+  TestTube,
   Truck,
   XCircle,
 } from "lucide-react";
@@ -59,6 +61,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null
   );
+  const [showTestCards, setShowTestCards] = useState(false);
   const [isStripeLoading, setIsStripeLoading] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<
@@ -323,6 +326,24 @@ export default function CheckoutPage() {
     subtotal > 100 || (couponCode.toUpperCase() === "FREESHIP" && !couponError)
       ? 0
       : 10;
+
+  const fillTestCard = useCallback(
+    async (cardNumber: string, description: string) => {
+      if (!isDevelopment) return;
+
+      try {
+        await navigator.clipboard.writeText(cardNumber);
+        toast.success(`Copied: ${description}`, {
+          description: `Card Number: ${cardNumber}`,
+          duration: 3000,
+        });
+      } catch (error) {
+        console.error("Error copying to clipboard:", error);
+        toast.error("Failed to copy card number");
+      }
+    },
+    [isDevelopment]
+  );
 
   if (isLoading && activeTab === 1)
     return (
@@ -671,6 +692,8 @@ export default function CheckoutPage() {
             )}
 
             {/* Step 3: Payment */}
+
+            {/* Step 3: Payment */}
             {activeTab === 3 && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center mb-6">
@@ -680,67 +703,150 @@ export default function CheckoutPage() {
                   </h2>
                 </div>
 
-                <form onSubmit={handlePaymentSubmit}>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Payment Details
-                    </label>
+                {/* Development Test Cards */}
+                {isDevelopment && (
+                  <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <TestTube className="w-5 h-5 text-purple-600 mr-2" />
+                        <h3 className="font-semibold text-gray-900">
+                          Test Cards (Development Mode)
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowTestCards(!showTestCards)}
+                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                      >
+                        {showTestCards ? "Hide" : "Show"} Test Cards
+                      </button>
+                    </div>
 
-                    {isStripeLoading ? (
-                      <div className="border border-gray-300 rounded-xl p-8 min-h-[300px] flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                          <p className="text-gray-600">
-                            Loading secure payment form...
-                          </p>
+                    {showTestCards && (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                          {Object.entries(TEST_CARDS).map(([key, card]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() =>
+                                fillTestCard(card.number, card.description)
+                              }
+                              className="p-4 bg-white rounded-lg border-2 border-purple-200 hover:border-purple-400 transition-all duration-200 text-left hover:shadow-md"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-900">
+                                  {card.description}
+                                </span>
+                                {key === "declined" && (
+                                  <XCircle className="w-4 h-4 text-red-500" />
+                                )}
+                                {key === "insufficientFunds" && (
+                                  <AlertCircle className="w-4 h-4 text-orange-500" />
+                                )}
+                                {key === "requiresAuth" && (
+                                  <Lock className="w-4 h-4 text-blue-500" />
+                                )}
+                                {![
+                                  "declined",
+                                  "insufficientFunds",
+                                  "requiresAuth",
+                                ].includes(key) && (
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600 font-mono mb-1">
+                                •••• •••• •••• {card.number.slice(-4)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Exp: {card.expiry} • CVC: {card.cvc}
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                      </div>
-                    ) : stripeError ? (
-                      <div className="border border-red-300 rounded-xl p-8 min-h-[300px] flex items-center justify-center bg-red-50">
-                        <div className="text-center">
-                          <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                          <p className="text-red-600 mb-4">{stripeError}</p>
-                          <button
-                            type="button"
-                            onClick={() => window.location.reload()}
-                            className="text-blue-600 hover:text-blue-700 font-medium"
-                          >
-                            Refresh page
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="border border-gray-300 rounded-xl p-6 min-h-[300px]">
-                        <div ref={stripeElementsRef} className="w-full" />
-                      </div>
+                      </>
                     )}
                   </div>
+                )}
 
-                  <div className="bg-blue-50 rounded-xl p-4 mb-6">
-                    <div className="flex items-start">
-                      <AlertCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm text-blue-800 font-medium mb-1">
-                          Secure Payment Processing
-                        </p>
-                        <p className="text-sm text-blue-700">
-                          You will be charged once for the total amount, which
-                          will be distributed to the respective vendors
-                          automatically.
-                        </p>
-                      </div>
+                {/* Payment Form */}
+                <form onSubmit={handlePaymentSubmit} className="space-y-6">
+                  {/* Security Notice */}
+                  <div className="flex items-center p-4 bg-green-50 rounded-lg">
+                    <Lock className="w-5 h-5 text-green-600 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-green-800">
+                        Secure Payment
+                      </p>
+                      <p className="text-xs text-green-700">
+                        Your payment information is encrypted and secure
+                      </p>
                     </div>
                   </div>
 
+                  {/* Stripe Elements Container */}
+                  {isStripeLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="flex items-center space-x-3">
+                        <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
+                        <span className="text-gray-600">
+                          Loading payment form...
+                        </span>
+                      </div>
+                    </div>
+                  ) : stripeError ? (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center">
+                        <XCircle className="w-5 h-5 text-red-600 mr-2" />
+                        <p className="text-sm text-red-700">{stripeError}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="mt-2 text-sm text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Retry loading payment form
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div ref={stripeElementsRef} />
+                    </div>
+                  )}
+
+                  {/* Payment Error */}
+                  {paymentStatus === "failed" && stripeError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <XCircle className="w-5 h-5 text-red-600 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800">
+                              Payment Failed
+                            </p>
+                            <p className="text-sm text-red-700">
+                              {stripeError}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={retryPayment}
+                          className="ml-4 px-3 py-1 text-sm text-red-600 border border-red-300 rounded hover:bg-red-50"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={
-                      isLoading ||
-                      isProcessingPayment ||
-                      !elements ||
-                      isStripeLoading
+                      isProcessingPayment || isStripeLoading || !!stripeError
                     }
-                    className="w-full bg-green-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center justify-center"
+                    className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                     {isProcessingPayment ? (
                       <>
@@ -750,11 +856,28 @@ export default function CheckoutPage() {
                     ) : (
                       <>
                         <Lock className="w-5 h-5 mr-2" />
-                        Complete Payment ${total.toFixed(2)}
+                        Complete Payment • ${total.toFixed(2)}
                       </>
                     )}
                   </button>
                 </form>
+
+                {/* Development Payment Info */}
+                {isDevelopment && (
+                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center mb-2">
+                      <TestTube className="w-4 h-4 text-blue-600 mr-2" />
+                      <p className="text-sm font-medium text-blue-800">
+                        Development Mode
+                      </p>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      You're in development mode. Use the test cards above or
+                      enter any email, and use test card numbers for payments.
+                      No real charges will be made.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -775,7 +898,7 @@ export default function CheckoutPage() {
                     </p>
                     <div className="space-y-4">
                       <Link
-                        href="/account/orders"
+                        href="/dashboard/orders"
                         className="inline-block bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
                       >
                         View Order Details

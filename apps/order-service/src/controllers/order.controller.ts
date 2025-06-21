@@ -2,6 +2,7 @@ import prisma from "@packages/libs/prisma";
 import redis from "@packages/libs/redis";
 import { randomUUID } from "crypto";
 import { NextFunction, Request, Response } from "express";
+import PDFDocument from "pdfkit";
 import Stripe from "stripe";
 import { z } from "zod";
 import { sendOrderEmail } from "../utils/sendOrderEmail";
@@ -10,7 +11,9 @@ import {
   notifySellerOrderReceived,
   notifySellerPaymentReceived,
 } from "../services/notificationService";
+import { generateOrderId, generatePaymentId } from "../utils/helper";
 import {
+  allowedSortFields,
   CartItem,
   CustomRequest,
   OrderIdSchema,
@@ -18,6 +21,7 @@ import {
   ProcessFullPaymentSchema,
   SellerData,
   SessionData,
+  SortField,
   stripe,
 } from "../utils/types";
 
@@ -346,9 +350,12 @@ export const processFullPayment = async (
               },
             });
 
+            const paymentId = await generatePaymentId(order.id, seller.shopId);
+
             await tx.paymentDistribution.create({
               data: {
                 orderId: order.id,
+                paymentId,
                 shopId: seller.shopId,
                 sellerId: seller.sellerId,
                 amount: sellerAmount,
@@ -745,10 +752,15 @@ export const createPaymentSession = async (
           selectedOptions: item.selectedOptions || {},
         }));
 
+        const orderId = await generateOrderId(shopId);
+        const userId = req.user?.id!;
+        const selectedAddressId = req.body.selectedAddressId;
+
         const order = await tx.order.create({
           data: {
             userId,
             shopId,
+            orderId,
             total: shopTotal,
             status: "Pending",
             shippingAddressId: selectedAddressId,
@@ -1005,10 +1017,11 @@ export const createOrder = async (
                 paymentIntentId: paymentIntent.id,
               },
             });
-
+            const paymentId = await generatePaymentId(order.id, seller.shopId);
             await tx.paymentDistribution.create({
               data: {
                 orderId: order.id,
+                paymentId: paymentId,
                 shopId: seller.shopId,
                 sellerId: seller.sellerId,
                 amount: finalTotal,
@@ -1107,7 +1120,7 @@ export const getAllOrders = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
+    const userId = req?.user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -1160,6 +1173,7 @@ export const getAllOrders = async (
       success: true,
       data: orders.map((order: any) => ({
         id: order.id,
+        orderId: order.orderId,
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
         total: `$${order.total.toFixed(2)}`,
@@ -1237,12 +1251,11 @@ export const getSingleOrder = async (
       });
     }
 
-    console.log("order", order);
-
     return res.status(200).json({
       success: true,
       data: {
         id: order.id,
+        orderId: order.orderId,
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
         total: order.total,
@@ -1272,6 +1285,720 @@ export const getSingleOrder = async (
         errors: error.errors,
       });
     }
+    return next(error);
+  }
+};
+
+// Get all orders for a seller
+export const getSellerOrders = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+
+    const {
+      page = "1",
+      limit = "10",
+      search = "",
+      status,
+      sortField = "createdAt",
+      sortDirection = "desc",
+    } = req.query;
+
+    // Validate sortField
+    const validatedSortField: SortField = allowedSortFields.includes(
+      sortField as SortField
+    )
+      ? (sortField as SortField)
+      : "createdAt";
+
+    // Validate sortDirection
+    const validatedSortDirection = sortDirection === "asc" ? "asc" : "desc";
+
+    const shop = await prisma.shops.findUnique({
+      where: {
+        sellerId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const where: any = {
+      shopId: shop?.id,
+    };
+
+    console.log("where:", where);
+
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: "insensitive" } },
+        { user: { name: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  title: true,
+                  images: {
+                    select: { url: true },
+                  },
+                },
+              },
+            },
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { [validatedSortField]: validatedSortDirection },
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit),
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: orders.map((order: any) => ({
+        id: order.id,
+        orderId: order.orderId,
+        date: order.createdAt.toISOString().split("T")[0],
+        status: order.status,
+        total: `${order.total.toFixed(2)}`,
+        items: order.items.map((item: any) => ({
+          productId: item.productId,
+          title: item.product.title,
+          quantity: item.quantity,
+          price: item.price,
+          image: item.product.images[0]?.url,
+        })),
+        customer: order.user?.name || "Unknown",
+        email: order.user?.email || "",
+        phone: order.shippingAddress?.phone || order.user?.phone || "",
+      })),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    });
+  } catch (error: any) {
+    console.error("Get orders error:", error.message);
+    return next(error);
+  }
+};
+
+// Get a single order for a seller
+export const getSingleSellerOrder = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const { id } = req.params;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        shopId: sellerId,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                title: true,
+                images: {
+                  select: { url: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        shippingAddress: {
+          select: {
+            phone: true,
+            address: true,
+            city: true,
+            state: true,
+            postalCode: true,
+            country: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: order.id,
+        date: order.createdAt.toISOString().split("T")[0],
+        status: order.status,
+        total: `${order.total.toFixed(2)}`,
+        items: order.items.map((item: any) => ({
+          productTitle: item.product.title,
+          image: item.product.images[0]?.url || "",
+          quantity: item.quantity,
+          price: item.price.toFixed(2),
+        })),
+        customer: order.user?.name || "Unknown",
+        email: order.user?.email || "",
+        phone: order.shippingAddress?.phone || order.user?.phone || "",
+        shippingAddress: order.shippingAddress || null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get single order error:", error.message);
+    return next(error);
+  }
+};
+
+// Export orders (unchanged)
+export const exportSellerOrders = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const { search = "", status } = req.query;
+
+    const where: any = {
+      shopId: sellerId,
+    };
+
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: "insensitive" } },
+        { user: { name: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            product: { select: { title: true } },
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        shippingAddress: {
+          select: {
+            phone: true,
+          },
+        },
+      },
+    });
+
+    const csv = [
+      "Order ID,Date,Customer,Email,Phone,Status,Total,Items",
+      ...orders.map(
+        (order) =>
+          `${order.orderId},${order.createdAt.toISOString().split("T")[0]},${
+            order.user?.name || "Unknown"
+          },${order.user?.email || ""},${
+            order.shippingAddress?.phone || order.user?.phone || ""
+          },${order.status},${order.total.toFixed(2)},${order.items.length}`
+      ),
+    ].join("\n");
+
+    res.header("Content-Type", "text/csv");
+    res.attachment("orders.csv");
+    return res.send(csv);
+  } catch (error: any) {
+    console.error("Export orders error:", error.message);
+    return next(error);
+  }
+};
+
+// Update order status (unchanged from previous response)
+export const updateSellerOrderStatus = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !["Paid", "Pending", "Cancelled"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        shopId: sellerId,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id },
+      data: { status },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                title: true,
+                images: {
+                  select: { url: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        shippingAddress: {
+          select: {
+            phone: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: updatedOrder.id,
+        date: updatedOrder.createdAt.toISOString().split("T")[0],
+        status: updatedOrder.status,
+        total: `${updatedOrder.total.toFixed(2)}`,
+        items: updatedOrder.items.length,
+        customer: updatedOrder.user?.name || "Unknown",
+        email: updatedOrder.user?.email || "",
+        phone:
+          updatedOrder.shippingAddress?.phone || updatedOrder.user?.phone || "",
+      },
+    });
+  } catch (error: any) {
+    console.error("Update order status error:", error.message);
+    return next(error);
+  }
+};
+
+// get selelr payments
+export const getSellerPayments = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+
+    console.log("sellerId", sellerId);
+    const {
+      page = "1",
+      limit = "10",
+      search = "",
+      status,
+      sortField = "createdAt",
+      sortDirection = "desc",
+    } = req.query;
+
+    if (!sellerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or missing seller ID",
+      });
+    }
+
+    // Validate sortField as string
+    const validSortFields = [
+      "paymentId",
+      "orderId",
+      "amount",
+      "status",
+      "createdAt",
+    ];
+    const validatedSortField =
+      typeof sortField === "string" && validSortFields.includes(sortField)
+        ? sortField
+        : "createdAt";
+
+    // Validate sortDirection
+    const validatedSortDirection = sortDirection === "asc" ? "asc" : "desc";
+
+    const [payments, total] = await Promise.all([
+      prisma.paymentDistribution.findMany({
+        where: {
+          sellerId,
+          ...(search
+            ? {
+                OR: [
+                  {
+                    paymentId: {
+                      contains: search as string,
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    order: {
+                      orderId: {
+                        contains: search as string,
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                  {
+                    seller: {
+                      name: { contains: search as string, mode: "insensitive" },
+                    },
+                  },
+                ],
+              }
+            : {}),
+          ...(status ? { status: status as string } : {}),
+        },
+        include: {
+          order: { select: { orderId: true } },
+          seller: { select: { name: true } },
+        },
+        orderBy: {
+          [validatedSortField]: validatedSortDirection,
+        } as Record<string, "asc" | "desc">,
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit),
+      }),
+      prisma.paymentDistribution.count({
+        where: {
+          sellerId,
+          ...(search
+            ? {
+                OR: [
+                  {
+                    paymentId: {
+                      contains: search as string,
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    order: {
+                      orderId: {
+                        contains: search as string,
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                  {
+                    seller: {
+                      name: { contains: search as string, mode: "insensitive" },
+                    },
+                  },
+                ],
+              }
+            : {}),
+          ...(status ? { status: status as string } : {}),
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: payments.map((payment) => ({
+        id: payment.paymentId,
+        orderId: payment.order.orderId,
+        customer: payment.seller.name || "Unknown",
+        amount: payment.amount,
+        method: payment.paymentIntentId.startsWith("pi_")
+          ? "Credit Card"
+          : "Unknown",
+        status: payment.status,
+        date: payment.createdAt.toISOString().split("T")[0],
+        cardLast4: null,
+      })),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    });
+  } catch (error: any) {
+    console.error("Get payments error:", error.message);
+    return next(error);
+  }
+};
+
+export const exportSellerPayments = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const {
+      search = "",
+      status,
+      method,
+      startDate,
+      endDate,
+      amountMin,
+      amountMax,
+    } = req.query;
+
+    if (!sellerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or missing seller ID",
+      });
+    }
+
+    // Validate date range
+    const start = startDate ? new Date(startDate as string) : null;
+    const end = endDate ? new Date(endDate as string) : null;
+    if (start && isNaN(start.getTime())) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid startDate" });
+    }
+    if (end && isNaN(end.getTime())) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid endDate" });
+    }
+
+    // Validate amount range
+    const minAmount = amountMin ? parseFloat(amountMin as string) : null;
+    const maxAmount = amountMax ? parseFloat(amountMax as string) : null;
+    if (minAmount !== null && isNaN(minAmount)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amountMin" });
+    }
+    if (maxAmount !== null && isNaN(maxAmount)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amountMax" });
+    }
+
+    // Fetch payments
+    const payments = await prisma.paymentDistribution.findMany({
+      where: {
+        sellerId,
+        ...(search
+          ? {
+              OR: [
+                {
+                  paymentId: {
+                    contains: search as string,
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  order: {
+                    orderId: {
+                      contains: search as string,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+                {
+                  seller: {
+                    name: { contains: search as string, mode: "insensitive" },
+                  },
+                },
+              ],
+            }
+          : {}),
+        ...(status ? { status: status as string } : {}),
+        ...(start || end
+          ? {
+              createdAt: {
+                ...(start ? { gte: start } : {}),
+                ...(end ? { lte: end } : {}),
+              },
+            }
+          : {}),
+        ...(minAmount || maxAmount
+          ? {
+              amount: {
+                ...(minAmount ? { gte: minAmount } : {}),
+                ...(maxAmount ? { lte: maxAmount } : {}),
+              },
+            }
+          : {}),
+      },
+      include: {
+        order: { select: { orderId: true } },
+        seller: { select: { name: true } },
+      },
+    });
+
+    // Create PDF document
+    const doc = new PDFDocument({ margin: 50 });
+
+    // Set response headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=payments_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`
+    );
+
+    // Pipe PDF directly to response
+    doc.pipe(res);
+
+    // Add title
+    doc.fontSize(20).text("Payment Distribution Report", { align: "center" });
+    doc.moveDown();
+
+    // Add filter summary
+    doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
+    if (startDate) doc.text(`Start Date: ${startDate}`);
+    if (endDate) doc.text(`End Date: ${endDate}`);
+    if (search) doc.text(`Search: ${search}`);
+    if (status) doc.text(`Status: ${status}`);
+    if (method) doc.text(`Method: ${method}`);
+    if (minAmount) doc.text(`Min Amount: $${minAmount}`);
+    if (maxAmount) doc.text(`Max Amount: $${maxAmount}`);
+    doc.moveDown();
+
+    // Table headers
+    const headers = [
+      "Payment ID",
+      "Order ID",
+      "Customer",
+      "Amount",
+      "Method",
+      "Status",
+      "Date",
+      "Card Last4",
+    ];
+    let tableTop = doc.y;
+    const initialX = 50;
+    const rowHeight = 20;
+    const columnWidths = [100, 100, 80, 60, 80, 60, 80, 60];
+    const pageHeight = doc.page.height - 100; // Leave margin at bottom
+
+    // Function to draw headers
+    const drawHeaders = () => {
+      doc.fontSize(10).font("Helvetica-Bold");
+      headers.forEach((header, i) => {
+        doc.text(
+          header,
+          initialX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+          tableTop,
+          {
+            width: columnWidths[i],
+            align: "left",
+          }
+        );
+      });
+      doc.moveDown(0.5);
+    };
+
+    // Draw initial headers
+    drawHeaders();
+
+    // Draw rows
+    doc.font("Helvetica");
+    payments.forEach((payment, rowIndex) => {
+      const y = tableTop + (rowIndex + 1) * rowHeight;
+
+      // Check for page overflow
+      if (y > pageHeight) {
+        doc.addPage();
+        tableTop = 50;
+        drawHeaders();
+      }
+
+      const rowData = [
+        payment.paymentId || "",
+        payment.order.orderId || "",
+        payment.seller.name || "Unknown",
+        `$${payment.amount.toFixed(2)}`,
+        payment.paymentIntentId.startsWith("pi_") ? "Credit Card" : "Unknown",
+        payment.status || "",
+        payment.createdAt.toISOString().split("T")[0],
+        "", // cardLast4 is null
+      ];
+
+      rowData.forEach((cell, i) => {
+        doc.text(
+          cell,
+          initialX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+          tableTop + (rowIndex + 1) * rowHeight,
+          {
+            width: columnWidths[i],
+            align: "left",
+          }
+        );
+      });
+    });
+
+    // Handle empty payments
+    if (payments.length === 0) {
+      doc.text(
+        "No payments found for the specified filters.",
+        initialX,
+        tableTop + rowHeight
+      );
+    }
+
+    // Finalize PDF
+    doc.end();
+  } catch (error: any) {
+    console.error("Export payments error:", error.message);
     return next(error);
   }
 };

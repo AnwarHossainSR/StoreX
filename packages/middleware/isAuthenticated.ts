@@ -31,16 +31,11 @@ export const getTokenFromRequest = (
   role: "user" | "seller" = "user"
 ): string | undefined => {
   if (role === "seller") {
-    return (
-      req.cookies["access_seller_token"] ||
-      req.headers.authorization?.split(" ")[1]
-    );
+    return req.cookies["access_seller_token"];
   }
 
   // Default to user token
-  return (
-    req.cookies["access_token"] || req.headers.authorization?.split(" ")[1]
-  );
+  return req.cookies["access_token"];
 };
 
 const isAuthenticated = async (
@@ -82,13 +77,13 @@ const isAuthenticated = async (
 
     return next();
   } catch (error: any) {
-    console.log("error", error.message || error);
+    console.log("error in isAuthenticated", error.message || error);
     return next(new AuthError("Unauthenticated! Token expired or invalid"));
   }
 };
 
-export default isAuthenticated;
-
 export const withAuth =
   (role?: "user" | "seller") => (req: any, res: Response, next: NextFunction) =>
     isAuthenticated(req, res, next, role);
+
+export default isAuthenticated;

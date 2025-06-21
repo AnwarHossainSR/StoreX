@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner"; // Import Sonner toast
 interface ProductDetailsClientProps {
@@ -48,6 +49,7 @@ export default function ProductDetailsClient({
   const { userData } = useUserTracking(10);
   const deviceData = useDeviceInfo();
   const { user } = useCurrentUser();
+  const router = useRouter();
 
   const {
     addItem: addToWishlist,
@@ -73,7 +75,7 @@ export default function ProductDetailsClient({
     if (quantity < product.stock) setQuantity(quantity + 1);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (toast = true) => {
     const defaultColor = product.colors[0] || "N/A";
     const defaultSize = product.sizes[0] || "N/A";
     addToCartStore(
@@ -83,8 +85,14 @@ export default function ProductDetailsClient({
       defaultSize,
       userData,
       deviceData,
-      user
+      user,
+      toast
     );
+  };
+
+  const handleBuyNow = () => {
+    handleAddToCart(false);
+    router.push("/cart");
   };
 
   const toggleWishlist = () => {
@@ -446,7 +454,7 @@ export default function ProductDetailsClient({
             {/* Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
-                onClick={handleAddToCart}
+                onClick={() => handleAddToCart()}
                 disabled={product.stock === 0}
                 className="relative flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl"
                 aria-label="Add to cart"
@@ -454,14 +462,15 @@ export default function ProductDetailsClient({
                 <ShoppingCart size={20} />
                 Add to Cart
               </button>
-              <Link
-                href="/checkout"
+              <button
+                onClick={handleBuyNow}
                 className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl hover:from-gray-900 hover:to-black transition-all font-semibold shadow-lg hover:shadow-xl"
                 aria-label="Buy now"
+                disabled={product.stock === 0}
               >
                 <Zap size={20} />
                 Buy Now
-              </Link>
+              </button>
             </div>
 
             {/* Features */}
