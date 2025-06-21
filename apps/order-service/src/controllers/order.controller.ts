@@ -350,9 +350,12 @@ export const processFullPayment = async (
               },
             });
 
+            const paymentId = await generatePaymentId(order.id, seller.shopId);
+
             await tx.paymentDistribution.create({
               data: {
                 orderId: order.id,
+                paymentId,
                 shopId: seller.shopId,
                 sellerId: seller.sellerId,
                 amount: sellerAmount,
@@ -1014,11 +1017,11 @@ export const createOrder = async (
                 paymentIntentId: paymentIntent.id,
               },
             });
-
+            const paymentId = await generatePaymentId(order.id, seller.shopId);
             await tx.paymentDistribution.create({
               data: {
                 orderId: order.id,
-                paymentId: await generatePaymentId(order.id, seller.shopId),
+                paymentId: paymentId,
                 shopId: seller.shopId,
                 sellerId: seller.sellerId,
                 amount: finalTotal,

@@ -764,31 +764,6 @@ export default function CheckoutPage() {
                             </button>
                           ))}
                         </div>
-
-                        <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                          <div className="flex items-start">
-                            <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium text-yellow-800 mb-1">
-                                How to use test cards:
-                              </p>
-                              <ol className="text-sm text-yellow-700 space-y-1">
-                                <li>
-                                  1. Click any test card above to copy the card
-                                  number
-                                </li>
-                                <li>
-                                  2. Paste it into the card number field below
-                                </li>
-                                <li>
-                                  3. Use the expiry date and CVC shown on the
-                                  card
-                                </li>
-                                <li>4. Fill in any name for the cardholder</li>
-                              </ol>
-                            </div>
-                          </div>
-                        </div>
                       </>
                     )}
                   </div>
