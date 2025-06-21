@@ -3,9 +3,12 @@ import express from "express";
 import {
   createOrder,
   createPaymentSession,
+  exportSellerOrders,
   getAllOrders,
+  getSellerOrders,
   getSingleOrder,
   processFullPayment,
+  updateSellerOrderStatus,
   verifyPaymentSession,
 } from "../controllers/order.controller";
 
@@ -23,7 +26,23 @@ router.post("/process-full-payment", withAuth("user"), processFullPayment);
 // Handle Stripe webhook for payment completion
 router.post("/create-order-webhook", createOrder);
 
+// Get all orders for a user
 router.get("/get-all-orders", withAuth("user"), getAllOrders);
+
+// Get single order by ID
 router.get("/:id", withAuth("user"), getSingleOrder);
+
+// Get all orders for a seller
+router.get("/get-seller-orders", withAuth("seller"), getSellerOrders);
+
+// Export orders for a seller
+router.get("/export-seller-orders", withAuth("seller"), exportSellerOrders);
+
+// update order status
+router.put(
+  "/update-seller-order-status/:id",
+  withAuth("seller"),
+  updateSellerOrderStatus
+);
 
 export default router;

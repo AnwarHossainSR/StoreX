@@ -80,15 +80,17 @@ const isAuthenticated = async (
     req[decoded.role] = account;
     req.role = decoded.role;
 
+    console.log("req authentciated page", req.role);
+
     return next();
   } catch (error: any) {
-    console.log("error", error.message || error);
+    console.log("error in isAuthenticated", error.message || error);
     return next(new AuthError("Unauthenticated! Token expired or invalid"));
   }
 };
 
-export default isAuthenticated;
-
 export const withAuth =
   (role?: "user" | "seller") => (req: any, res: Response, next: NextFunction) =>
     isAuthenticated(req, res, next, role);
+
+export default isAuthenticated;

@@ -11,6 +11,7 @@ import {
   notifySellerPaymentReceived,
 } from "../services/notificationService";
 import {
+  allowedSortFields,
   CartItem,
   CustomRequest,
   OrderIdSchema,
@@ -18,6 +19,7 @@ import {
   ProcessFullPaymentSchema,
   SellerData,
   SessionData,
+  SortField,
   stripe,
 } from "../utils/types";
 
@@ -1272,6 +1274,263 @@ export const getSingleOrder = async (
         errors: error.errors,
       });
     }
+    return next(error);
+  }
+};
+
+// Get all orders for a seller
+export const getSellerOrders = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    console.log("============req============", req.query);
+    const sellerId = req?.seller?.id;
+    console.log("sellerId", sellerId);
+    const {
+      page = "1",
+      limit = "10",
+      search = "",
+      status,
+      sortField = "createdAt",
+      sortDirection = "desc",
+    } = req.query;
+
+    // Validate sortField
+    const validatedSortField: SortField = allowedSortFields.includes(
+      sortField as SortField
+    )
+      ? (sortField as SortField)
+      : "createdAt";
+
+    // Validate sortDirection
+    const validatedSortDirection = sortDirection === "asc" ? "asc" : "desc";
+
+    const where: any = {
+      sellerId: sellerId,
+    };
+
+    console.log("where", where);
+
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: "insensitive" } },
+        { user: { name: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  title: true,
+                  images: {
+                    select: { url: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          shippingAddress: {
+            select: {
+              phone: true,
+            },
+          },
+        },
+        orderBy: { [validatedSortField]: validatedSortDirection },
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit),
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: orders.map((order: any) => ({
+        id: order.id,
+        date: order.createdAt.toISOString().split("T")[0],
+        status: order.status,
+        total: `${order.total.toFixed(2)}`,
+        items: order.items.length,
+        customer: order.user?.name || "Unknown",
+        email: order.user?.email || "",
+        phone: order.shippingAddress?.phone || order.user?.phone || "",
+      })),
+      total,
+    });
+  } catch (error: any) {
+    console.log("Get orders error:", error.message);
+    return next(error);
+  }
+};
+
+// Export orders for a seller
+export const exportSellerOrders = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const { search = "", status } = req.query;
+
+    const where: any = {
+      shopId: sellerId,
+    };
+
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: "insensitive" } },
+        { user: { name: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            product: { select: { title: true } },
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        shippingAddress: {
+          select: {
+            phone: true,
+          },
+        },
+      },
+    });
+
+    // Convert to CSV
+    const csv = [
+      "Order ID,Date,Customer,Email,Phone,Status,Total,Items",
+      ...orders.map(
+        (order) =>
+          `${order.id},${order.createdAt.toISOString().split("T")[0]},${
+            order.user?.name || "Unknown"
+          },${order.user?.email || ""},${
+            order.shippingAddress?.phone || order.user?.phone || ""
+          },${order.status},${order.total.toFixed(2)},${order.items.length}`
+      ),
+    ].join("\n");
+
+    res.header("Content-Type", "text/csv");
+    res.attachment("orders.csv");
+    return res.send(csv);
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+// Update order status
+export const updateSellerOrderStatus = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !["Paid", "Pending", "Cancelled"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        shopId: sellerId,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id },
+      data: { status },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                title: true,
+                images: {
+                  select: { url: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        shippingAddress: {
+          select: {
+            phone: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: updatedOrder.id,
+        date: updatedOrder.createdAt.toISOString().split("T")[0],
+        status: updatedOrder.status,
+        total: `${updatedOrder.total.toFixed(2)}`,
+        items: updatedOrder.items.length,
+        customer: updatedOrder.user?.name || "Unknown",
+        email: updatedOrder.user?.email || "",
+        phone:
+          updatedOrder.shippingAddress?.phone || updatedOrder.user?.phone || "",
+      },
+    });
+  } catch (error: any) {
     return next(error);
   }
 };

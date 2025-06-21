@@ -28,6 +28,8 @@ model users {
   email             String            @unique
   password          String?
   points            Int               @default(0)
+  phone             String?
+  country           String?
   following         String[]          @db.ObjectId
   avatarId          String?           @db.ObjectId
   avatar            images?           @relation(fields: [avatarId], references: [id], onDelete: SetNull)

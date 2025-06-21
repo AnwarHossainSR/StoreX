@@ -59,3 +59,12 @@ export interface CustomRequest extends Request {
   user?: any;
   seller?: any;
 }
+
+// Define allowed sort fields to ensure type safety
+export const allowedSortFields = [
+  "id",
+  "createdAt",
+  "total",
+  "status",
+] as const;
+export type SortField = (typeof allowedSortFields)[number];
