@@ -6,7 +6,7 @@ import {
   exportSellerOrders,
   getAllOrders,
   getSellerOrders,
-  getSingleOrder,
+  getSingleSellerOrder, // Use the new single order controller
   processFullPayment,
   updateSellerOrderStatus,
   verifyPaymentSession,
@@ -29,8 +29,8 @@ router.post("/create-order-webhook", createOrder);
 // Get all orders for a user
 router.get("/get-all-orders", withAuth("user"), getAllOrders);
 
-// Get single order by ID
-router.get("/:id", withAuth("user"), getSingleOrder);
+// Get single order by ID (for sellers)
+router.get("/get-seller-order/:id", withAuth("seller"), getSingleSellerOrder);
 
 // Get all orders for a seller
 router.get("/get-seller-orders", withAuth("seller"), getSellerOrders);
@@ -38,7 +38,7 @@ router.get("/get-seller-orders", withAuth("seller"), getSellerOrders);
 // Export orders for a seller
 router.get("/export-seller-orders", withAuth("seller"), exportSellerOrders);
 
-// update order status
+// Update order status
 router.put(
   "/update-seller-order-status/:id",
   withAuth("seller"),

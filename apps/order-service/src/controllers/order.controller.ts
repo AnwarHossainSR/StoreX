@@ -1285,9 +1285,8 @@ export const getSellerOrders = async (
   next: NextFunction
 ) => {
   try {
-    console.log("============req============", req.query);
     const sellerId = req?.seller?.id;
-    console.log("sellerId", sellerId);
+
     const {
       page = "1",
       limit = "10",
@@ -1307,11 +1306,20 @@ export const getSellerOrders = async (
     // Validate sortDirection
     const validatedSortDirection = sortDirection === "asc" ? "asc" : "desc";
 
+    const shop = await prisma.shops.findUnique({
+      where: {
+        sellerId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
     const where: any = {
-      sellerId: sellerId,
+      shopId: shop?.id,
     };
 
-    console.log("where", where);
+    console.log("where:", where);
 
     if (search) {
       where.OR = [
@@ -1336,7 +1344,6 @@ export const getSellerOrders = async (
                   title: true,
                   images: {
                     select: { url: true },
-                    take: 1,
                   },
                 },
               },
@@ -1346,12 +1353,6 @@ export const getSellerOrders = async (
             select: {
               name: true,
               email: true,
-              phone: true,
-            },
-          },
-          shippingAddress: {
-            select: {
-              phone: true,
             },
           },
         },
@@ -1369,20 +1370,109 @@ export const getSellerOrders = async (
         date: order.createdAt.toISOString().split("T")[0],
         status: order.status,
         total: `${order.total.toFixed(2)}`,
-        items: order.items.length,
+        items: order.items.map((item: any) => ({
+          productId: item.productId,
+          title: item.product.title,
+          quantity: item.quantity,
+          price: item.price,
+          image: item.product.images[0]?.url,
+        })),
         customer: order.user?.name || "Unknown",
         email: order.user?.email || "",
         phone: order.shippingAddress?.phone || order.user?.phone || "",
       })),
       total,
+      page: Number(page),
+      limit: Number(limit),
     });
   } catch (error: any) {
-    console.log("Get orders error:", error.message);
+    console.error("Get orders error:", error.message);
     return next(error);
   }
 };
 
-// Export orders for a seller
+// Get a single order for a seller
+export const getSingleSellerOrder = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const { id } = req.params;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        shopId: sellerId,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                title: true,
+                images: {
+                  select: { url: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        shippingAddress: {
+          select: {
+            phone: true,
+            address: true,
+            city: true,
+            state: true,
+            postalCode: true,
+            country: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: order.id,
+        date: order.createdAt.toISOString().split("T")[0],
+        status: order.status,
+        total: `${order.total.toFixed(2)}`,
+        items: order.items.map((item: any) => ({
+          productTitle: item.product.title,
+          image: item.product.images[0]?.url || "",
+          quantity: item.quantity,
+          price: item.price.toFixed(2),
+        })),
+        customer: order.user?.name || "Unknown",
+        email: order.user?.email || "",
+        phone: order.shippingAddress?.phone || order.user?.phone || "",
+        shippingAddress: order.shippingAddress || null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Get single order error:", error.message);
+    return next(error);
+  }
+};
+
+// Export orders (unchanged)
 export const exportSellerOrders = async (
   req: CustomRequest,
   res: Response,
@@ -1431,7 +1521,6 @@ export const exportSellerOrders = async (
       },
     });
 
-    // Convert to CSV
     const csv = [
       "Order ID,Date,Customer,Email,Phone,Status,Total,Items",
       ...orders.map(
@@ -1448,11 +1537,12 @@ export const exportSellerOrders = async (
     res.attachment("orders.csv");
     return res.send(csv);
   } catch (error: any) {
+    console.error("Export orders error:", error.message);
     return next(error);
   }
 };
 
-// Update order status
+// Update order status (unchanged from previous response)
 export const updateSellerOrderStatus = async (
   req: CustomRequest,
   res: Response,
@@ -1531,6 +1621,7 @@ export const updateSellerOrderStatus = async (
       },
     });
   } catch (error: any) {
+    console.error("Update order status error:", error.message);
     return next(error);
   }
 };

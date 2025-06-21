@@ -60,10 +60,7 @@ export const orderService = {
     try {
       const response = await apiClient.put<ApiResponse<Order>>(
         `${ORDER_BASE_URL}/update-seller-order-status/${id}`,
-        { status },
-        {
-          headers: { "Content-Type": "application/json" },
-        }
+        { status }
       );
       return response.data;
     } catch (error) {

@@ -6,7 +6,7 @@ import { Pagination } from "@/packages/components/Pagination";
 import { Table } from "@/packages/components/Table";
 import { Download, Edit, Eye, Filter, Package, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,6 +31,18 @@ export default function OrdersPage() {
     sortField,
     sortDirection
   );
+
+  // Debug renders
+  useEffect(() => {
+    console.log("OrdersPage rendered", {
+      currentPage,
+      searchTerm,
+      selectedStatus,
+      sortField,
+      sortDirection,
+      ordersStatus,
+    });
+  });
 
   const handleSort = (field: string) => {
     if (field === sortField) {
@@ -74,15 +86,9 @@ export default function OrdersPage() {
       sortable: false,
       render: (order: any) => (
         <img
-          src={
-            order.items?.[0]?.product?.images?.[0]?.url ||
-            "/images/fallback-order.svg"
-          }
-          alt={order.items?.[0]?.product?.title || "Order"}
+          src={order.items?.[0]?.image}
+          alt={order.items?.[0]?.title || "Order"}
           className="h-12 w-12 object-cover rounded-md"
-          onError={(e) => {
-            e.currentTarget.src = "/images/fallback-order.svg";
-          }}
         />
       ),
     },

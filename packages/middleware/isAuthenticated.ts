@@ -31,16 +31,11 @@ export const getTokenFromRequest = (
   role: "user" | "seller" = "user"
 ): string | undefined => {
   if (role === "seller") {
-    return (
-      req.cookies["access_seller_token"] ||
-      req.headers.authorization?.split(" ")[1]
-    );
+    return req.cookies["access_seller_token"];
   }
 
   // Default to user token
-  return (
-    req.cookies["access_token"] || req.headers.authorization?.split(" ")[1]
-  );
+  return req.cookies["access_token"];
 };
 
 const isAuthenticated = async (
@@ -65,6 +60,8 @@ const isAuthenticated = async (
       throw new AuthError("Unauthenticated! Invalid token");
     }
 
+    console.log("decoded", decoded);
+
     // Optional role match validation
     if (role && decoded.role !== role) {
       throw new AuthError("Unauthorized! Role mismatch");
@@ -79,8 +76,6 @@ const isAuthenticated = async (
     // Attach to req object
     req[decoded.role] = account;
     req.role = decoded.role;
-
-    console.log("req authentciated page", req.role);
 
     return next();
   } catch (error: any) {

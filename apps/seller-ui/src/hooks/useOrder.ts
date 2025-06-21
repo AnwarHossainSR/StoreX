@@ -6,12 +6,12 @@ import {
   orderService,
 } from "@/services/orderService";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { toast } from "sonner";
 
 export const useOrder = () => {
   const queryClient = useQueryClient();
 
-  // Fetch orders query with pagination and filters
   const getOrdersQuery = (
     page: number,
     limit: number,
@@ -19,29 +19,44 @@ export const useOrder = () => {
     status: string | undefined = undefined,
     sortField: string = "createdAt",
     sortDirection: "asc" | "desc" = "desc"
-  ) =>
-    useQuery<PaginatedResponse<Order>, Error>({
-      queryKey: [
-        "orders",
+  ) => {
+    // Stabilize query parameters
+    const queryParams = useMemo(
+      () => ({
         page,
         limit,
         search,
         status,
         sortField,
         sortDirection,
+      }),
+      [page, limit, search, status, sortField, sortDirection]
+    );
+
+    return useQuery<PaginatedResponse<Order>, Error>({
+      queryKey: [
+        "orders",
+        queryParams.page,
+        queryParams.limit,
+        queryParams.search,
+        queryParams.status,
+        queryParams.sortField,
+        queryParams.sortDirection,
       ],
       queryFn: () =>
         orderService.getOrders(
-          page,
-          limit,
-          search,
-          status,
-          sortField,
-          sortDirection
+          queryParams.page,
+          queryParams.limit,
+          queryParams.search,
+          queryParams.status,
+          queryParams.sortField,
+          queryParams.sortDirection
         ),
+      // Add stale time to prevent unnecessary refetches
+      staleTime: 5 * 60 * 1000, // 5 minutes
     });
+  };
 
-  // Update order status mutation
   const updateOrderStatusMutation = useMutation<
     ApiResponse<Order>,
     Error,
@@ -62,7 +77,6 @@ export const useOrder = () => {
     },
   });
 
-  // Export orders mutation
   const exportOrdersMutation = useMutation<
     ApiResponse<void>,
     Error,
@@ -91,7 +105,6 @@ export const useOrder = () => {
     updateOrderStatusErrorDetails: (
       updateOrderStatusMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
-
     exportOrders: exportOrdersMutation.mutate,
     exportOrdersStatus: exportOrdersMutation.status,
     exportOrdersError: exportOrdersMutation.error?.message,
