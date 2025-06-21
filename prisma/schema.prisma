@@ -252,6 +252,7 @@ model OrderItem {
 
 model PaymentDistribution {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  paymentId       String   @unique // e.g., PAY-SABC-25-000001
   orderId         String   @db.ObjectId
   shopId          String   @db.ObjectId
   sellerId        String   @db.ObjectId

@@ -62,4 +62,45 @@ async function generateOrderId(shopId: string): Promise<string> {
   });
 }
 
-export { generateOrderId };
+// Generate a unique paymentId (e.g., PAY-SABC-25-000001)
+async function generatePaymentId(
+  orderId: string,
+  shopId: string
+): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    const shop = await tx.shops.findUnique({
+      where: { id: shopId },
+      select: { shopCode: true },
+    });
+
+    if (!shop || !shop.shopCode) {
+      throw new Error(`Shop with ID ${shopId} not found or missing shopCode`);
+    }
+
+    // Fetch order to get orderId (e.g., SABC-25-000001)
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      select: { orderId: true },
+    });
+
+    if (!order || !order.orderId) {
+      throw new Error(`Order with ID ${orderId} not found or missing orderId`);
+    }
+
+    // Derive paymentId from order.orderId
+    const paymentId = `PAY-${order.orderId}`;
+
+    // Check for existing paymentId
+    const existingPayment = await tx.paymentDistribution.findUnique({
+      where: { paymentId },
+    });
+
+    if (existingPayment) {
+      throw new Error(`Payment ID ${paymentId} already exists`);
+    }
+
+    return paymentId;
+  });
+}
+
+export { generateOrderId, generatePaymentId };

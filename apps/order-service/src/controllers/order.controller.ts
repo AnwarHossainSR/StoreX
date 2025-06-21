@@ -10,7 +10,7 @@ import {
   notifySellerOrderReceived,
   notifySellerPaymentReceived,
 } from "../services/notificationService";
-import { generateOrderId } from "../utils/helper";
+import { generateOrderId, generatePaymentId } from "../utils/helper";
 import {
   allowedSortFields,
   CartItem,
@@ -1017,6 +1017,7 @@ export const createOrder = async (
             await tx.paymentDistribution.create({
               data: {
                 orderId: order.id,
+                paymentId: await generatePaymentId(order.id, seller.shopId),
                 shopId: seller.shopId,
                 sellerId: seller.sellerId,
                 amount: finalTotal,
@@ -1629,6 +1630,248 @@ export const updateSellerOrderStatus = async (
     });
   } catch (error: any) {
     console.error("Update order status error:", error.message);
+    return next(error);
+  }
+};
+
+// get selelr payments
+export const getSellerPayments = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const {
+      page = "1",
+      limit = "10",
+      search = "",
+      status,
+      sortField = "createdAt",
+      sortDirection = "desc",
+    } = req.query;
+
+    if (!sellerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or missing seller ID",
+      });
+    }
+
+    // Validate sortField as string
+    const validSortFields = [
+      "paymentId",
+      "orderId",
+      "amount",
+      "status",
+      "createdAt",
+    ];
+    const validatedSortField =
+      typeof sortField === "string" && validSortFields.includes(sortField)
+        ? sortField
+        : "createdAt";
+
+    // Validate sortDirection
+    const validatedSortDirection = sortDirection === "asc" ? "asc" : "desc";
+
+    const [payments, total] = await Promise.all([
+      prisma.paymentDistribution.findMany({
+        where: {
+          sellerId,
+          ...(search
+            ? {
+                OR: [
+                  {
+                    paymentId: {
+                      contains: search as string,
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    order: {
+                      orderId: {
+                        contains: search as string,
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                  {
+                    seller: {
+                      name: { contains: search as string, mode: "insensitive" },
+                    },
+                  },
+                ],
+              }
+            : {}),
+          ...(status ? { status: status as string } : {}),
+        },
+        include: {
+          order: { select: { orderId: true } },
+          seller: { select: { name: true } },
+        },
+        orderBy: {
+          [validatedSortField]: validatedSortDirection,
+        } as Record<string, "asc" | "desc">,
+        skip: (Number(page) - 1) * Number(limit),
+        take: Number(limit),
+      }),
+      prisma.paymentDistribution.count({
+        where: {
+          sellerId,
+          ...(search
+            ? {
+                OR: [
+                  {
+                    paymentId: {
+                      contains: search as string,
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    order: {
+                      orderId: {
+                        contains: search as string,
+                        mode: "insensitive",
+                      },
+                    },
+                  },
+                  {
+                    seller: {
+                      name: { contains: search as string, mode: "insensitive" },
+                    },
+                  },
+                ],
+              }
+            : {}),
+          ...(status ? { status: status as string } : {}),
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: payments.map((payment) => ({
+        id: payment.paymentId,
+        orderId: payment.order.orderId,
+        customer: payment.seller.name || "Unknown",
+        amount: payment.amount,
+        method: payment.paymentIntentId.startsWith("pi_")
+          ? "Credit Card"
+          : "Unknown",
+        status: payment.status,
+        date: payment.createdAt.toISOString().split("T")[0],
+        cardLast4: null,
+      })),
+      total,
+      page: Number(page),
+      limit: Number(limit),
+    });
+  } catch (error: any) {
+    console.error("Get payments error:", error.message);
+    return next(error);
+  }
+};
+
+// get export selelr payment
+
+export const exportSellerPayments = async (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req?.seller?.id;
+    const { search = "", status } = req.query;
+
+    if (!sellerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or missing seller ID",
+      });
+    }
+
+    // Fetch payments without pagination for export
+    const payments = await prisma.paymentDistribution.findMany({
+      where: {
+        sellerId,
+        ...(search
+          ? {
+              OR: [
+                {
+                  paymentId: {
+                    contains: search as string,
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  order: {
+                    orderId: {
+                      contains: search as string,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+                {
+                  seller: {
+                    name: { contains: search as string, mode: "insensitive" },
+                  },
+                },
+              ],
+            }
+          : {}),
+        ...(status ? { status: status as string } : {}),
+      },
+      include: {
+        order: { select: { orderId: true } },
+        seller: { select: { name: true } },
+      },
+    });
+
+    // Map payments to CSV-friendly format
+    const csvData = payments.map((payment) => ({
+      PaymentID: payment.paymentId,
+      OrderID: payment.order.orderId,
+      Customer: payment.seller.name || "Unknown",
+      Amount: payment.amount.toFixed(2),
+      Method: payment.paymentIntentId.startsWith("pi_")
+        ? "Credit Card"
+        : "Unknown", // Adjust based on your logic
+      Status: payment.status,
+      Date: payment.createdAt.toISOString().split("T")[0],
+      CardLast4: null, // Fetch from Stripe if available
+    }));
+
+    // Define CSV headers
+    const headers = [
+      "PaymentID",
+      "OrderID",
+      "Customer",
+      "Amount",
+      "Method",
+      "Status",
+      "Date",
+      "CardLast4",
+    ];
+
+    // Generate CSV
+    const csv = stringify(csvData, {
+      header: true,
+      columns: headers,
+    });
+
+    // Set response headers for CSV download
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=payments_${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
+
+    // Send CSV data
+    return res.send(csv);
+  } catch (error: any) {
+    console.error("Export payments error:", error.message);
     return next(error);
   }
 };

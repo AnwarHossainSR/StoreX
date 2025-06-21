@@ -4,8 +4,10 @@ import {
   createOrder,
   createPaymentSession,
   exportSellerOrders,
+  exportSellerPayments,
   getAllOrders,
   getSellerOrders,
+  getSellerPayments,
   getSingleOrder,
   getSingleSellerOrder, // Use the new single order controller
   processFullPayment,
@@ -48,5 +50,11 @@ router.put(
   withAuth("seller"),
   updateSellerOrderStatus
 );
+
+// get Sellers payments
+router.get("/get-seller-payments", withAuth("seller"), getSellerPayments);
+
+// export seller payments
+router.get("/export-seller-payments", withAuth("seller"), exportSellerPayments);
 
 export default router;
