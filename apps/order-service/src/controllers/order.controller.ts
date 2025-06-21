@@ -2,6 +2,7 @@ import prisma from "@packages/libs/prisma";
 import redis from "@packages/libs/redis";
 import { randomUUID } from "crypto";
 import { NextFunction, Request, Response } from "express";
+import PDFDocument from "pdfkit";
 import Stripe from "stripe";
 import { z } from "zod";
 import { sendOrderEmail } from "../utils/sendOrderEmail";
@@ -1642,6 +1643,8 @@ export const getSellerPayments = async (
 ) => {
   try {
     const sellerId = req?.seller?.id;
+
+    console.log("sellerId", sellerId);
     const {
       page = "1",
       limit = "10",
@@ -1772,8 +1775,6 @@ export const getSellerPayments = async (
   }
 };
 
-// get export selelr payment
-
 export const exportSellerPayments = async (
   req: CustomRequest,
   res: Response,
@@ -1781,7 +1782,15 @@ export const exportSellerPayments = async (
 ) => {
   try {
     const sellerId = req?.seller?.id;
-    const { search = "", status } = req.query;
+    const {
+      search = "",
+      status,
+      method,
+      startDate,
+      endDate,
+      amountMin,
+      amountMax,
+    } = req.query;
 
     if (!sellerId) {
       return res.status(401).json({
@@ -1790,7 +1799,35 @@ export const exportSellerPayments = async (
       });
     }
 
-    // Fetch payments without pagination for export
+    // Validate date range
+    const start = startDate ? new Date(startDate as string) : null;
+    const end = endDate ? new Date(endDate as string) : null;
+    if (start && isNaN(start.getTime())) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid startDate" });
+    }
+    if (end && isNaN(end.getTime())) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid endDate" });
+    }
+
+    // Validate amount range
+    const minAmount = amountMin ? parseFloat(amountMin as string) : null;
+    const maxAmount = amountMax ? parseFloat(amountMax as string) : null;
+    if (minAmount !== null && isNaN(minAmount)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amountMin" });
+    }
+    if (maxAmount !== null && isNaN(maxAmount)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amountMax" });
+    }
+
+    // Fetch payments
     const payments = await prisma.paymentDistribution.findMany({
       where: {
         sellerId,
@@ -1820,6 +1857,22 @@ export const exportSellerPayments = async (
             }
           : {}),
         ...(status ? { status: status as string } : {}),
+        ...(start || end
+          ? {
+              createdAt: {
+                ...(start ? { gte: start } : {}),
+                ...(end ? { lte: end } : {}),
+              },
+            }
+          : {}),
+        ...(minAmount || maxAmount
+          ? {
+              amount: {
+                ...(minAmount ? { gte: minAmount } : {}),
+                ...(maxAmount ? { lte: maxAmount } : {}),
+              },
+            }
+          : {}),
       },
       include: {
         order: { select: { orderId: true } },
@@ -1827,49 +1880,120 @@ export const exportSellerPayments = async (
       },
     });
 
-    // Map payments to CSV-friendly format
-    const csvData = payments.map((payment) => ({
-      PaymentID: payment.paymentId,
-      OrderID: payment.order.orderId,
-      Customer: payment.seller.name || "Unknown",
-      Amount: payment.amount.toFixed(2),
-      Method: payment.paymentIntentId.startsWith("pi_")
-        ? "Credit Card"
-        : "Unknown", // Adjust based on your logic
-      Status: payment.status,
-      Date: payment.createdAt.toISOString().split("T")[0],
-      CardLast4: null, // Fetch from Stripe if available
-    }));
+    // Create PDF document
+    const doc = new PDFDocument({ margin: 50 });
 
-    // Define CSV headers
+    // Set response headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=payments_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`
+    );
+
+    // Pipe PDF directly to response
+    doc.pipe(res);
+
+    // Add title
+    doc.fontSize(20).text("Payment Distribution Report", { align: "center" });
+    doc.moveDown();
+
+    // Add filter summary
+    doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`);
+    if (startDate) doc.text(`Start Date: ${startDate}`);
+    if (endDate) doc.text(`End Date: ${endDate}`);
+    if (search) doc.text(`Search: ${search}`);
+    if (status) doc.text(`Status: ${status}`);
+    if (method) doc.text(`Method: ${method}`);
+    if (minAmount) doc.text(`Min Amount: $${minAmount}`);
+    if (maxAmount) doc.text(`Max Amount: $${maxAmount}`);
+    doc.moveDown();
+
+    // Table headers
     const headers = [
-      "PaymentID",
-      "OrderID",
+      "Payment ID",
+      "Order ID",
       "Customer",
       "Amount",
       "Method",
       "Status",
       "Date",
-      "CardLast4",
+      "Card Last4",
     ];
+    let tableTop = doc.y;
+    const initialX = 50;
+    const rowHeight = 20;
+    const columnWidths = [100, 100, 80, 60, 80, 60, 80, 60];
+    const pageHeight = doc.page.height - 100; // Leave margin at bottom
 
-    // Generate CSV
-    const csv = stringify(csvData, {
-      header: true,
-      columns: headers,
+    // Function to draw headers
+    const drawHeaders = () => {
+      doc.fontSize(10).font("Helvetica-Bold");
+      headers.forEach((header, i) => {
+        doc.text(
+          header,
+          initialX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+          tableTop,
+          {
+            width: columnWidths[i],
+            align: "left",
+          }
+        );
+      });
+      doc.moveDown(0.5);
+    };
+
+    // Draw initial headers
+    drawHeaders();
+
+    // Draw rows
+    doc.font("Helvetica");
+    payments.forEach((payment, rowIndex) => {
+      const y = tableTop + (rowIndex + 1) * rowHeight;
+
+      // Check for page overflow
+      if (y > pageHeight) {
+        doc.addPage();
+        tableTop = 50;
+        drawHeaders();
+      }
+
+      const rowData = [
+        payment.paymentId || "",
+        payment.order.orderId || "",
+        payment.seller.name || "Unknown",
+        `$${payment.amount.toFixed(2)}`,
+        payment.paymentIntentId.startsWith("pi_") ? "Credit Card" : "Unknown",
+        payment.status || "",
+        payment.createdAt.toISOString().split("T")[0],
+        "", // cardLast4 is null
+      ];
+
+      rowData.forEach((cell, i) => {
+        doc.text(
+          cell,
+          initialX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+          tableTop + (rowIndex + 1) * rowHeight,
+          {
+            width: columnWidths[i],
+            align: "left",
+          }
+        );
+      });
     });
 
-    // Set response headers for CSV download
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=payments_${
-        new Date().toISOString().split("T")[0]
-      }.csv`
-    );
+    // Handle empty payments
+    if (payments.length === 0) {
+      doc.text(
+        "No payments found for the specified filters.",
+        initialX,
+        tableTop + rowHeight
+      );
+    }
 
-    // Send CSV data
-    return res.send(csv);
+    // Finalize PDF
+    doc.end();
   } catch (error: any) {
     console.error("Export payments error:", error.message);
     return next(error);

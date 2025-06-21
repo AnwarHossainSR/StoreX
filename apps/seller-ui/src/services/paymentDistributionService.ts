@@ -1,9 +1,7 @@
+// src/services/paymentDistributionService.ts
 import apiClient from "@/lib/apiClient";
-export interface BackendErrorResponse {
-  status: "error";
-  message: string;
-  details?: any;
-}
+import { BackendErrorResponse } from "./authService";
+
 interface PaymentDistribution {
   id: string; // paymentId (e.g., PAY-SABC-25-000001)
   orderId: string; // e.g., SABC-25-000001
@@ -23,7 +21,7 @@ interface PaginatedResponse<T> {
   limit: number;
 }
 
-const PAYMENT_BASE_URL = `${process.env.NEXT_PUBLIC_SERVER_URL}/api/orders`;
+const PAYMENT_BASE_URL = "/orders";
 
 export const paymentDistributionService = {
   async getPayments(
@@ -36,10 +34,6 @@ export const paymentDistributionService = {
     sortDirection: "asc" | "desc" = "desc"
   ): Promise<PaginatedResponse<PaymentDistribution>> {
     try {
-      console.log(
-        "Calling API:",
-        `${PAYMENT_BASE_URL}/get-seller-payments?page=${page}&limit=${limit}&search=${search}&status=${status}&method=${method}&sortField=${sortField}&sortDirection=${sortDirection}`
-      );
       const response = await apiClient.get<
         PaginatedResponse<PaymentDistribution>
       >(`${PAYMENT_BASE_URL}/get-seller-payments`, {
@@ -65,22 +59,36 @@ export const paymentDistributionService = {
   async exportPayments(
     search: string = "",
     status: string | undefined = undefined,
-    method: string | undefined = undefined
+    method: string | undefined = undefined,
+    startDate?: string,
+    endDate?: string,
+    amountMin?: number,
+    amountMax?: number
   ) {
     try {
       const response = await apiClient.get(
         `${PAYMENT_BASE_URL}/export-seller-payments`,
         {
-          params: { search, status, method },
+          params: {
+            search,
+            status,
+            method,
+            startDate,
+            endDate,
+            amountMin,
+            amountMax,
+          },
           responseType: "blob",
         }
       );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: "application/pdf" })
+      );
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute(
         "download",
-        `payments_${new Date().toISOString().split("T")[0]}.csv`
+        `payments_${new Date().toISOString().split("T")[0]}.pdf`
       );
       document.body.appendChild(link);
       link.click();

@@ -28,6 +28,10 @@ export default function PaymentsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
   const entriesPerPage = 10;
 
   useEffect(() => {
@@ -186,13 +190,17 @@ export default function PaymentsPage() {
               paymentDistributionService.exportPayments(
                 searchTerm,
                 selectedStatus === "all" ? undefined : selectedStatus,
-                selectedMethod === "all" ? undefined : selectedMethod
+                selectedMethod === "all" ? undefined : selectedMethod,
+                startDate || undefined,
+                endDate || undefined,
+                amountMin ? parseFloat(amountMin) : undefined,
+                amountMax ? parseFloat(amountMax) : undefined
               )
             }
-            className="flex items-center px-4 py-2 border border-border rounded-md hover:bg-secondary/80"
+            className="flex items-center px-4 py-2 border border-border rounded-md hover:bg-secondary/80 transition-colors duration-200"
           >
             <Download size={20} className="mr-2 text-muted-foreground" />
-            Export
+            Export PDF
           </button>
         </div>
       </div>
@@ -246,42 +254,98 @@ export default function PaymentsPage() {
       </div>
 
       <div className="bg-card rounded-lg shadow-sm">
-        <div className="p-4 border-b border-border">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 sm:space-x-4">
-            <div className="relative flex-grow max-w-md">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search payments..."
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <Search
-                className="absolute left-3 top-2.5 text-muted-foreground"
-                size={20}
-              />
+        <div className="p-6 border-b border-border">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">
+                Search Payments
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search by ID, customer..."
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 bg-background hover:border-primary/50"
+                />
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors duration-200"
+                  size={18}
+                />
+              </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">
+                Payment Method
+              </label>
               <select
                 value={selectedMethod}
                 onChange={(e) => handleMethodChange(e.target.value)}
-                className="px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 bg-background hover:border-primary/50"
               >
                 <option value="all">All Methods</option>
                 <option value="Credit Card">Credit Card</option>
                 <option value="PayPal">PayPal</option>
                 <option value="Bank Transfer">Bank Transfer</option>
               </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">
+                Status
+              </label>
               <select
                 value={selectedStatus}
                 onChange={(e) => handleFilterChange(e.target.value)}
-                className="px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 bg-background hover:border-primary/50"
               >
                 <option value="all">All Status</option>
                 <option value="Completed">Completed</option>
                 <option value="Pending">Pending</option>
                 <option value="Failed">Failed</option>
               </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 bg-background hover:border-primary/50"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 bg-background hover:border-primary/50"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-muted-foreground">
+                Amount Range
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={amountMin}
+                  onChange={(e) => setAmountMin(e.target.value)}
+                  placeholder="Min"
+                  className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 bg-background hover:border-primary/50"
+                />
+                <input
+                  type="number"
+                  value={amountMax}
+                  onChange={(e) => setAmountMax(e.target.value)}
+                  placeholder="Max"
+                  className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 bg-background hover:border-primary/50"
+                />
+              </div>
             </div>
           </div>
         </div>
