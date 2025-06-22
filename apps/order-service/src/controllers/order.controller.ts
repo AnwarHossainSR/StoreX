@@ -929,6 +929,31 @@ export const verifyPaymentSession = async (
   }
 };
 
+// verify order coupon code
+export const verifyOrderCouponCode = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { code, cart } = req.body;
+    const coupon = await prisma.discountCode.findUnique({
+      where: {
+        discountCode: code,
+      },
+    });
+    if (!coupon || cart?.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Coupon not found or cart is empty" });
+    }
+
+    // check coupon for each item in cart and apply discount if applicable
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
 // Webhook handler for completed payments
 export const createOrder = async (
   req: Request,
