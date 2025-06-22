@@ -12,7 +12,7 @@ import {
   getSingleSellerOrder, // Use the new single order controller
   processFullPayment,
   updateSellerOrderStatus,
-  verifyOrderCouponCode,
+  verifyCoupon,
   verifyPaymentSession,
 } from "../controllers/order.controller";
 
@@ -27,7 +27,7 @@ router.get("/verify-payment-session", withAuth("user"), verifyPaymentSession);
 // Process full payment and disburse to sellers
 router.post("/process-full-payment", withAuth("user"), processFullPayment);
 
-router.post("/verify-coupon-code", withAuth("user"), verifyOrderCouponCode);
+router.post("/verify-coupon-code", withAuth("user"), verifyCoupon);
 
 // Handle Stripe webhook for payment completion
 router.post("/create-order-webhook", createOrder);

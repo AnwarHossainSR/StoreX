@@ -929,28 +929,139 @@ export const verifyPaymentSession = async (
   }
 };
 
-// verify order coupon code
-export const verifyOrderCouponCode = async (
-  req: Request,
+export const verifyCoupon = async (
+  req: CustomRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { code, cart } = req.body;
-    const coupon = await prisma.discountCode.findUnique({
-      where: {
-        discountCode: code,
-      },
-    });
-    if (!coupon || cart?.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "Coupon not found or cart is empty" });
+    const { code: couponCode, items: cartItems } = req.body;
+
+    if (!couponCode || !cartItems || !Array.isArray(cartItems)) {
+      return res.status(400).json({
+        success: false,
+        message: "Coupon code, user ID, and cart items are required",
+      });
     }
 
-    // check coupon for each item in cart and apply discount if applicable
+    // Fetch the coupon from the database
+    const coupon = await prisma.discountCode.findUnique({
+      where: { discountCode: couponCode.toUpperCase() },
+      select: {
+        id: true,
+        discountType: true,
+        discountValue: true,
+        public_name: true,
+        sellersId: true,
+      },
+    });
+
+    if (!coupon) {
+      console.error("Invalid coupon code:", { couponCode });
+      return res.status(404).json({
+        success: false,
+        message: "Invalid coupon code",
+      });
+    }
+
+    // Handle FREESHIP special case
+    if (couponCode.toUpperCase() === "FREESHIP") {
+      return res.status(200).json({
+        success: true,
+        discountType: "freeship",
+        discountValue: 0,
+        discountAmount: 0,
+        validProductIds: cartItems.map((item: any) => item.product.id),
+        publicName: coupon.public_name,
+      });
+    }
+
+    // Fetch products in cart to verify coupon applicability
+    const productIds = cartItems.map((item: any) => item.product.id);
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: productIds },
+      },
+      select: {
+        id: true,
+        shopId: true,
+        sellerId: true,
+        discount_codes: true,
+        sale_price: true,
+      },
+    });
+
+    if (products.length === 0) {
+      console.error("No valid products found in cart:", { productIds });
+      return res.status(400).json({
+        success: false,
+        message: "No valid products in cart",
+      });
+    }
+
+    // Identify valid products for the coupon and calculate subtotal
+    const validProducts = products.filter((product) =>
+      product.discount_codes.includes(coupon.id)
+    );
+
+    console.log("validProducts", validProducts);
+
+    if (validProducts.length === 0) {
+      console.error("Coupon not valid for any products in cart:", {
+        couponCode,
+      });
+      return res.status(400).json({
+        success: false,
+        message: "Coupon is not valid for any products in the cart",
+      });
+    }
+
+    // Map valid product IDs to cart items to get quantities
+    const validProductIds = validProducts.map((product) => product.id);
+    console.log("validProductIds", validProductIds);
+    const validCartItems = cartItems.filter((item: any) =>
+      validProductIds.includes(item.product.id)
+    );
+    console.log("validCartItems", validCartItems);
+
+    // Calculate subtotal for valid items
+    let subtotal = 0;
+    for (const cartItem of validCartItems) {
+      const product = validProducts.find((p) => p.id === cartItem.product.id);
+      if (product) {
+        const quantity = Math.max(1, Math.min(cartItem.quantity, 999));
+        subtotal += product.sale_price * quantity;
+      }
+    }
+
+    // Calculate discount based on discountType
+    let discountAmount = 0;
+    if (coupon.discountType === "percentage") {
+      discountAmount = (subtotal * coupon.discountValue) / 100;
+    } else if (coupon.discountType === "fixed") {
+      discountAmount = Math.min(coupon.discountValue, subtotal);
+    }
+
+    // Ensure discount doesn't exceed subtotal
+    discountAmount = Math.max(0, Math.min(discountAmount, subtotal));
+
+    return res.status(200).json({
+      success: true,
+      discountType: coupon.discountType,
+      discountValue: coupon.discountValue,
+      discountAmount: Number(discountAmount.toFixed(2)),
+      validProductIds,
+      publicName: coupon.public_name,
+    });
   } catch (error: any) {
+    console.error("Verify coupon error:", {
+      couponCode: req.body.couponCode,
+      error: error.message,
+      stack: error.stack,
+    });
     return next(error);
+  } finally {
+    await prisma.$disconnect();
   }
 };
 

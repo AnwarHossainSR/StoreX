@@ -64,6 +64,9 @@ export interface CouponValidationResponse {
   message?: string;
   discountType?: "fixed" | "percentage";
   discountValue?: number;
+  discountAmount?: number;
+  validProductIds?: string[];
+  publicName?: string;
 }
 
 export interface BackendErrorResponse {
@@ -179,11 +182,14 @@ export const orderService = {
     }
   },
 
-  async validateCoupon(code: string): Promise<CouponValidationResponse> {
+  async validateCoupon(
+    code: string,
+    items: CartItem[]
+  ): Promise<CouponValidationResponse> {
     try {
       const response = await apiClient.post<CouponValidationResponse>(
-        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/coupons/validate`,
-        { code }
+        `${API_BASE_URL}/verify-coupon-code`,
+        { code, items }
       );
       return response.data;
     } catch (error) {

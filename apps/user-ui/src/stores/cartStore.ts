@@ -10,6 +10,8 @@ interface CartItem {
   quantity: number;
   color: string;
   size: string;
+  sale_price?: number;
+  shopId?: string;
 }
 
 interface CartState {
