@@ -11,7 +11,25 @@ export const getAuthenticatedAccount = async (
   if (role === "user") {
     const user = await prisma.users.findUnique({
       where: { id },
-      include: { avatar: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        points: true,
+        phone: true,
+        country: true,
+        following: true,
+        avatarId: true,
+        stripeCustomerId: true,
+        createdAt: true,
+        avatar: {
+          select: {
+            id: true,
+            file_id: true,
+            url: true,
+          },
+        },
+      }, // Excludes password and updatedAt
     });
 
     console.log("user", user);
@@ -90,6 +108,9 @@ export const withAuth =
   (req: any, res: Response, next: NextFunction) => {
     const userType = role || "user";
     if (req[userType]) {
+      if (req[userType].password) {
+        delete req[userType].password;
+      }
       return next();
     }
 
