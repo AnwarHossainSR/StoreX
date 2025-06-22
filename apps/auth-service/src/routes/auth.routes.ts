@@ -6,6 +6,7 @@ import {
   createSellerAccount,
   createShippingAddress,
   createStripeConnectAccount,
+  deleteProfileImage,
   deleteShippingAddress,
   getAuthenticatedSeller,
   getAuthenticatedUser,
@@ -16,6 +17,8 @@ import {
   ResetUserForgotPassword,
   sellerLogin,
   updateShippingAddress,
+  updateUserProfile,
+  uploadProfileImage,
   userDetails,
   userForgotPassword,
   userRegistration,
@@ -53,5 +56,9 @@ router.get("/logged-in-seller", withAuth("seller"), getAuthenticatedSeller);
 
 router.post("/logout-seller", withAuth("seller"), logoutSeller);
 router.post("/logout-user", withAuth("user"), logoutUser);
+
+router.put("/update-profile", withAuth("user"), updateUserProfile);
+router.post("/upload-profile-image", withAuth("user"), uploadProfileImage);
+router.delete("/delete-profile-image", withAuth("user"), deleteProfileImage);
 
 export default router;

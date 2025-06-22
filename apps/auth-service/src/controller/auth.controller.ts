@@ -1,4 +1,5 @@
 import { ValidationError } from "@packages/error-handler";
+import { imageKit } from "@packages/libs/imagekit";
 import prisma from "@packages/libs/prisma";
 import bcrypt from "bcryptjs";
 import { NextFunction, Request, Response } from "express";
@@ -279,6 +280,7 @@ export const getAuthenticatedUser = async (
 ) => {
   try {
     const user = req.user;
+    console.log("user ", user);
     res.status(200).json({ success: true, user });
   } catch (error: any) {
     return next(error);
@@ -813,6 +815,182 @@ export const logoutSeller = async (
     res.clearCookie("access_seller_token");
     res.status(200).json({ message: "User logged out successfully" });
   } catch (error: any) {
+    return next(error);
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user.id; // From authentication middleware
+    const { name, email, phone, country } = req.body;
+
+    // Validate required fields
+    if (!name && !email && !phone && !country) {
+      throw new ValidationError("At least one field is required to update");
+    }
+
+    // Check if email is already taken by another user
+    if (email) {
+      const existingUser = await prisma.users.findFirst({
+        where: {
+          email,
+          NOT: { id: userId },
+        },
+      });
+
+      if (existingUser) {
+        throw new ValidationError("Email is already taken");
+      }
+    }
+
+    // Update user profile
+    const updatedUser = await prisma.users.update({
+      where: { id: userId },
+      data: {
+        ...(name && { name }),
+        ...(email && { email }),
+        ...(phone && { phone }),
+        ...(country && { country }),
+        updatedAt: new Date(),
+      },
+      include: {
+        avatar: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Upload profile image
+export const uploadProfileImage = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user.id;
+    const { file } = req.body;
+
+    if (!file) {
+      throw new ValidationError("Image file is required");
+    }
+
+    // Get current user to check if they have an existing avatar
+    const currentUser = await prisma.users.findUnique({
+      where: { id: userId },
+      include: { avatar: true },
+    });
+
+    // Delete existing avatar if it exists
+    if (currentUser?.avatar?.file_id) {
+      try {
+        await imageKit.deleteFile(currentUser.avatar.file_id);
+        await prisma.images.delete({
+          where: { id: currentUser.avatar.id },
+        });
+      } catch (deleteError) {
+        console.error("Error deleting existing avatar:", deleteError);
+      }
+    }
+
+    // Upload new image to ImageKit
+    const uploadedImage: any = await imageKit.upload({
+      file: file,
+      fileName: `profile-avatar-${userId}-${Date.now()}.jpg`,
+      folder: "profile-avatars",
+    });
+
+    // Save image record in database
+    const imageRecord = await prisma.images.create({
+      data: {
+        file_id: uploadedImage.fileId,
+        url: uploadedImage.url,
+        userId: userId,
+      },
+    });
+
+    // Update user's avatar reference
+    await prisma.users.update({
+      where: { id: userId },
+      data: {
+        avatarId: imageRecord.id,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Profile image uploaded successfully",
+      file_name: uploadedImage.fileId,
+      file_url: uploadedImage.url,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Delete profile image
+export const deleteProfileImage = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user.id;
+    const { fileId } = req.body;
+
+    if (!fileId) {
+      throw new ValidationError("File ID is required");
+    }
+
+    // Find the image record
+    const imageRecord = await prisma.images.findFirst({
+      where: {
+        file_id: fileId,
+        userId: userId,
+      },
+    });
+
+    if (!imageRecord) {
+      throw new ValidationError(
+        "Image not found or you don't have permission to delete it"
+      );
+    }
+
+    // Delete from ImageKit
+    await imageKit.deleteFile(fileId);
+
+    // Delete from database
+    await prisma.images.delete({
+      where: { id: imageRecord.id },
+    });
+
+    // Update user to remove avatar reference
+    await prisma.users.update({
+      where: { id: userId },
+      data: {
+        avatarId: null,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Profile image deleted successfully",
+    });
+  } catch (error) {
     return next(error);
   }
 };

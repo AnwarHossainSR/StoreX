@@ -11,7 +11,10 @@ export const getAuthenticatedAccount = async (
   if (role === "user") {
     const user = await prisma.users.findUnique({
       where: { id },
+      include: { avatar: true },
     });
+
+    console.log("user", user);
     return { role: "user", account: user };
   }
 
@@ -83,7 +86,14 @@ const isAuthenticated = async (
 };
 
 export const withAuth =
-  (role?: "user" | "seller") => (req: any, res: Response, next: NextFunction) =>
-    isAuthenticated(req, res, next, role);
+  (role?: "user" | "seller") =>
+  (req: any, res: Response, next: NextFunction) => {
+    const userType = role || "user";
+    if (req[userType]) {
+      return next();
+    }
+
+    return isAuthenticated(req, res, next, role);
+  };
 
 export default isAuthenticated;

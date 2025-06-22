@@ -12,9 +12,16 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
+  country?: string;
   createdAt: string;
   points: number;
   updatedAt: string;
+  avatar?: {
+    id: string;
+    url: string;
+    file_id: string;
+  };
 }
 
 export interface UserWithAddresses {
@@ -322,6 +329,52 @@ export const authService = {
           cause: errorData,
         }
       );
+    }
+  },
+
+  async updateUserProfile(
+    data: Partial<Pick<User, "name" | "email" | "phone" | "country">>
+  ) {
+    try {
+      const response = await apiClient.put<ApiResponse<User>>(
+        `${API_BASE_URL}/update-profile`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to update profile", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async uploadProfileImage(base64Image: string) {
+    try {
+      const response = await apiClient.post<
+        ApiResponse<{ file_name: string; file_url: string }>
+      >(`${API_BASE_URL}/upload-profile-image`, { file: base64Image });
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to upload profile image", {
+        cause: errorData,
+      });
+    }
+  },
+
+  async deleteProfileImage(fileId: string) {
+    try {
+      const response = await apiClient.delete<ApiResponse<never>>(
+        `${API_BASE_URL}/delete-profile-image`,
+        { data: { fileId } }
+      );
+      return response.data;
+    } catch (error) {
+      const errorData = (error as any).response?.data as BackendErrorResponse;
+      throw new Error(errorData?.message || "Failed to delete profile image", {
+        cause: errorData,
+      });
     }
   },
 };

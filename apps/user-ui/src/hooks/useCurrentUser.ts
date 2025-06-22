@@ -62,6 +62,11 @@ export interface UseCurrentUserReturn {
     data: Omit<ShippingAddress, "id" | "createdAt" | "updatedAt">
   ) => Promise<void>;
   deleteShippingAddress: (id: string) => Promise<void>;
+  updateUserProfile: (
+    data: Partial<Pick<User, "name" | "email" | "phone" | "country">>
+  ) => Promise<void>;
+  uploadProfileImage: (base64Image: string) => Promise<void>;
+  deleteProfileImage: (fileId: string) => Promise<void>;
 }
 
 export const useCurrentUser = (
@@ -168,6 +173,51 @@ export const useCurrentUser = (
     setOptions({ enabled: true, refetchOnMount: true });
   }, []);
 
+  const updateUserProfileMutation = useMutation({
+    mutationFn: (
+      data: Partial<Pick<User, "name" | "email" | "phone" | "country">>
+    ) => authService.updateUserProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      toast.success("Profile updated successfully");
+    },
+    onError: (error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      const message =
+        errorData?.message || error.message || "An error occurred";
+      toast.error(message);
+    },
+  });
+
+  const uploadProfileImageMutation = useMutation({
+    mutationFn: (base64Image: string) =>
+      authService.uploadProfileImage(base64Image),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      toast.success("Profile image uploaded successfully");
+    },
+    onError: (error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      const message =
+        errorData?.message || error.message || "Failed to upload image";
+      toast.error(message);
+    },
+  });
+
+  const deleteProfileImageMutation = useMutation({
+    mutationFn: (fileId: string) => authService.deleteProfileImage(fileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      toast.success("Profile image deleted successfully");
+    },
+    onError: (error) => {
+      const errorData = error.cause as BackendErrorResponse | undefined;
+      const message =
+        errorData?.message || error.message || "Failed to delete image";
+      toast.error(message);
+    },
+  });
+
   return {
     getCurrentUser: userQuery.refetch,
     user: userQuery.data?.user ?? null,
@@ -200,6 +250,15 @@ export const useCurrentUser = (
     },
     deleteShippingAddress: async (id) => {
       await deleteShippingAddressMutation.mutateAsync(id);
+    },
+    updateUserProfile: async (data) => {
+      await updateUserProfileMutation.mutateAsync(data);
+    },
+    uploadProfileImage: async (base64Image) => {
+      await uploadProfileImageMutation.mutateAsync(base64Image);
+    },
+    deleteProfileImage: async (fileId) => {
+      await deleteProfileImageMutation.mutateAsync(fileId);
     },
   };
 };
