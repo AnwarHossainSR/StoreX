@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "ts-node dev-start.ts",
+    "dev": "ts-node ./scripts/dev-start.ts",
     "dev:all": "npx nx run-many --target=serve --all",
     "cache": "npx nx reset cache",
     "auth-docs": "node apps/auth-service/src/swagger.js",
