@@ -57,7 +57,7 @@ export default function Header() {
                 className={cn(
                   "flex items-center transition-colors",
                   pathname.startsWith("/dashboard") ||
-                    pathname === "/auth/login"
+                    pathname.startsWith("/auth/")
                     ? "text-blue-500 font-semibold"
                     : "text-gray-700 hover:text-blue-500"
                 )}
@@ -70,7 +70,7 @@ export default function Header() {
               href={user ? "/wishlist" : "/auth/login"}
               className={cn(
                 "flex items-center transition-colors relative",
-                pathname === (user ? "/wishlist" : "/auth/login")
+                user && pathname === "/wishlist"
                   ? "text-blue-500 font-semibold"
                   : "text-gray-700 hover:text-blue-500"
               )}
@@ -85,7 +85,7 @@ export default function Header() {
               href={user ? "/cart" : "/auth/login"}
               className={cn(
                 "flex items-center transition-colors relative",
-                pathname === (user ? "/cart" : "/auth/login")
+                user && pathname === "/cart"
                   ? "text-blue-500 font-semibold"
                   : "text-gray-700 hover:text-blue-500"
               )}
