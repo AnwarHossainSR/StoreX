@@ -11,7 +11,28 @@ export const getAuthenticatedAccount = async (
   if (role === "user") {
     const user = await prisma.users.findUnique({
       where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        points: true,
+        phone: true,
+        country: true,
+        following: true,
+        avatarId: true,
+        stripeCustomerId: true,
+        createdAt: true,
+        avatar: {
+          select: {
+            id: true,
+            file_id: true,
+            url: true,
+          },
+        },
+      }, // Excludes password and updatedAt
     });
+
+    console.log("user", user);
     return { role: "user", account: user };
   }
 
@@ -83,7 +104,17 @@ const isAuthenticated = async (
 };
 
 export const withAuth =
-  (role?: "user" | "seller") => (req: any, res: Response, next: NextFunction) =>
-    isAuthenticated(req, res, next, role);
+  (role?: "user" | "seller") =>
+  (req: any, res: Response, next: NextFunction) => {
+    const userType = role || "user";
+    if (req[userType]) {
+      if (req[userType].password) {
+        delete req[userType].password;
+      }
+      return next();
+    }
+
+    return isAuthenticated(req, res, next, role);
+  };
 
 export default isAuthenticated;

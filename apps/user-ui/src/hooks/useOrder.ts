@@ -285,30 +285,31 @@ export const useOrder = (): UseOrderReturn => {
 
   const { mutateAsync: validateCouponMutate, isPending: isValidatingCoupon } =
     useMutation({
-      mutationFn: (code: string) => orderService.validateCoupon(code),
-      onSuccess: (data) => {
+      mutationFn: (code: string) =>
+        orderService.validateCoupon(code, items as any),
+      onSuccess: (data: any) => {
         try {
-          const subtotal = getTotalPrice();
-          let newDiscount = 0;
-
-          if (data.discountType === "fixed") {
-            newDiscount = data.discountValue || 0;
-          } else if (data.discountType === "percentage") {
-            newDiscount = Math.min(
-              ((data.discountValue || 0) * subtotal) / 100,
-              subtotal
-            );
-          }
-
-          setDiscount(newDiscount);
+          setDiscount(data.discountAmount);
           setCouponError("");
           setError(null);
 
-          toast.success("Coupon Applied", {
-            description: `Coupon ${couponCode} applied successfully! Discount: $${newDiscount.toFixed(
-              2
-            )}`,
-          });
+          if (data.validProductIds.length < items.length) {
+            toast.warning("Coupon Partially Applied", {
+              description: `Coupon ${data.publicName} applied to ${
+                data.validProductIds.length
+              } of ${items.length} items, saving $${data.discountAmount.toFixed(
+                2
+              )}`,
+            });
+          } else {
+            toast.success("Coupon Applied", {
+              description: `Coupon ${
+                data.publicName
+              } applied successfully! Discount: $${data.discountAmount.toFixed(
+                2
+              )}`,
+            });
+          }
         } catch (error: any) {
           console.error("Error processing coupon success:", error);
           setCouponError("Error applying coupon");
