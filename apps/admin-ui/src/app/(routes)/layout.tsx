@@ -44,13 +44,13 @@ const sidebarSections: any = [
       { name: "Products", href: "/products", icon: List },
       { name: "Events", href: "/events", icon: Calendar },
       { name: "Users", href: "/users", icon: Users },
-      { name: "Sellers", href: "/users", icon: ShoppingBag },
+      { name: "Sellers", href: "/sellers", icon: ShoppingBag },
     ],
   },
   {
     title: "Controllers",
     items: [
-      { name: "Loggers", href: "/logs", icon: Inbox },
+      { name: "Loggers", href: "/loggers", icon: Inbox },
       { name: "Managements", href: "/managements", icon: Settings },
       { name: "Notifications", href: "/notifications", icon: Bell },
     ],

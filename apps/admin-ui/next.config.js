@@ -1,8 +1,8 @@
 //@ts-check
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { composePlugins, withNx } = require('@nx/next');
-
+const { composePlugins, withNx } = require("@nx/next");
+const path = require("path");
 
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
@@ -13,6 +13,41 @@ const nextConfig = {
     // See: https://github.com/gregberge/svgr
     svgr: false,
   },
+  webpack(config) {
+    // Add alias configuration for the @ symbol
+    config.resolve.alias["@"] = path.resolve(__dirname, "apps/seller-ui/src");
+
+    return config;
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.pixabay.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.pexels.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "ik.imagekit.io",
+      },
+    ],
+  },
+  experimental: {
+    typedRoutes: true,
+  },
 };
 
 const plugins = [
@@ -21,4 +56,3 @@ const plugins = [
 ];
 
 module.exports = composePlugins(...plugins)(nextConfig);
-
