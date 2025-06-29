@@ -10,30 +10,6 @@ import {
 export const useAuth = () => {
   const router = useRouter();
 
-  // Create shop mutation
-  const createShopMutation = useMutation<
-    ApiResponse<never>,
-    Error,
-    {
-      sellerId: string;
-      name: string;
-      bio: string;
-      address: string;
-      opening_hour: string;
-      website?: string;
-      category: string;
-    }
-  >({
-    mutationFn: authService.createShop,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
-    },
-  });
-
   // Forgot password mutation
   const forgotPasswordMutation = useMutation<
     ApiResponse<never>,
@@ -109,12 +85,12 @@ export const useAuth = () => {
   });
 
   // Seller login mutation
-  const sellerLoginMutation = useMutation<
+  const adminLoginMutation = useMutation<
     ApiResponse<User>,
     Error,
     { email: string; password: string }
   >({
-    mutationFn: authService.sellerLogin,
+    mutationFn: authService.adminLogin,
     onSuccess: () => {
       router.push("/");
     },
@@ -128,7 +104,7 @@ export const useAuth = () => {
   });
 
   // Verify OTP for seller registration
-  const verifySellerOtpMutation = useMutation<
+  const verifyAdminOtpMutation = useMutation<
     ApiResponse<never>,
     Error,
     {
@@ -140,7 +116,7 @@ export const useAuth = () => {
       country: string;
     }
   >({
-    mutationFn: authService.verifySellerOtp,
+    mutationFn: authService.verifyAdminOtp,
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {
@@ -151,17 +127,17 @@ export const useAuth = () => {
     retry: 0,
   });
 
-  const logoutSeller = useMutation<ApiResponse<never>, Error>({
+  const logoutAdmin = useMutation<ApiResponse<never>, Error>({
     mutationFn: authService.logout,
     onSuccess: () => {
-      // clear localstorage access-seller-token and refresh-seller-token
-      localStorage.removeItem("access_seller_token");
-      localStorage.removeItem("refresh_seller_token");
-      // clear cookies access-seller-token and refresh-seller-token
+      // clear localstorage access-admin-token and refresh-admin-token
+      localStorage.removeItem("access_admin_token");
+      localStorage.removeItem("refresh_admin_token");
+      // clear cookies access-admin-token and refresh-admin-token
       document.cookie =
-        "access_seller_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        "access_admin_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       document.cookie =
-        "refresh_seller_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        "refresh_admin_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       window.location.href = "/login";
     },
     onError: (error: Error) => {
@@ -203,28 +179,19 @@ export const useAuth = () => {
       resendOtpMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    sellerLogin: sellerLoginMutation.mutate,
-    sellerLoginStatus: sellerLoginMutation.status,
-    sellerLoginError: sellerLoginMutation.error?.message,
-    sellerLoginErrorDetails: (
-      sellerLoginMutation.error?.cause as BackendErrorResponse | undefined
+    adminLogin: adminLoginMutation.mutate,
+    adminLoginStatus: adminLoginMutation.status,
+    adminLoginError: adminLoginMutation.error?.message,
+    adminLoginErrorDetails: (
+      adminLoginMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    createShop: createShopMutation.mutate,
-    createShopStatus: createShopMutation.status,
-    createShopError: createShopMutation.error?.message,
-    createShopErrorDetails: (
-      createShopMutation.error?.cause as BackendErrorResponse | undefined
+    verifyAdminOtp: verifyAdminOtpMutation.mutate,
+    verifyAdminOtpStatus: verifyAdminOtpMutation.status,
+    verifyAdminOtpError: verifyAdminOtpMutation.error?.message,
+    verifyAdminOtpErrorDetails: (
+      verifyAdminOtpMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
-
-    verifySellerOtp: verifySellerOtpMutation.mutate,
-    verifySellerOtpStatus: verifySellerOtpMutation.status,
-    verifySellerOtpError: verifySellerOtpMutation.error?.message,
-    verifySellerOtpErrorDetails: (
-      verifySellerOtpMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-    sellerId: verifySellerOtpMutation.data?.sellerId,
-    seller: verifySellerOtpMutation.data?.seller,
-    logoutSeller: logoutSeller.mutate,
+    logoutAdmin: logoutAdmin.mutate,
   };
 };

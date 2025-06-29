@@ -125,7 +125,7 @@ apiClient.interceptors.response.use(
         await axios.post(
           `${API_BASE_URL}/auth/refresh-token`,
           {
-            type: "seller",
+            type: "admin",
           },
           { withCredentials: true }
         );

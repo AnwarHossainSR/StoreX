@@ -7,7 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export default function SellerLoginPage() {
+export default function adminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -15,30 +15,30 @@ export default function SellerLoginPage() {
     {}
   );
   const {
-    sellerLogin,
-    sellerLoginStatus,
-    sellerLoginError,
-    sellerLoginErrorDetails,
+    adminLogin,
+    adminLoginStatus,
+    adminLoginError,
+    adminLoginErrorDetails,
   } = useAuth();
   const { alert, setSuccess, setError, clearAlert } = useAlert();
 
   useEffect(() => {
-    if (sellerLoginStatus === "success") {
+    if (adminLoginStatus === "success") {
       setSuccess("Login successful! Redirecting...", { autoDismiss: 3000 });
       setTimeout(() => {
         console.log("Redirecting to home page...");
         // window.location.href = "/";
       }, 3000);
-    } else if (sellerLoginError) {
-      setError(sellerLoginError, {
-        details: sellerLoginErrorDetails,
+    } else if (adminLoginError) {
+      setError(adminLoginError, {
+        details: adminLoginErrorDetails,
         isBackendError: true,
       });
     }
   }, [
-    sellerLoginStatus,
-    sellerLoginError,
-    sellerLoginErrorDetails,
+    adminLoginStatus,
+    adminLoginError,
+    adminLoginErrorDetails,
     setSuccess,
     setError,
   ]);
@@ -76,7 +76,7 @@ export default function SellerLoginPage() {
     e.preventDefault();
 
     if (validateForm()) {
-      sellerLogin({ email, password });
+      adminLogin({ email, password });
     }
   };
 
@@ -197,16 +197,14 @@ export default function SellerLoginPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={sellerLoginStatus === "pending"}
+                  disabled={adminLoginStatus === "pending"}
                   className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                    sellerLoginStatus === "pending"
+                    adminLoginStatus === "pending"
                       ? "opacity-70 cursor-not-allowed"
                       : ""
                   }`}
                 >
-                  {sellerLoginStatus === "pending"
-                    ? "Signing in..."
-                    : "Sign in"}
+                  {adminLoginStatus === "pending" ? "Signing in..." : "Sign in"}
                 </button>
               </div>
             </form>
