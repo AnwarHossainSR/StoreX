@@ -11,11 +11,18 @@ export const getCategories = async (
   next: NextFunction
 ) => {
   try {
-    const config = await prisma.siteConfig.findFirst();
+    const config: any = await prisma.siteConfig.findUnique({
+      where: { key: "categories" },
+    });
     if (!config) {
       throw new ValidationError("Site Config not found");
     }
-    res.status(200).json(config);
+    const data = {
+      id: config.id,
+      categories: config?.config?.categories || [],
+      subCategories: config?.config?.subCategories || {},
+    };
+    res.status(200).json(data);
   } catch (error) {
     return next(error);
   }

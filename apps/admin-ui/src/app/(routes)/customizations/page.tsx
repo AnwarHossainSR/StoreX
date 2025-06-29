@@ -1,8 +1,8 @@
 "use client";
 
-import { Camera, Save } from "lucide-react";
+import { Camera, Plus, Save, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
@@ -19,6 +19,25 @@ export default function SettingsPage() {
     favicon:
       "https://images.pexels.com/photos/1005638/pexels-photo-1005638.jpeg",
   });
+  const [categories, setCategories] = useState<string[]>([
+    "Electronics",
+    "Fashion",
+    "Home & Kitchen",
+    "Sports & Fitness",
+    "Health & Beauty",
+  ]);
+  const [subCategories, setSubCategories] = useState<{
+    [key: string]: string[];
+  }>({
+    Electronics: ["Laptops", "Mobiles", "Tablets"],
+    Fashion: ["Mens", "Womens", "Kids"],
+    "Home & Kitchen": ["Kitchen", "Dining", "Bedroom"],
+    "Sports & Fitness": ["Fitness", "Gym", "Outdoor"],
+    "Health & Beauty": ["Skin Care", "Hair Care", "Body Care"],
+  });
+  const [newCategory, setNewCategory] = useState("");
+  const [newSubCategory, setNewSubCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(categories[0] || "");
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -29,11 +48,67 @@ export default function SettingsPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleCategoryAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newCategory && !categories.includes(newCategory)) {
+      setCategories([...categories, newCategory]);
+      setSubCategories({ ...subCategories, [newCategory]: [] });
+      setNewCategory("");
+    }
+  };
+
+  const handleSubCategoryAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      newSubCategory &&
+      selectedCategory &&
+      !subCategories[selectedCategory]?.includes(newSubCategory)
+    ) {
+      setSubCategories({
+        ...subCategories,
+        [selectedCategory]: [
+          ...(subCategories[selectedCategory] || []),
+          newSubCategory,
+        ],
+      });
+      setNewSubCategory("");
+    }
+  };
+
+  const handleCategoryDelete = (category: string) => {
+    setCategories(categories.filter((cat) => cat !== category));
+    const newSubCategories = { ...subCategories };
+    delete newSubCategories[category];
+    setSubCategories(newSubCategories);
+    if (selectedCategory === category) {
+      setSelectedCategory(categories[0] || "");
+    }
+  };
+
+  const handleSubCategoryDelete = (subCategory: string) => {
+    setSubCategories({
+      ...subCategories,
+      [selectedCategory]: subCategories[selectedCategory].filter(
+        (sub) => sub !== subCategory
+      ),
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log("Settings updated:", formData);
+    // Handle form submission, including categories and subcategories
+    console.log("Settings updated:", {
+      ...formData,
+      categories,
+      subCategories,
+    });
   };
+
+  useEffect(() => {
+    if (categories.length > 0 && !categories.includes(selectedCategory)) {
+      setSelectedCategory(categories[0]);
+    }
+  }, [categories, selectedCategory]);
 
   return (
     <div className="p-6">
@@ -85,6 +160,16 @@ export default function SettingsPage() {
             >
               Payment
             </button>
+            <button
+              className={`px-6 py-3 text-sm font-medium ${
+                activeTab === "categories"
+                  ? "border-b-2 border-blue-500 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              onClick={() => setActiveTab("categories")}
+            >
+              Categories
+            </button>
           </nav>
         </div>
 
@@ -105,7 +190,7 @@ export default function SettingsPage() {
                     name="siteName"
                     value={formData.siteName}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -122,7 +207,7 @@ export default function SettingsPage() {
                     name="siteDescription"
                     value={formData.siteDescription}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -139,7 +224,9 @@ export default function SettingsPage() {
                     name="adminEmail"
                     value={formData.adminEmail}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt–
+
+1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -156,7 +243,7 @@ export default function SettingsPage() {
                     name="supportEmail"
                     value={formData.supportEmail}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -173,7 +260,7 @@ export default function SettingsPage() {
                     name="phoneNumber"
                     value={formData.phoneNumber}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -190,7 +277,7 @@ export default function SettingsPage() {
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
@@ -206,7 +293,7 @@ export default function SettingsPage() {
                     name="currency"
                     value={formData.currency}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="USD">USD - US Dollar</option>
                     <option value="EUR">EUR - Euro</option>
@@ -227,7 +314,7 @@ export default function SettingsPage() {
                     name="timezone"
                     value={formData.timezone}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="UTC">UTC</option>
                     <option value="America/New_York">America/New_York</option>
@@ -355,7 +442,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="smtp.example.com"
                     />
                   </div>
@@ -366,7 +453,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="number"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="587"
                     />
                   </div>
@@ -377,7 +464,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="username@example.com"
                     />
                   </div>
@@ -388,7 +475,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="password"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
@@ -396,7 +483,7 @@ export default function SettingsPage() {
                     <label className="block text-sm font-medium text-gray-700">
                       Encryption
                     </label>
-                    <select className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                    <select className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                       <option>TLS</option>
                       <option>SSL</option>
                       <option>None</option>
@@ -465,7 +552,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="pk_test_..."
                     />
                   </div>
@@ -476,7 +563,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="password"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="sk_test_..."
                     />
                   </div>
@@ -487,7 +574,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="password"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       placeholder="whsec_..."
                     />
                   </div>
@@ -528,6 +615,159 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </form>
+            </div>
+          )}
+
+          {activeTab === "categories" && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Categories
+                  </h3>
+                  <form onSubmit={handleCategoryAdd} className="mt-4 space-y-4">
+                    <div>
+                      <label
+                        htmlFor="newCategory"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Add New Category
+                      </label>
+                      <div className="flex mt-1">
+                        <input
+                          type="text"
+                          id="newCategory"
+                          name="newCategory"
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value)}
+                          className="px-3 py-2 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter category name"
+                        />
+                        <button
+                          type="submit"
+                          className="ml-2 flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <Plus size={16} className="mr-2" />
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                  <div className="mt-4">
+                    <ul className="divide-y divide-gray-200">
+                      {categories.map((category) => (
+                        <li
+                          key={category}
+                          className="py-2 flex justify-between items-center"
+                        >
+                          <span className="text-sm text-gray-900">
+                            {category}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCategoryDelete(category)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Subcategories
+                  </h3>
+                  <form
+                    onSubmit={handleSubCategoryAdd}
+                    className="mt-4 space-y-4"
+                  >
+                    <div>
+                      <label
+                        htmlFor="selectedCategory"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Select Category
+                      </label>
+                      <select
+                        id="selectedCategory"
+                        name="selectedCategory"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {categories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="newSubCategory"
+                        className="block text-sm font-medium text-gray-700"
+                      >
+                        Add New Subcategory
+                      </label>
+                      <div className="flex mt-1">
+                        <input
+                          type="text"
+                          id="newSubCategory"
+                          name="newSubCategory"
+                          value={newSubCategory}
+                          onChange={(e) => setNewSubCategory(e.target.value)}
+                          className="px-3 py-2 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter subcategory name"
+                        />
+                        <button
+                          type="submit"
+                          className="ml-2 flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <Plus size={16} className="mr-2" />
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                  <div className="mt-4">
+                    <ul className="divide-y divide-gray-200">
+                      {subCategories[selectedCategory]?.map((subCategory) => (
+                        <li
+                          key={subCategory}
+                          className="py-2 flex justify-between items-center"
+                        >
+                          <span className="text-sm text-gray-900">
+                            {subCategory}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleSubCategoryDelete(subCategory)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <Save size={16} className="mr-2" />
+                    Save Changes
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

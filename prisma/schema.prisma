@@ -100,11 +100,11 @@ model sellers {
 }
 
 model siteConfig {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  categories    String[]
-  subCategories Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique // e.g., "general", "email", "payment", "categories"
+  config    Json // Stores configuration data as JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DiscountCode {
