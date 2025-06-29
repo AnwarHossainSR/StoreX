@@ -1,12 +1,22 @@
 "use client";
 
-import { Camera, Plus, Save, Trash2 } from "lucide-react";
-import Image from "next/image";
+import {
+  Camera,
+  CreditCard,
+  Eye,
+  Globe,
+  Mail,
+  Plus,
+  Save,
+  Settings,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
-  const [formData, setFormData] = useState({
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<any>({
     siteName: "E-Shop",
     siteDescription: "Your one-stop shopping destination",
     adminEmail: "admin@example.com",
@@ -15,40 +25,78 @@ export default function SettingsPage() {
     address: "123 E-commerce Street, Digital City, 10001",
     currency: "USD",
     timezone: "UTC",
+  });
+
+  const [appearanceData, setAppearanceData] = useState<any>({
     logo: "https://images.pexels.com/photos/1005638/pexels-photo-1005638.jpeg",
     favicon:
       "https://images.pexels.com/photos/1005638/pexels-photo-1005638.jpeg",
   });
-  const [categories, setCategories] = useState<string[]>([
+
+  const [emailData, setEmailData] = useState<any>({
+    smtpHost: "smtp.example.com",
+    smtpPort: 587,
+    smtpUsername: "username@example.com",
+    smtpPassword: "",
+    smtpEncryption: "TLS",
+  });
+
+  const [paymentData, setPaymentData] = useState<any>({
+    stripePublicKey: "",
+    stripeSecretKey: "",
+    webhookSecret: "",
+    testMode: false,
+  });
+
+  const [categories, setCategories] = useState<any>([
     "Electronics",
     "Fashion",
     "Home & Kitchen",
     "Sports & Fitness",
     "Health & Beauty",
   ]);
-  const [subCategories, setSubCategories] = useState<{
-    [key: string]: string[];
-  }>({
+
+  const [subCategories, setSubCategories] = useState<any>({
     Electronics: ["Laptops", "Mobiles", "Tablets"],
     Fashion: ["Mens", "Womens", "Kids"],
     "Home & Kitchen": ["Kitchen", "Dining", "Bedroom"],
     "Sports & Fitness": ["Fitness", "Gym", "Outdoor"],
     "Health & Beauty": ["Skin Care", "Hair Care", "Body Care"],
   });
+
   const [newCategory, setNewCategory] = useState("");
   const [newSubCategory, setNewSubCategory] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(categories[0] || "");
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const tabs = [
+    { id: "general", label: "General", icon: Settings },
+    { id: "appearance", label: "Appearance", icon: Eye },
+    { id: "email", label: "Email", icon: Mail },
+    { id: "payment", label: "Payment", icon: CreditCard },
+    { id: "categories", label: "Categories", icon: Globe },
+  ];
+
+  const handleChange = (e: any, dataType = "general") => {
+    const { name, value, type, checked } = e.target;
+    const actualValue = type === "checkbox" ? checked : value;
+
+    switch (dataType) {
+      case "general":
+        setFormData((prev: any) => ({ ...prev, [name]: actualValue }));
+        break;
+      case "appearance":
+        setAppearanceData((prev: any) => ({ ...prev, [name]: actualValue }));
+        break;
+      case "email":
+        setEmailData((prev: any) => ({ ...prev, [name]: actualValue }));
+        break;
+      case "payment":
+        setPaymentData((prev: any) => ({ ...prev, [name]: actualValue }));
+        break;
+    }
   };
 
-  const handleCategoryAdd = (e: React.FormEvent) => {
+  const handleCategoryAdd = (e: any) => {
     e.preventDefault();
     if (newCategory && !categories.includes(newCategory)) {
       setCategories([...categories, newCategory]);
@@ -57,7 +105,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSubCategoryAdd = (e: React.FormEvent) => {
+  const handleSubCategoryAdd = (e: any) => {
     e.preventDefault();
     if (
       newSubCategory &&
@@ -76,7 +124,7 @@ export default function SettingsPage() {
   };
 
   const handleCategoryDelete = (category: string) => {
-    setCategories(categories.filter((cat) => cat !== category));
+    setCategories(categories.filter((cat: string) => cat !== category));
     const newSubCategories = { ...subCategories };
     delete newSubCategories[category];
     setSubCategories(newSubCategories);
@@ -89,19 +137,37 @@ export default function SettingsPage() {
     setSubCategories({
       ...subCategories,
       [selectedCategory]: subCategories[selectedCategory].filter(
-        (sub) => sub !== subCategory
+        (sub: string) => sub !== subCategory
       ),
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
-    // Handle form submission, including categories and subcategories
-    console.log("Settings updated:", {
-      ...formData,
-      categories,
-      subCategories,
-    });
+    setIsLoading(true);
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const configData = {
+        general: formData,
+        appearance: appearanceData,
+        email: emailData,
+        payment: paymentData,
+        categories: { categories, subCategories },
+      };
+
+      console.log("Settings updated:", configData);
+
+      // Show success message (you can implement toast notifications)
+      alert("Settings updated successfully!");
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      alert("Error updating settings. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -111,665 +177,597 @@ export default function SettingsPage() {
   }, [categories, selectedCategory]);
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
-      </div>
-
-      {/* Settings Tabs */}
-      <div className="bg-white rounded-lg shadow-sm">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            <button
-              className={`px-6 py-3 text-sm font-medium ${
-                activeTab === "general"
-                  ? "border-b-2 border-blue-500 text-blue-600"
-                  : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-              onClick={() => setActiveTab("general")}
-            >
-              General
-            </button>
-            <button
-              className={`px-6 py-3 text-sm font-medium ${
-                activeTab === "appearance"
-                  ? "border-b-2 border-blue-500 text-blue-600"
-                  : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-              onClick={() => setActiveTab("appearance")}
-            >
-              Appearance
-            </button>
-            <button
-              className={`px-6 py-3 text-sm font-medium ${
-                activeTab === "email"
-                  ? "border-b-2 border-blue-500 text-blue-600"
-                  : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-              onClick={() => setActiveTab("email")}
-            >
-              Email
-            </button>
-            <button
-              className={`px-6 py-3 text-sm font-medium ${
-                activeTab === "payment"
-                  ? "border-b-2 border-blue-500 text-blue-600"
-                  : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-              onClick={() => setActiveTab("payment")}
-            >
-              Payment
-            </button>
-            <button
-              className={`px-6 py-3 text-sm font-medium ${
-                activeTab === "categories"
-                  ? "border-b-2 border-blue-500 text-blue-600"
-                  : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-              onClick={() => setActiveTab("categories")}
-            >
-              Categories
-            </button>
-          </nav>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-600 bg-clip-text text-transparent">
+                Settings Dashboard
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Manage your e-commerce platform configuration
+              </p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-gray-700">
+                  System Online
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="p-6">
-          {activeTab === "general" && (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="siteName"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Site Name
-                  </label>
-                  <input
-                    type="text"
-                    id="siteName"
-                    name="siteName"
-                    value={formData.siteName}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="siteDescription"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Site Description
-                  </label>
-                  <input
-                    type="text"
-                    id="siteDescription"
-                    name="siteDescription"
-                    value={formData.siteDescription}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="adminEmail"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Admin Email
-                  </label>
-                  <input
-                    type="email"
-                    id="adminEmail"
-                    name="adminEmail"
-                    value={formData.adminEmail}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt–
-
-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="supportEmail"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Support Email
-                  </label>
-                  <input
-                    type="email"
-                    id="supportEmail"
-                    name="supportEmail"
-                    value={formData.supportEmail}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="phoneNumber"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="address"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Address
-                  </label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="currency"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Currency
-                  </label>
-                  <select
-                    id="currency"
-                    name="currency"
-                    value={formData.currency}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="GBP">GBP - British Pound</option>
-                    <option value="JPY">JPY - Japanese Yen</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="timezone"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Timezone
-                  </label>
-                  <select
-                    id="timezone"
-                    name="timezone"
-                    value={formData.timezone}
-                    onChange={handleChange}
-                    className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="UTC">UTC</option>
-                    <option value="America/New_York">America/New_York</option>
-                    <option value="Europe/London">Europe/London</option>
-                    <option value="Asia/Tokyo">Asia/Tokyo</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex justify-end">
+        {/* Main Content */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+          {/* Navigation Tabs */}
+          <div className="border-b border-gray-200/50 bg-gradient-to-r from-white to-gray-50/50">
+            <nav className="flex overflow-x-auto">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
                   <button
-                    type="submit"
-                    className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    key={tab.id}
+                    className={`group relative px-8 py-6 text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+                      activeTab === tab.id
+                        ? "text-blue-600"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    onClick={() => setActiveTab(tab.id)}
                   >
-                    <Save size={16} className="mr-2" />
-                    Save Changes
+                    <div className="flex items-center space-x-3">
+                      <Icon
+                        size={20}
+                        className={`transition-all duration-300 ${
+                          activeTab === tab.id
+                            ? "text-blue-600 scale-110"
+                            : "text-gray-400 group-hover:text-gray-600"
+                        }`}
+                      />
+                      <span>{tab.label}</span>
+                    </div>
+                    {activeTab === tab.id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
+                    )}
                   </button>
-                </div>
-              </div>
-            </form>
-          )}
+                );
+              })}
+            </nav>
+          </div>
 
-          {activeTab === "appearance" && (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Logo
-                  </label>
-                  <div className="mt-1 flex items-center">
-                    <div className="relative h-32 w-32 rounded-lg overflow-hidden">
-                      <Image
-                        src={formData.logo}
-                        alt="Logo"
-                        fill
-                        className="object-cover"
+          {/* Tab Content */}
+          <div className="p-8">
+            {activeTab === "general" && (
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                  {[
+                    {
+                      name: "siteName",
+                      label: "Site Name",
+                      type: "text",
+                      value: formData.siteName,
+                    },
+                    {
+                      name: "siteDescription",
+                      label: "Site Description",
+                      type: "text",
+                      value: formData.siteDescription,
+                    },
+                    {
+                      name: "adminEmail",
+                      label: "Admin Email",
+                      type: "email",
+                      value: formData.adminEmail,
+                    },
+                    {
+                      name: "supportEmail",
+                      label: "Support Email",
+                      type: "email",
+                      value: formData.supportEmail,
+                    },
+                    {
+                      name: "phoneNumber",
+                      label: "Phone Number",
+                      type: "tel",
+                      value: formData.phoneNumber,
+                    },
+                    {
+                      name: "address",
+                      label: "Address",
+                      type: "text",
+                      value: formData.address,
+                    },
+                  ].map((field) => (
+                    <div key={field.name} className="group">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        {field.label}
+                      </label>
+                      <input
+                        type={field.type}
+                        name={field.name}
+                        value={field.value}
+                        onChange={(e) => handleChange(e, "general")}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm group-hover:shadow-md"
                       />
                     </div>
-                    <button
-                      type="button"
-                      className="ml-5 bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  ))}
+
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Currency
+                    </label>
+                    <select
+                      name="currency"
+                      value={formData.currency}
+                      onChange={(e) => handleChange(e, "general")}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm group-hover:shadow-md"
                     >
-                      <Camera size={16} className="mr-2 inline-block" />
-                      Change
-                    </button>
+                      <option value="USD">🇺🇸 USD - US Dollar</option>
+                      <option value="EUR">🇪🇺 EUR - Euro</option>
+                      <option value="GBP">🇬🇧 GBP - British Pound</option>
+                      <option value="JPY">🇯🇵 JPY - Japanese Yen</option>
+                    </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Favicon
-                  </label>
-                  <div className="mt-1 flex items-center">
-                    <div className="relative h-16 w-16 rounded-lg overflow-hidden">
-                      <Image
-                        src={formData.favicon}
-                        alt="Favicon"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="ml-5 bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Timezone
+                    </label>
+                    <select
+                      name="timezone"
+                      value={formData.timezone}
+                      onChange={(e) => handleChange(e, "general")}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm group-hover:shadow-md"
                     >
-                      <Camera size={16} className="mr-2 inline-block" />
-                      Change
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <Save size={16} className="mr-2" />
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            </form>
-          )}
-
-          {activeTab === "email" && (
-            <div className="space-y-6">
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-5 w-5 text-yellow-400"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">
-                      Email Configuration
-                    </h3>
-                    <div className="mt-2 text-sm text-yellow-700">
-                      <p>
-                        Configure your email settings to enable sending emails
-                        from your application.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <form className="space-y-6">
-                <div className="grid grid-cols-1 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      SMTP Host
-                    </label>
-                    <input
-                      type="text"
-                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="smtp.example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      SMTP Port
-                    </label>
-                    <input
-                      type="number"
-                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="587"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      SMTP Username
-                    </label>
-                    <input
-                      type="text"
-                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="username@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      SMTP Password
-                    </label>
-                    <input
-                      type="password"
-                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Encryption
-                    </label>
-                    <select className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                      <option>TLS</option>
-                      <option>SSL</option>
-                      <option>None</option>
+                      <option value="UTC">🌍 UTC</option>
+                      <option value="America/New_York">
+                        🗽 America/New_York
+                      </option>
+                      <option value="Europe/London">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Europe/London</option>
+                      <option value="Asia/Tokyo">🗾 Asia/Tokyo</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="flex justify-between">
-                    <button
-                      type="button"
-                      className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      Test Connection
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <Save size={16} className="mr-2" />
-                      Save Changes
-                    </button>
-                  </div>
+                <div className="flex justify-end pt-6 border-t border-gray-200">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
+                    <Save size={18} className="mr-2" />
+                    {isLoading ? "Saving..." : "Save Changes"}
+                  </button>
                 </div>
               </form>
-            </div>
-          )}
+            )}
 
-          {activeTab === "payment" && (
-            <div className="space-y-6">
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-5 w-5 text-yellow-400"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+            {activeTab === "appearance" && (
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-4">
+                        Logo
+                      </label>
+                      <div className="flex items-center space-x-6">
+                        <div className="relative h-24 w-24 rounded-2xl overflow-hidden shadow-lg group">
+                          <img
+                            src={appearanceData.logo}
+                            alt="Logo"
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-300"
+                        >
+                          <Camera size={18} className="mr-2" />
+                          Change Logo
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-4">
+                        Favicon
+                      </label>
+                      <div className="flex items-center space-x-6">
+                        <div className="relative h-16 w-16 rounded-xl overflow-hidden shadow-lg group">
+                          <img
+                            src={appearanceData.favicon}
+                            alt="Favicon"
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        </div>
+                        <button
+                          type="button"
+                          className="flex items-center px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-300"
+                        >
+                          <Camera size={18} className="mr-2" />
+                          Change Favicon
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">
-                      Payment Gateway Configuration
+
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Preview
                     </h3>
-                    <div className="mt-2 text-sm text-yellow-700">
-                      <p>
-                        Configure your payment gateway settings to enable
-                        accepting payments.
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <img
+                          src={appearanceData.favicon}
+                          alt="Favicon"
+                          className="w-6 h-6 rounded"
+                        />
+                        <span className="font-semibold text-gray-800">
+                          {formData.siteName}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {formData.siteDescription}
                       </p>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <form className="space-y-6">
-                <div className="grid grid-cols-1 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Stripe Public Key
-                    </label>
-                    <input
-                      type="text"
-                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="pk_test_..."
-                    />
-                  </div>
+                <div className="flex justify-end pt-6 border-t border-gray-200">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
+                    <Save size={18} className="mr-2" />
+                    {isLoading ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Stripe Secret Key
-                    </label>
-                    <input
-                      type="password"
-                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="sk_test_..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Webhook Secret
-                    </label>
-                    <input
-                      type="password"
-                      className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="whsec_..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Test Mode
-                    </label>
-                    <div className="mt-2">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label className="ml-2 block text-sm text-gray-900">
-                          Enable test mode
-                        </label>
-                      </div>
+            {activeTab === "email" && (
+              <div className="space-y-8">
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 rounded-xl p-6">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <Mail className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-semibold text-yellow-800">
+                        Email Configuration
+                      </h3>
+                      <p className="mt-2 text-yellow-700">
+                        Configure your SMTP settings to enable email
+                        notifications and communications.
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="flex justify-between">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {[
+                      {
+                        name: "smtpHost",
+                        label: "SMTP Host",
+                        type: "text",
+                        placeholder: "smtp.example.com",
+                      },
+                      {
+                        name: "smtpPort",
+                        label: "SMTP Port",
+                        type: "number",
+                        placeholder: "587",
+                      },
+                      {
+                        name: "smtpUsername",
+                        label: "SMTP Username",
+                        type: "text",
+                        placeholder: "username@example.com",
+                      },
+                      {
+                        name: "smtpPassword",
+                        label: "SMTP Password",
+                        type: "password",
+                        placeholder: "••••••••",
+                      },
+                    ].map((field) => (
+                      <div key={field.name} className="group">
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          {field.label}
+                        </label>
+                        <input
+                          type={field.type}
+                          name={field.name}
+                          value={emailData[field.name]}
+                          onChange={(e) => handleChange(e, "email")}
+                          placeholder={field.placeholder}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm group-hover:shadow-md"
+                        />
+                      </div>
+                    ))}
+
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Encryption
+                      </label>
+                      <select
+                        name="smtpEncryption"
+                        value={emailData.smtpEncryption}
+                        onChange={(e) => handleChange(e, "email")}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm group-hover:shadow-md"
+                      >
+                        <option value="TLS">TLS</option>
+                        <option value="SSL">SSL</option>
+                        <option value="None">None</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-6 border-t border-gray-200">
                     <button
                       type="button"
-                      className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-300"
                     >
                       Test Connection
                     </button>
                     <button
                       type="submit"
-                      className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      disabled={isLoading}
+                      className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
-                      <Save size={16} className="mr-2" />
-                      Save Changes
+                      <Save size={18} className="mr-2" />
+                      {isLoading ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
-                </div>
-              </form>
-            </div>
-          )}
+                </form>
+              </div>
+            )}
 
-          {activeTab === "categories" && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Categories
-                  </h3>
-                  <form onSubmit={handleCategoryAdd} className="mt-4 space-y-4">
-                    <div>
-                      <label
-                        htmlFor="newCategory"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Add New Category
-                      </label>
-                      <div className="flex mt-1">
+            {activeTab === "payment" && (
+              <div className="space-y-8">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-400 rounded-xl p-6">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <CreditCard className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-semibold text-green-800">
+                        Payment Gateway Configuration
+                      </h3>
+                      <p className="mt-2 text-green-700">
+                        Set up your Stripe integration to accept payments
+                        securely.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6">
+                    {[
+                      {
+                        name: "stripePublicKey",
+                        label: "Stripe Public Key",
+                        type: "text",
+                        placeholder: "pk_test_...",
+                      },
+                      {
+                        name: "stripeSecretKey",
+                        label: "Stripe Secret Key",
+                        type: "password",
+                        placeholder: "sk_test_...",
+                      },
+                      {
+                        name: "webhookSecret",
+                        label: "Webhook Secret",
+                        type: "password",
+                        placeholder: "whsec_...",
+                      },
+                    ].map((field) => (
+                      <div key={field.name} className="group">
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          {field.label}
+                        </label>
+                        <input
+                          type={field.type}
+                          name={field.name}
+                          value={paymentData[field.name]}
+                          onChange={(e) => handleChange(e, "payment")}
+                          placeholder={field.placeholder}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 bg-white/50 backdrop-blur-sm group-hover:shadow-md"
+                        />
+                      </div>
+                    ))}
+
+                    <div className="bg-gray-50 rounded-xl p-6">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="testMode"
+                          checked={paymentData.testMode}
+                          onChange={(e) => handleChange(e, "payment")}
+                          className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label className="ml-3 block text-sm font-medium text-gray-900">
+                          Enable test mode
+                        </label>
+                      </div>
+                      <p className="mt-2 text-sm text-gray-600">
+                        Test mode allows you to process test transactions
+                        without charging real money.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                    <button
+                      type="button"
+                      className="px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-300"
+                    >
+                      Test Connection
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    >
+                      <Save size={18} className="mr-2" />
+                      {isLoading ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {activeTab === "categories" && (
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                      <Globe className="mr-3 text-blue-600" size={24} />
+                      Categories
+                    </h3>
+
+                    <form onSubmit={handleCategoryAdd} className="mb-6">
+                      <div className="flex space-x-3">
                         <input
                           type="text"
-                          id="newCategory"
-                          name="newCategory"
                           value={newCategory}
                           onChange={(e) => setNewCategory(e.target.value)}
-                          className="px-3 py-2 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="flex-1 px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                           placeholder="Enter category name"
                         />
                         <button
                           type="submit"
-                          className="ml-2 flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                         >
-                          <Plus size={16} className="mr-2" />
-                          Add
+                          <Plus size={18} />
                         </button>
                       </div>
-                    </div>
-                  </form>
-                  <div className="mt-4">
-                    <ul className="divide-y divide-gray-200">
-                      {categories.map((category) => (
-                        <li
+                    </form>
+
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {categories.map((category: string) => (
+                        <div
                           key={category}
-                          className="py-2 flex justify-between items-center"
+                          className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 group"
                         >
-                          <span className="text-sm text-gray-900">
+                          <span className="font-medium text-gray-900">
                             {category}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleCategoryDelete(category)}
-                            className="text-red-600 hover:text-red-800"
+                            className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-all duration-300"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={18} />
                           </button>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Subcategories
-                  </h3>
-                  <form
-                    onSubmit={handleSubCategoryAdd}
-                    className="mt-4 space-y-4"
-                  >
-                    <div>
-                      <label
-                        htmlFor="selectedCategory"
-                        className="block text-sm font-medium text-gray-700"
-                      >
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                      <Settings className="mr-3 text-purple-600" size={24} />
+                      Subcategories
+                    </h3>
+
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
                         Select Category
                       </label>
                       <select
-                        id="selectedCategory"
-                        name="selectedCategory"
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="px-3 py-2 mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
                       >
-                        {categories.map((category) => (
+                        {categories.map((category: string) => (
                           <option key={category} value={category}>
                             {category}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label
-                        htmlFor="newSubCategory"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Add New Subcategory
-                      </label>
-                      <div className="flex mt-1">
+
+                    <form onSubmit={handleSubCategoryAdd} className="mb-6">
+                      <div className="flex space-x-3">
                         <input
                           type="text"
-                          id="newSubCategory"
-                          name="newSubCategory"
                           value={newSubCategory}
                           onChange={(e) => setNewSubCategory(e.target.value)}
-                          className="px-3 py-2 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="flex-1 px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
                           placeholder="Enter subcategory name"
                         />
                         <button
                           type="submit"
-                          className="ml-2 flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          className="flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                         >
-                          <Plus size={16} className="mr-2" />
-                          Add
+                          <Plus size={18} />
                         </button>
                       </div>
-                    </div>
-                  </form>
-                  <div className="mt-4">
-                    <ul className="divide-y divide-gray-200">
-                      {subCategories[selectedCategory]?.map((subCategory) => (
-                        <li
-                          key={subCategory}
-                          className="py-2 flex justify-between items-center"
-                        >
-                          <span className="text-sm text-gray-900">
-                            {subCategory}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleSubCategoryDelete(subCategory)}
-                            className="text-red-600 hover:text-red-800"
+                    </form>
+
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {subCategories[selectedCategory]?.map(
+                        (subCategory: string) => (
+                          <div
+                            key={subCategory}
+                            className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 group"
                           >
-                            <Trash2 size={16} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                            <span className="font-medium text-gray-900">
+                              {subCategory}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSubCategoryDelete(subCategory)
+                              }
+                              className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-all duration-300"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        )
+                      )}
+                      {(!subCategories[selectedCategory] ||
+                        subCategories[selectedCategory].length === 0) && (
+                        <div className="text-center py-8 text-gray-500">
+                          <Globe
+                            size={48}
+                            className="mx-auto mb-4 text-gray-300"
+                          />
+                          <p>No subcategories found for this category.</p>
+                          <p className="text-sm">
+                            Add your first subcategory above.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-6 border-t border-gray-200">
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    className="flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    disabled={isLoading}
+                    className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
-                    <Save size={16} className="mr-2" />
-                    Save Changes
+                    <Save size={18} className="mr-2" />
+                    {isLoading ? "Saving..." : "Save Categories"}
                   </button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
