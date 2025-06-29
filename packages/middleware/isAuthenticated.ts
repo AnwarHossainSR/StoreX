@@ -62,6 +62,10 @@ export const getTokenFromRequest = (
     return req.cookies["access_seller_token"];
   }
 
+  if (role === "admin") {
+    return req.cookies["access_admin_token"];
+  }
+
   // Default to user token
   return req.cookies["access_token"];
 };
@@ -102,7 +106,9 @@ const isAuthenticated = async (
     // Attach to req object
     req[decoded.role] = account;
     req.role = decoded.role;
-
+    if (process.env.NODE_ENV !== "production") {
+      console.log("req", req[decoded.role]);
+    }
     return next();
   } catch (error: any) {
     console.log("error in isAuthenticated", error.message || error);

@@ -1,8 +1,8 @@
 "use client";
 
 import Loading from "@/components/ui/loading";
+import { useCurrentUser } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
-import { useCurrentUser } from "@/hooks/useSeller";
 import {
   Bell,
   Calendar,
@@ -114,10 +114,10 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
 
   const pathname = usePathname();
   const { isLoading, user } = useCurrentUser();
-  const { logoutSeller } = useAuth();
+  const { logoutAdmin } = useAuth();
 
   const handleLogout = () => {
-    logoutSeller();
+    logoutAdmin();
   };
 
   const handleReadNotification = (id: number) => {
@@ -197,16 +197,12 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
             <div className="px-4 flex items-center">
               <img
                 className="h-10 w-10 rounded-full mr-3"
-                src={user?.shop?.logo || "/images/avatar-placeholder.png"}
+                src={user?.avatar?.url || "/images/avatar-placeholder.png"}
                 alt="Logo"
               />
               <div>
-                <div className="text-xl font-bold text-white">
-                  {user?.shop?.name}
-                </div>
-                <div className="text-xs text-gray-400">
-                  {user?.shop?.address}
-                </div>
+                <div className="text-xl font-bold text-white">{user?.name}</div>
+                <div className="text-xs text-gray-400">{user?.email}</div>
               </div>
             </div>
             <nav className="mt-8 px-2 space-y-1">
@@ -260,16 +256,14 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
               <div className="flex items-center">
                 <img
                   className="h-10 w-10 rounded-full mr-3"
-                  src={user?.shop?.logo || "/images/avatar-placeholder.png"}
+                  src={user?.avatar?.url || "/images/avatar-placeholder.png"}
                   alt="Logo"
                 />
                 <div>
                   <div className="text-xl font-bold text-white">
-                    {user?.shop?.name}
+                    {user?.name}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {user?.shop?.address}
-                  </div>
+                  <div className="text-xs text-gray-400">{user?.email}</div>
                 </div>
               </div>
             )}
@@ -445,10 +439,10 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
                     <div className="py-1">
                       <div className="px-4 py-3 border-b border-gray-200">
                         <p className="text-sm font-medium text-gray-900">
-                          John Doe
+                          {user?.name}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
-                          john.doe@example.com
+                          {user?.email}
                         </p>
                       </div>
                       <Link

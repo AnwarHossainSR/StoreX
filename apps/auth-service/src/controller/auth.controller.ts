@@ -324,7 +324,7 @@ export const userDetails = async (
   }
 };
 
-export const chnageUserPassword = async (
+export const changeUserPassword = async (
   req: any,
   res: Response,
   next: NextFunction
@@ -1088,7 +1088,7 @@ export const getAuthenticatedAdmin = async (
   next: NextFunction
 ) => {
   try {
-    console.log("req", req);
+    console.log("req.admin", req.admin);
     const admin = req.admin;
     res.status(200).json({ success: true, admin });
   } catch (error: any) {

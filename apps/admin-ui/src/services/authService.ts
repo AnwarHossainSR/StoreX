@@ -19,12 +19,17 @@ export interface ApiResponse<T> {
   sellerId?: string;
   seller?: Seller;
   accountLink?: string;
+  admin?: User;
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
+  avatar?: {
+    url: string;
+    file_id: string;
+  };
 }
 
 export interface BackendErrorResponse {
