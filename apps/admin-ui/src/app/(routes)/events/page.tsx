@@ -5,7 +5,6 @@ import {
   ChevronUp,
   Download,
   Eye,
-  Filter,
   Search,
   Trash2,
 } from "lucide-react";
@@ -150,10 +149,6 @@ export default function EventsPage() {
         <h1 className="text-2xl font-bold text-gray-800">Events</h1>
 
         <div className="flex items-center space-x-2">
-          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-            <Filter size={20} className="mr-2" />
-            Filter
-          </button>
           <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
             <Download size={20} className="mr-2" />
             Export Events
