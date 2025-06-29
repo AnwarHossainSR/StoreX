@@ -10,28 +10,6 @@ import {
 export const useAuth = () => {
   const router = useRouter();
 
-  // Seller register mutation
-  const sellerRegisterMutation = useMutation<
-    ApiResponse<never>,
-    Error,
-    {
-      name: string;
-      email: string;
-      password: string;
-      phone_number: string;
-      country: string;
-    }
-  >({
-    mutationFn: authService.registerSeller,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
-    },
-  });
-
   // Create shop mutation
   const createShopMutation = useMutation<
     ApiResponse<never>,
@@ -47,28 +25,6 @@ export const useAuth = () => {
     }
   >({
     mutationFn: authService.createShop,
-    onError: (error: Error) => {
-      const errorData = error.cause as BackendErrorResponse | undefined;
-      return {
-        message: error.message,
-        details: errorData?.details,
-      };
-    },
-  });
-
-  // Create Stripe Connect account mutation
-  const createStripeConnectAccountMutation = useMutation<
-    ApiResponse<never>,
-    Error,
-    { sellerId: string; country: string; currency: string }
-  >({
-    mutationFn: ({ sellerId, country, currency }) =>
-      authService.createStripeConnectAccount(sellerId, country, currency),
-    onSuccess: (data) => {
-      if (data.accountLink) {
-        window.location.href = data.accountLink + "?locale=en"; // Redirect to Stripe
-      }
-    },
     onError: (error: Error) => {
       const errorData = error.cause as BackendErrorResponse | undefined;
       return {
@@ -254,15 +210,6 @@ export const useAuth = () => {
       sellerLoginMutation.error?.cause as BackendErrorResponse | undefined
     )?.details,
 
-    sellerRegister: sellerRegisterMutation.mutate,
-    sellerRegisterStatus: sellerRegisterMutation.status,
-    sellerRegisterError: sellerRegisterMutation.error?.message,
-    sellerRegisterErrorDetails: (
-      sellerRegisterMutation.error?.cause as BackendErrorResponse | undefined
-    )?.details,
-
-    resetSellerRegister: sellerRegisterMutation.reset,
-
     createShop: createShopMutation.mutate,
     createShopStatus: createShopMutation.status,
     createShopError: createShopMutation.error?.message,
@@ -278,17 +225,6 @@ export const useAuth = () => {
     )?.details,
     sellerId: verifySellerOtpMutation.data?.sellerId,
     seller: verifySellerOtpMutation.data?.seller,
-
-    createStripeConnectAccount: createStripeConnectAccountMutation.mutate,
-    createStripeConnectAccountStatus: createStripeConnectAccountMutation.status,
-    createStripeConnectAccountError:
-      createStripeConnectAccountMutation.error?.message,
-    createStripeConnectAccountErrorDetails: (
-      createStripeConnectAccountMutation.error?.cause as
-        | BackendErrorResponse
-        | undefined
-    )?.details,
-
     logoutSeller: logoutSeller.mutate,
   };
 };

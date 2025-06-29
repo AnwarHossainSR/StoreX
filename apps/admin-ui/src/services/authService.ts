@@ -164,27 +164,6 @@ export const authService = {
     }
   },
 
-  async registerSeller(data: {
-    name: string;
-    email: string;
-    password: string;
-    phone_number: string;
-    country: string;
-  }) {
-    try {
-      const response = await apiClient.post<ApiResponse<never>>(
-        `${AUTH_BASE_URL}/register-seller`,
-        data
-      );
-      return response.data;
-    } catch (error) {
-      const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "Seller registration failed", {
-        cause: errorData,
-      });
-    }
-  },
-
   async verifySellerOtp(data: {
     email: string;
     otp: string;
@@ -242,28 +221,6 @@ export const authService = {
       throw new Error(errorData?.message || "Shop creation failed", {
         cause: errorData,
       });
-    }
-  },
-
-  async createStripeConnectAccount(
-    sellerId: string,
-    country: string,
-    currency: string
-  ) {
-    try {
-      const response = await apiClient.post<ApiResponse<never>>(
-        `${AUTH_BASE_URL}/create-stripe-connect-account`,
-        { sellerId, country, currency }
-      );
-      return response.data;
-    } catch (error) {
-      const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(
-        errorData?.message || "Failed to create Stripe Connect account",
-        {
-          cause: errorData,
-        }
-      );
     }
   },
 };
