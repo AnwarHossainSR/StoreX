@@ -54,6 +54,7 @@ const services: Service[] = [
   { name: "@./api-gateway", command: "serve" },
   { name: "@source/user-ui", command: "dev" },
   { name: "@source/seller-ui", command: "dev" },
+  { name: "@source/admin-ui", command: "dev" },
 ];
 
 function runNxTarget(
