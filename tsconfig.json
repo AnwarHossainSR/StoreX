@@ -32,6 +32,9 @@
     },
     {
       "path": "./apps/admin-service"
+    },
+    {
+      "path": "./apps/chatting-service"
     }
   ]
 }
