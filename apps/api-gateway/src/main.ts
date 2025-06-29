@@ -13,7 +13,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "http://localhost:6003, http://localhost:6005",
+      "http://localhost:3001",
+      "http://localhost:3002",
     ],
     allowedHeaders: ["Authorization", "Content-Type"],
     credentials: true,
@@ -42,8 +43,8 @@ app.use(
 // Route-specific proxying
 app.use("/api/auth", proxy("http://localhost:6001/api"));
 app.use("/api/products", proxy("http://localhost:6002/api"));
-app.use("/api/orders", proxy("http://localhost:6004/api"));
-app.use("/api/admin", proxy("http://localhost:6005/api"));
+app.use("/api/orders", proxy("http://localhost:6003/api"));
+app.use("/api/admin", proxy("http://localhost:6004/api"));
 app.use("/api/auth/api-docs", proxy("http://localhost:6001/api-docs"));
 app.use("/api/auth/docs-json", proxy("http://localhost:6001/docs-json"));
 app.use("/api/products/api-docs", proxy("http://localhost:6002/api-docs"));

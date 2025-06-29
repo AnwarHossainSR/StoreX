@@ -104,14 +104,20 @@ async function resetNxCache(): Promise<void> {
 
 (async () => {
   try {
-    await ensureKafkaRunning(); // 👈 First check/start Docker
-    await resetNxCache(); // 👈 Then reset Nx cache
+    await ensureKafkaRunning(); // 👈 Ensure Kafka (via Docker) is up
+    await resetNxCache(); // 👈 Reset Nx cache
+
+    const portMap: Record<string, string> = {
+      "@source/user-ui": "3000",
+      "@source/seller-ui": "3001",
+      "@source/admin-ui": "3002",
+    };
 
     for (const service of services) {
       console.log(`🔧 Starting ${service.name} (${service.command})...`);
 
-      const env: Record<string, string> =
-        service.name === "@source/seller-ui" ? { PORT: "6003" } : {};
+      const port = portMap[service.name];
+      const env: Record<string, string> = port ? { PORT: port } : {};
 
       await runNxTarget(service.name, service.command, env);
       await new Promise((res) => setTimeout(res, 1000)); // Delay for stability
