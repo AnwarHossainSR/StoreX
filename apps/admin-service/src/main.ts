@@ -8,7 +8,7 @@ import express from "express";
 dotenv.config();
 
 const host = process.env.HOST ?? "localhost";
-const port = process.env.PORT ? Number(process.env.PORT) : 6005;
+const port = process.env.PORT ? Number(process.env.PORT) : 6004;
 
 const app = express();
 
@@ -16,8 +16,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000", // user-ui
-      "http://localhost:6003", //seller-ui
-      "http://localhost:6005", //admin-ui
+      "http://localhost:3001", //seller-ui
+      "http://localhost:3002", //admin-ui
       "http://localhost:8080",
     ], // Allow Gateway and frontend
     allowedHeaders: ["Authorization", "Content-Type"],

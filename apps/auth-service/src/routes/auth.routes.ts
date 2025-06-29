@@ -1,16 +1,19 @@
 import { withAuth } from "@packages/middleware/isAuthenticated";
 import express from "express";
 import {
+  adminLogin,
   cerateShop,
-  chnageUserPassword,
+  changeUserPassword,
   createSellerAccount,
   createShippingAddress,
   createStripeConnectAccount,
   deleteProfileImage,
   deleteShippingAddress,
+  getAuthenticatedAdmin,
   getAuthenticatedSeller,
   getAuthenticatedUser,
   loginUser,
+  logoutAdmin,
   logoutSeller,
   logoutUser,
   refreshAccessToken,
@@ -40,7 +43,7 @@ router.post("/verify-forgot-password-user", verifyForgotPassword);
 router.post("/refresh-token", refreshAccessToken);
 router.get("/logged-in-user", withAuth("user"), getAuthenticatedUser);
 router.get("/user-details", withAuth("user"), userDetails);
-router.put("/change-password-user", withAuth("user"), chnageUserPassword);
+router.put("/change-password-user", withAuth("user"), changeUserPassword);
 router.get("/shipping-address-user", withAuth("user"), userShippingAddress);
 router.post("/shipping-address", withAuth("user"), createShippingAddress);
 router.put("/shipping-address/:id", withAuth("user"), updateShippingAddress);
@@ -60,5 +63,11 @@ router.post("/logout-user", withAuth("user"), logoutUser);
 router.put("/update-profile", withAuth("user"), updateUserProfile);
 router.post("/upload-profile-image", withAuth("user"), uploadProfileImage);
 router.delete("/delete-profile-image", withAuth("user"), deleteProfileImage);
+
+// admin routes
+
+router.post("/admin-login", adminLogin);
+router.post("/logout-admin", withAuth("admin"), logoutAdmin);
+router.get("/logged-in-admin", withAuth("admin"), getAuthenticatedAdmin);
 
 export default router;

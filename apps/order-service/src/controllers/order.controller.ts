@@ -85,7 +85,7 @@ export const processFullPayment = async (
 
     // Validate FRONTEND_URL
     const frontendUrl = process.env.FRONTEND_URL || "https://localhost:3000";
-    const sellerUrl = process.env.SELLER_URL || "https://localhost:6004";
+    const sellerUrl = process.env.SELLER_URL || "https://localhost:3001";
 
     if (!frontendUrl.match(/^https?:\/\//)) {
       console.error(
