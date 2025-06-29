@@ -5,7 +5,7 @@ import Jwt from "jsonwebtoken";
 import prisma from "@packages/libs/prisma";
 
 export const getAuthenticatedAccount = async (
-  role: "user" | "seller",
+  role: "user" | "seller" | "admin",
   id: string
 ) => {
   if (role === "user") {
@@ -44,12 +44,19 @@ export const getAuthenticatedAccount = async (
     return { role: "seller", account: seller };
   }
 
+  if (role === "admin") {
+    const admin = await prisma.admins.findUnique({
+      where: { id },
+    });
+    return { role: "admin", account: admin };
+  }
+
   return { role, account: null };
 };
 
 export const getTokenFromRequest = (
   req: any,
-  role: "user" | "seller" = "user"
+  role: "user" | "seller" | "admin"
 ): string | undefined => {
   if (role === "seller") {
     return req.cookies["access_seller_token"];
@@ -63,7 +70,7 @@ const isAuthenticated = async (
   req: any,
   res: Response,
   next: NextFunction,
-  role?: "user" | "seller"
+  role: "user" | "seller" | "admin"
 ) => {
   try {
     const token = getTokenFromRequest(req, role);
@@ -74,7 +81,7 @@ const isAuthenticated = async (
 
     const decoded = Jwt.verify(token, process.env.JWT_SECRET_KEY!) as {
       id: string;
-      role: "user" | "seller";
+      role: "user" | "seller" | "admin";
     };
 
     if (!decoded) {
@@ -104,7 +111,7 @@ const isAuthenticated = async (
 };
 
 export const withAuth =
-  (role?: "user" | "seller") =>
+  (role: "user" | "seller" | "admin") =>
   (req: any, res: Response, next: NextFunction) => {
     const userType = role || "user";
     if (req[userType]) {

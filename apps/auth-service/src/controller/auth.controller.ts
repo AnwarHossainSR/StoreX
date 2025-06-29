@@ -234,6 +234,8 @@ export const refreshAccessToken = async (
       refreshToken = req.cookies["refresh_token"];
     } else if (type === "seller") {
       refreshToken = req.cookies["refresh_seller_token"];
+    } else if (type === "admin") {
+      refreshToken = req.cookies["refresh_admin_token"];
     }
     if (!refreshToken) {
       return next(new ValidationError("Refresh token not found"));
@@ -262,7 +264,7 @@ export const refreshAccessToken = async (
 
     setCookie(
       res,
-      type === "user" ? "access_token" : "access_seller_token",
+      type === "user" ? "access_token" : `access_${type}_token`,
       accessToken
     );
 
@@ -991,6 +993,105 @@ export const deleteProfileImage = async (
       message: "Profile image deleted successfully",
     });
   } catch (error) {
+    return next(error);
+  }
+};
+
+// Admin methods
+
+export const adminLogin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      throw next(new ValidationError("Missing required fields"));
+    }
+
+    const user = await prisma.admins.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      throw next(new ValidationError("User not found"));
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password!);
+
+    if (!isPasswordMatch) {
+      throw next(new ValidationError("Invalid password"));
+    }
+
+    const accessToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: "user",
+      },
+      process.env.JWT_SECRET_KEY!,
+      {
+        expiresIn: "1h",
+      }
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: "user",
+      },
+      process.env.JWT_REFRESH_SECRET_KEY!,
+      {
+        expiresIn: "1d",
+      }
+    );
+
+    setCookie(res, "refresh_admin_token", refreshToken);
+    setCookie(res, "access_admin_token", accessToken);
+
+    res.status(200).json({
+      message: "User logged in successfully",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const logoutAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    res.clearCookie("refresh_admin_token");
+    res.clearCookie("access_admin_token");
+    res.status(200).json({ message: "User logged out successfully" });
+  } catch (error: any) {
+    return next(error);
+  }
+};
+
+export const getAuthenticatedAdmin = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    console.log("req", req);
+    const admin = req.admin;
+    res.status(200).json({ success: true, admin });
+  } catch (error: any) {
     return next(error);
   }
 };

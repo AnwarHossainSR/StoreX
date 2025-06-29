@@ -153,7 +153,7 @@ export const authService = {
   async getCurrentUser() {
     try {
       const response = await apiClient.get<ApiResponse<any>>(
-        `${AUTH_BASE_URL}/logged-in-seller`
+        `${AUTH_BASE_URL}/logged-in-admin`
       );
       return response.data;
     } catch (error) {
@@ -189,13 +189,13 @@ export const authService = {
   async adminLogin(data: { email: string; password: string }) {
     try {
       const response = await apiClient.post<ApiResponse<User>>(
-        `${AUTH_BASE_URL}/seller-login`,
+        `${AUTH_BASE_URL}/admin-login`,
         data
       );
       return response.data;
     } catch (error) {
       const errorData = (error as any).response?.data as BackendErrorResponse;
-      throw new Error(errorData?.message || "Seller login failed", {
+      throw new Error(errorData?.message || "Admin login failed", {
         cause: errorData,
       });
     }

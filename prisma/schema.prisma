@@ -20,6 +20,7 @@ model images {
   shops     shops[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  admins    admins[]
 }
 
 model users {
@@ -293,4 +294,23 @@ enum NotificationType {
   PAYOUT_PROCESSED
   LOW_STOCK
   REVIEW_RECEIVED
+}
+
+enum adminRole {
+  superadmin
+  moderator
+}
+
+model admins {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String    @unique
+  password  String
+  role      adminRole @default(superadmin)
+  phone     String?
+  country   String?
+  avatarId  String?   @db.ObjectId
+  avatar    images?   @relation(fields: [avatarId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
