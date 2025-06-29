@@ -162,8 +162,8 @@ export default function AdminManagementPage() {
 
         // Apply sorting
         filteredAdmins.sort((a, b) => {
-          const aValue = a[sortField as keyof Admin];
-          const bValue = b[sortField as keyof Admin];
+          const aValue: any = a[sortField as keyof Admin];
+          const bValue: any = b[sortField as keyof Admin];
 
           if (sortDirection === "asc") {
             return aValue > bValue ? 1 : -1;

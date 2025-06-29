@@ -183,12 +183,9 @@ export default function SettingsPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-600 bg-clip-text text-transparent">
-                Settings Dashboard
+              <h1 className="text-2xl font-bold text-gray-800">
+                Platform Customize
               </h1>
-              <p className="text-gray-600 mt-2">
-                Manage your e-commerce platform configuration
-              </p>
             </div>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
               <div className="flex items-center space-x-2">
