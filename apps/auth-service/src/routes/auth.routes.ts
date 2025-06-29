@@ -3,7 +3,7 @@ import express from "express";
 import {
   adminLogin,
   cerateShop,
-  chnageUserPassword,
+  changeUserPassword,
   createSellerAccount,
   createShippingAddress,
   createStripeConnectAccount,
@@ -43,7 +43,7 @@ router.post("/verify-forgot-password-user", verifyForgotPassword);
 router.post("/refresh-token", refreshAccessToken);
 router.get("/logged-in-user", withAuth("user"), getAuthenticatedUser);
 router.get("/user-details", withAuth("user"), userDetails);
-router.put("/change-password-user", withAuth("user"), chnageUserPassword);
+router.put("/change-password-user", withAuth("user"), changeUserPassword);
 router.get("/shipping-address-user", withAuth("user"), userShippingAddress);
 router.post("/shipping-address", withAuth("user"), createShippingAddress);
 router.put("/shipping-address/:id", withAuth("user"), updateShippingAddress);
