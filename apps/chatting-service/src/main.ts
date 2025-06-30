@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { kafkaConsumer } from "./chat-message-consumer";
+import { createWebsocketServer } from "./websocket";
 
 dotenv.config();
 
@@ -44,6 +46,13 @@ app.use(errorMiddleware);
 const server = app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
   console.log(`[ ready ] http://localhost:${port}/api-docs`);
+});
+
+// Websocket
+createWebsocketServer(server);
+
+kafkaConsumer().catch((error) => {
+  console.error("Error starting Kafka consumer:", error);
 });
 
 server.on("error", console.error);

@@ -45,7 +45,7 @@ app.use("/api/auth", proxy("http://localhost:6001/api"));
 app.use("/api/products", proxy("http://localhost:6002/api"));
 app.use("/api/orders", proxy("http://localhost:6003/api"));
 app.use("/api/admin", proxy("http://localhost:6004/api"));
-app.use("/api/chats", proxy("http://localhost:6005/api"));
+app.use("/api/chatting", proxy("http://localhost:6005/api"));
 app.use("/api/recommendations", proxy("http://localhost:6006/api"));
 app.use("/api/loggers", proxy("http://localhost:6007/api"));
 app.use("/api/auth/api-docs", proxy("http://localhost:6001/api-docs"));
