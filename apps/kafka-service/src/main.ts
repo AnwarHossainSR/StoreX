@@ -65,29 +65,39 @@ const createTopic = async () => {
   try {
     await admin.connect();
     const topics = await admin.listTopics();
-    if (!topics.includes("users-events")) {
+
+    const topicDefinitions = [
+      {
+        topic: "users-events",
+        numPartitions: 3,
+        replicationFactor: 1,
+      },
+      {
+        topic: "chat-messages",
+        numPartitions: 6,
+        replicationFactor: 1,
+      },
+    ];
+
+    const topicsToCreate = topicDefinitions.filter(
+      (t) => !topics.includes(t.topic)
+    );
+
+    if (topicsToCreate.length > 0) {
       await admin.createTopics({
         waitForLeaders: true,
-        topics: [
-          {
-            topic: "users-events",
-            numPartitions: 1,
-            replicationFactor: 1,
-          },
-        ],
+        topics: topicsToCreate,
       });
-      console.log(chalk.green("Topic users-events created"));
-    } else {
-      console.log(chalk.green("Topic users-events already exists"));
-    }
-  } catch (error: any) {
-    if (error.type === "TOPIC_ALREADY_EXISTS") {
       console.log(
-        chalk.green("Topic users-events already exists, no action needed")
+        chalk.green(
+          `Topics created: ${topicsToCreate.map((t) => t.topic).join(", ")}`
+        )
       );
     } else {
-      console.error(chalk.red("Error creating/verifying topic:"), error);
+      console.log(chalk.green("All topics already exist"));
     }
+  } catch (error: any) {
+    console.error(chalk.red("Error creating/verifying topics:"), error);
   } finally {
     await admin.disconnect();
   }
