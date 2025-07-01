@@ -8,6 +8,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Columns3,
   CreditCard,
   Inbox,
   LayoutDashboard,
@@ -15,11 +16,11 @@ import {
   LogOut,
   Menu,
   Package,
-  Plus,
   Search,
   Settings,
-  Tag,
+  ShoppingBag,
   User,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,43 +31,43 @@ interface SellerLayoutProps {
   children: ReactNode;
 }
 
-const sidebarSections = [
+const sidebarSections: any = [
+  {
+    title: "",
+    items: [{ name: "Dashboard", href: "/", icon: LayoutDashboard }],
+  },
   {
     title: "Main Menu",
     items: [
-      { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Orders", href: "/orders", icon: Package },
       { name: "Payments", href: "/payments", icon: CreditCard },
-    ],
-  },
-  {
-    title: "Products",
-    items: [
-      { name: "Create Product", href: "/products/create", icon: Plus },
-      { name: "All Products", href: "/products", icon: List },
-    ],
-  },
-  {
-    title: "Events",
-    items: [
-      { name: "Create Event", href: "/events/create", icon: Plus },
-      { name: "All Events", href: "/events", icon: Calendar },
+      { name: "Products", href: "/products", icon: List },
+      { name: "Events", href: "/events", icon: Calendar },
+      { name: "Users", href: "/users", icon: Users },
+      { name: "Sellers", href: "/sellers", icon: ShoppingBag },
     ],
   },
   {
     title: "Controllers",
     items: [
-      { name: "Inbox", href: "/inbox", icon: Inbox },
-      { name: "Settings", href: "/settings", icon: Settings },
+      { name: "Loggers", href: "/loggers", icon: Inbox },
+      { name: "Managements", href: "/managements", icon: Settings },
       { name: "Notifications", href: "/notifications", icon: Bell },
     ],
   },
   {
-    title: "Extras",
+    title: "Customization",
     items: [
-      { name: "Discount Codes", href: "/discount-codes", icon: Tag },
-      { name: "Logout", href: "#", icon: LogOut, isDestructive: true },
+      {
+        name: "All Customization",
+        href: "/customizations",
+        icon: Columns3,
+      },
     ],
+  },
+  {
+    title: "Extras",
+    items: [{ name: "Logout", href: "#", icon: LogOut, isDestructive: true }],
   },
 ];
 
@@ -206,12 +207,12 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
               </div>
             </div>
             <nav className="mt-8 px-2 space-y-1">
-              {sidebarSections.map((sec) => (
+              {sidebarSections.map((sec: any) => (
                 <div key={sec.title}>
                   <div className="px-4 text-xs font-semibold text-gray-400 uppercase">
                     {sec.title}
                   </div>
-                  {sec.items.map((item) =>
+                  {sec.items.map((item: any) =>
                     item.isDestructive ? (
                       <button
                         key={item.name}
@@ -279,14 +280,14 @@ export default function SellerLayout({ children }: SellerLayoutProps) {
             </button>
           </div>
           <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
-            {sidebarSections.map((sec) => (
+            {sidebarSections.map((sec: any) => (
               <div key={sec.title}>
                 {!isCollapsed && (
                   <div className="px-4 text-xs font-semibold text-gray-400 uppercase">
                     {sec.title}
                   </div>
                 )}
-                {sec.items.map((item) =>
+                {sec.items.map((item: any) =>
                   item.isDestructive ? (
                     <button
                       key={item.name}

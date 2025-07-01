@@ -100,11 +100,11 @@ model sellers {
 }
 
 model siteConfig {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  categories    String[]
-  subCategories Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique // e.g., "general", "email", "payment", "categories"
+  config    Json // Stores configuration data as JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DiscountCode {
@@ -301,16 +301,59 @@ enum adminRole {
   moderator
 }
 
+enum adminStatus {
+  active
+  inactive
+  suspended
+}
+
 model admins {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  email     String    @unique
+  email     String      @unique
   password  String
-  role      adminRole @default(superadmin)
+  role      adminRole   @default(superadmin)
   phone     String?
   country   String?
-  avatarId  String?   @db.ObjectId
-  avatar    images?   @relation(fields: [avatarId], references: [id], onDelete: SetNull)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  avatarId  String?     @db.ObjectId
+  avatar    images?     @relation(fields: [avatarId], references: [id], onDelete: SetNull)
+  lastLogin DateTime?
+  status    adminStatus @default(active)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model conversationGroup {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  isGroup        Boolean  @default(false)
+  name           String?
+  creatorId      String
+  participantIds String[] @db.ObjectId
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model participant {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String    @db.ObjectId
+  userId         String?   @db.ObjectId
+  sellerId       String?   @db.ObjectId
+  lastSeenAt     DateTime?
+  isOnline       Boolean   @default(false)
+  unreadCount    Int       @default(0)
+  muted          Boolean   @default(false)
+  joinedAt       DateTime  @default(now())
+}
+
+model message {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String   @db.ObjectId
+  senderId       String   @db.ObjectId
+  senderType     String
+  content        String?
+  attachments    String[]
+  status         String   @default("sent")
+  createdAt      DateTime @default(now())
+
+  @@unique([conversationId, senderId, content, createdAt])
 }
