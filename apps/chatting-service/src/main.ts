@@ -5,8 +5,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { kafkaConsumer } from "./chat-message-consumer";
+import chattingRoutes from "./routes/chatting.route";
 import { createWebsocketServer } from "./websocket";
-
 dotenv.config();
 
 const host = process.env.HOST ?? "localhost";
@@ -38,7 +38,7 @@ app.get("/", (req, res) => {
 });
 
 // chatting routes
-// app.use("/", orderRoutes);
+app.use("/", chattingRoutes);
 
 // Error handling
 app.use(errorMiddleware);
