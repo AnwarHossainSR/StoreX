@@ -81,7 +81,7 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^7.0.11",
     "pdfkit": "^0.17.1",
-    "prisma": "^6.16.1",
+    "prisma": "^6.19.1",
     "react": "18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "18.3.1",
